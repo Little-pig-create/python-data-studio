@@ -185,6 +185,38 @@ const cloneValue = (value) => {
   return JSON.parse(JSON.stringify(value));
 };
 
+// JupyterLite kernels may expose `js` without a browser `window` export.
+// Keep existing course cells portable by mapping that import to the current app origin.
+const normalizeNotebookSource = (source) => {
+  const text = String(source || "");
+  const origin = typeof window !== "undefined" && window.location ? window.location.origin : "";
+  const datasetBase = `${origin}/datasets/`;
+  const normalized = text
+    .replace(/^(\s*)from\s+js\s+import\s+window\s*$/gm, "")
+    .replace(/f["']\{window\.location\.origin\}\/datasets\//g, (match) => match.startsWith("f'") ? "'" + datasetBase : '"' + datasetBase)
+    .replace(/\{window\.location\.origin\}\/datasets\//g, datasetBase)
+    .replace(/\{base_url\}\/datasets\//g, datasetBase)
+    .replace(/\{base\}\/datasets\//g, datasetBase)
+    .replace(/(["'])\/datasets\//g, (_, quote) => `${quote}${datasetBase}`);
+
+  const datasetFiles = [...normalized.matchAll(/(?:https?:\/\/[^"'\s]+)?\/datasets\/([A-Za-z0-9._-]+)/g)]
+    .map((match) => match[1])
+    .filter((file, index, files) => files.indexOf(file) === index);
+  if (!datasetFiles.length) return normalized;
+
+  // urllib cannot open browser-served URLs inside Pyodide. Download once with
+  // pyfetch, then let pandas read the local temporary file as usual.
+  const downloads = datasetFiles.map((file) => `
+_studio_path = "/tmp/studio-${file}"
+if not __import__("pathlib").Path(_studio_path).exists():
+    _studio_response = await pyfetch(${JSON.stringify(`${datasetBase}${file}`)})
+    _studio_response.raise_for_status()
+    __import__("pathlib").Path(_studio_path).write_bytes(bytes(await _studio_response.bytes()))
+` ).join("\n");
+  const rewritten = datasetFiles.reduce((code, file) => code.replaceAll(`${datasetBase}${file}`, `/tmp/studio-${file}`).replaceAll(`/datasets/${file}`, `/tmp/studio-${file}`), normalized);
+  return `from pyodide.http import pyfetch\n${downloads}\n${rewritten}`;
+};
+
 export async function executeNotebookCell(runtime, source) {
   const kernel = runtime?.session?.kernel;
   if (!kernel || kernel.isDisposed || kernel.status === "dead") {
@@ -214,7 +246,7 @@ export async function executeNotebookCell(runtime, source) {
   };
 
   const future = kernel.requestExecute({
-    code: String(source || ""),
+    code: normalizeNotebookSource(source),
     silent: false,
     store_history: true,
     user_expressions: {},

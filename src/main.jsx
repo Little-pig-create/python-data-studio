@@ -15,6 +15,7 @@ import SchoolRounded from "@mui/icons-material/SchoolRounded";
 import AssignmentRounded from "@mui/icons-material/AssignmentRounded";
 import DashboardRounded from "@mui/icons-material/DashboardRounded";
 import LogoutRounded from "@mui/icons-material/LogoutRounded";
+import InfoOutlined from "@mui/icons-material/InfoOutlined";
 import { chapterById, loadCourseCatalog } from "./courseCatalog";
 import { useAppStore } from "./store";
 import { CountUp, FadeContent } from "./ui-react-bits";
@@ -34,6 +35,8 @@ import { RegistrationPage } from "./RegistrationPage";
 import { CdKeyManagement } from "./CdKeyManagement";
 import { SessionDock } from "./PortalHeader";
 import { AppUpdater } from "./AppUpdater";
+import { AboutPage } from "./AboutPage";
+import { LandingPage } from "./LandingPage";
 import CampaignRounded from "@mui/icons-material/CampaignRounded";
 import { listPublishedAnnouncements } from "./announcementRepository";
 
@@ -190,7 +193,7 @@ function CollapsedRail({ catalog, store, navigate, onClose }) {
 function Sidebar({ catalog, mobileOpen, onClose }) {
   const navigate = useNavigate();
   const store = useAppStore();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const collapsed = store.sidebarMode === "rail";
   const query = store.searchQuery.trim().toLowerCase();
   const content = <div className="sidebar-content">
@@ -213,10 +216,6 @@ function Sidebar({ catalog, mobileOpen, onClose }) {
       ? <CollapsedRail catalog={catalog} store={store} navigate={navigate} onClose={onClose} />
       : <>
         <div className="sidebar-tools">
-          {user.role === ROLES.STUDENT && <>
-            <Button className="sidebar-progress-link" startIcon={<HistoryRounded fontSize="small" />} onClick={() => { navigate("/progress"); onClose?.(); }}>学习记录</Button>
-            <Button className="sidebar-training-link" startIcon={<AssignmentRounded fontSize="small" />} onClick={() => { navigate("/training"); onClose?.(); }}>我的实训</Button>
-          </>}
           {user.role === ROLES.TEACHER && <Button className="sidebar-teaching-link" startIcon={<DashboardRounded fontSize="small" />} onClick={() => { navigate("/teaching"); onClose?.(); }}>教学工作台</Button>}
           <TextField
             className="course-search-input"
@@ -235,10 +234,12 @@ function Sidebar({ catalog, mobileOpen, onClose }) {
         <div className="course-tree">
           {query ? <SearchResults catalog={catalog} store={store} navigate={navigate} onClose={onClose} query={query} /> : <CourseTree catalog={catalog} store={store} navigate={navigate} onClose={onClose} />}
         </div>
-        <div className="sidebar-session">
-          <span className="session-avatar">{user.name.slice(0, 1)}</span>
-          <span><strong>{user.name}</strong><small>{ROLE_LABELS[user.role]} · {user.identifier}</small></span>
-          <Tooltip title="退出登录"><IconButton size="small" aria-label="退出登录" onClick={async () => { await logout(); navigate("/login", { replace: true }); }}><LogoutRounded fontSize="small" /></IconButton></Tooltip>
+        <div className="sidebar-session sidebar-about-session">
+          {user.role === ROLES.STUDENT && <>
+            <Button className="sidebar-progress-link" startIcon={<HistoryRounded fontSize="small" />} onClick={() => { navigate("/progress"); onClose?.(); }}>学习记录</Button>
+            <Button className="sidebar-training-link" startIcon={<AssignmentRounded fontSize="small" />} onClick={() => { navigate("/training"); onClose?.(); }}>我的实训</Button>
+          </>}
+          <Button className="sidebar-about-link" startIcon={<InfoOutlined fontSize="small" />} onClick={() => { navigate("/about"); onClose?.(); }}>关于软件</Button>
         </div>
       </>}
   </div>;
@@ -365,6 +366,7 @@ function App() {
   return <ThemeProvider theme={theme}><CssBaseline /><Routes>
     <Route path="/login" element={<LoginPage />} />
     <Route path="/register" element={<RegistrationPage />} />
+    <Route path="/about" element={<AboutPage />} />
     <Route path="/forbidden" element={<RequireAuth><ForbiddenPage /></RequireAuth>} />
     <Route path="/course/:chapterId" element={<RequireAuth roles={[ROLES.STUDENT, ROLES.TEACHER]}><Workspace catalog={catalog} /></RequireAuth>} />
     <Route path="/progress" element={<RequireAuth roles={[ROLES.STUDENT]}><SessionDock /><ProgressPage catalog={catalog} /></RequireAuth>} />
@@ -376,7 +378,7 @@ function App() {
     <Route path="/school-admin/cdkeys" element={<RequireAuth roles={[ROLES.SCHOOL_ADMIN]}><CdKeyManagement /></RequireAuth>} />
     <Route path="/school-admin" element={<RequireAuth roles={[ROLES.SCHOOL_ADMIN]}><SchoolAdminCenter /></RequireAuth>} />
     <Route path="/school-admin/:section" element={<RequireAuth roles={[ROLES.SCHOOL_ADMIN]}><SchoolAdminCenter /></RequireAuth>} />
-    <Route path="/" element={<RoleHomeRedirect />} />
+    <Route path="/" element={<LandingPage catalog={catalog} />} />
     <Route path="*" element={<RoleHomeRedirect />} />
   </Routes></ThemeProvider>;
 }

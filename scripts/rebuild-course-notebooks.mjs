@@ -11,7 +11,21 @@ import { machineLearningProjectProfiles } from "./course-content-machine-learnin
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outputDirectory = path.join(root, "public", "course");  // 直接生成到 public/course
 const catalogOutputPath = path.join(root, "public", "course", "catalog.json");
-const COURSE_CONTENT_VERSION = 14;
+const COURSE_CONTENT_VERSION = 18;
+
+// Dataset files are served by the app; generated examples should not depend on browser globals.
+const sanitizeNotebookCode = (source) => String(source || "")
+  .replace(/^\s*from\s+js\s+import\s+window\s*$/gm, "")
+  .replace(/^\s*base_url\s*=\s*window\.location\.origin\s*$/gm, "")
+  .replace(/^\s*base_url=window\.location\.origin\s*$/gm, "")
+  .replace(/^\s*base\s*=\s*window\.location\.origin\s*$/gm, "")
+  .replace(/^\s*base=window\.location\.origin\s*$/gm, "")
+  .replace(/f"\{window\.location\.origin\}\/datasets\//g, '"/datasets/')
+  .replace(/f"\{base_url\}\/datasets\//g, '"/datasets/')
+  .replace(/f"\{base\}\/datasets\//g, '"/datasets/')
+  .replace(/f'\{window\.location\.origin\}\/datasets\//g, "'/datasets/")
+  .replace(/f'\{base_url\}\/datasets\//g, "'/datasets/")
+  .replace(/f'\{base\}\/datasets\//g, "'/datasets/");
 
 const largeOrderSetup = `import numpy as np
 import pandas as pd
@@ -543,6 +557,9 @@ for (const lesson of chapters) {
     throw new Error(`第${lesson.chapter}章没有可运行代码`);
   }
   const notebook = createNotebook(lesson, cells);
+  notebook.cells = notebook.cells.map((cell) => cell.cell_type === "code"
+    ? { ...cell, source: (cell.source || []).map(sanitizeNotebookCode) }
+    : cell);
   const fileName = path.basename(decodeURIComponent(lesson.path));
   const outputPath = path.join(outputDirectory, fileName);
   fs.writeFileSync(outputPath, `${JSON.stringify(notebook, null, 2)}\n`, "utf8");

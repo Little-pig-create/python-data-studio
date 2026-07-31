@@ -34,17 +34,28 @@ import NoteAltRounded from "@mui/icons-material/NoteAltRounded";
 import AccessTimeRounded from "@mui/icons-material/AccessTimeRounded";
 import CheckCircleOutlineRounded from "@mui/icons-material/CheckCircleOutlineRounded";
 import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
-import KeyboardArrowDownRounded from "@mui/icons-material/KeyboardArrowDownRounded";
 import FlagRounded from "@mui/icons-material/FlagRounded";
 import MenuBookRounded from "@mui/icons-material/MenuBookRounded";
-import { Alert, Button, ButtonGroup, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, IconButton, Menu, MenuItem, Snackbar, TextField, Tooltip } from "@mui/material";
+import { Alert, Button, ButtonGroup, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, IconButton, Menu, MenuItem, Snackbar, Tab, Tabs, TextField, Tooltip } from "@mui/material";
+import { StudioSpeedDial } from "./StudioSpeedDial";
 import { useAppStore } from "./store";
 import { createNotebookRuntime, ensureCoursePackages, executeNotebookCell } from "./notebookRuntime";
 import { deleteNotebookDraft, loadCustomNotebook, loadNotebookDraft, saveNotebookDraft } from "./notebookRepository";
 import { convertErrorToFriendly } from "./errorMessageHelper";
 import { normalizeNotebook, serializeNotebook, useNotebookStore } from "./notebookStore";
 
-const outputText = (value) => Array.isArray(value) ? value.join("") : (value ?? "");
+const outputText = (value) => {
+  const text = Array.isArray(value) ? value.join("") : String(value ?? "");
+  return text.replace(/[\u001b\u009b]\[[0-?]*[ -/]*[@-~]/g, "");
+};
+const formatPythonSource = (source) => String(source || "").split(/\r?\n/).map((line) => {
+  let formatted = line.replace(/\t/g, "    ").replace(/\s+$/, "");
+  if (/^\s*[A-Za-z_]\w*\s*=/.test(formatted) && !/==|!=|<=|>=/.test(formatted)) {
+    formatted = formatted.replace(/^(\s*[A-Za-z_]\w*)\s*=\s*/, "$1 = ");
+  }
+  formatted = formatted.replace(/,\s*(?=[A-Za-z_\"'\[({])/g, ", ");
+  return formatted;
+}).join("\n");
 const markdownOutline = (notebook) => (notebook?.cells || []).flatMap((cell) => {
   if (cell.type !== "markdown") return [];
   return String(cell.source || "").split(/\r?\n/).flatMap((line) => {
@@ -206,7 +217,7 @@ function OutputRenderer({ outputs = [] }) {
     if (output.output_type === "error") {
       const isAssertionError = output.ename === "AssertionError";
       const className = isAssertionError ? "notebook-assert-error" : "notebook-error-output";
-      const errorText = [output.ename, output.evalue, ...(output.traceback || [])].filter(Boolean).join("\n");
+      const errorText = outputText([output.ename, output.evalue, ...(output.traceback || [])].filter(Boolean).join("\n"));
 
       // 尝试转换为友好错误提示
       const friendlyError = !isAssertionError ? convertErrorToFriendly(errorText) : null;
@@ -407,6 +418,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
   const [resetChapterOpen, setResetChapterOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
+  const [noteTab, setNoteTab] = useState(0);
   const [outlineAnchor, setOutlineAnchor] = useState(null);
   const [markdownCollapsed, setMarkdownCollapsed] = useState(false);
   const [overviewCollapsed, setOverviewCollapsed] = useState(false);
@@ -518,6 +530,9 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
       const sourceVersion = source?.metadata?.course_content_version ?? 1;
       const draftVersion = draft?.metadata?.course_content_version ?? 1;
       const baseDocument = normalizeNotebook(source);
+      baseDocument.cells = baseDocument.cells.map((cell) => cell.type === "code"
+        ? { ...cell, source: formatPythonSource(cell.source) }
+        : cell);
       const compatibleDraft = draftVersion === sourceVersion && draft?.cells?.length === baseDocument.cells.length ? draft : null;
       const loadedDocument = normalizeNotebook(compatibleDraft || source);
       if (compatibleDraft && loadedDocument.cells.length === baseDocument.cells.length) {
@@ -792,6 +807,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
   };
   const openChapterNote = () => {
     setNoteDraft(chapterNote);
+    setNoteTab(0);
     setNoteOpen(true);
   };
   const saveChapterNote = () => {
@@ -855,8 +871,10 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
   return <section className="custom-notebook-shell" aria-label={`${lesson.label} Notebook`}>
     <header className="chapter-learning-header chapter-learning-header-compact">
       <div className="chapter-learning-heading">
-        <div className="chapter-learning-kicker"><span>{chapterMeta.moduleLabel}</span><span className="chapter-position-chip">第 {lessonPosition || lesson.chapter} / {totalLessons || "—"} 章</span><span className="chapter-version-chip">v0.1.0</span></div>
-        <h1>{lesson.label}</h1>
+        <div className="chapter-learning-kicker"><span>{chapterMeta.moduleLabel}</span><span className="chapter-position-chip">第 {lessonPosition || lesson.chapter} / {totalLessons || "—"} 章</span><span className="chapter-version-chip">v0.1.0</span><span className={`chapter-kernel-state state-${store.runtimeState}`}><span />{store.runtimeState === "loading" ? store.runtimeMessage : (kernelStatusLabels[store.runtimeState] || "未知")}</span></div>
+      </div>
+      <div className="chapter-learning-header-actions" aria-label="工作台快捷入口">
+        <StudioSpeedDial />
       </div>
     </header>
     <div className="custom-notebook-toolbar">
@@ -882,16 +900,8 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
           </IconButton>
         </Tooltip>
         <Divider orientation="vertical" flexItem className="custom-action-divider" />
-        <div className={`notebook-chapter-progress ${isCompleted ? "is-done" : ""}`} aria-label={`本章进度 ${lessonProgress}%`}>
-          <span className="notebook-chapter-progress-ring" style={{ "--chapter-progress": `${lessonProgress * 3.6}deg` }}><span /></span>
-          <span>本章进度 {lessonProgress}%</span>
-        </div>
-        <span className={`notebook-save-state ${store.dirty ? "is-dirty" : "is-saved"}`} title={store.dirty ? "修改会在短暂等待后自动保存" : "当前 Notebook 草稿已保存"}>
-          <span />{store.dirty ? "正在保存修改…" : "已自动保存"}
-        </span>
         {chapterNote && <Tooltip title="本章已有学习笔记"><span className="notebook-note-badge"><NoteAltRounded fontSize="small" />有笔记</span></Tooltip>}
       </div>
-      <span className={`custom-kernel-state state-${store.runtimeState}`}><span />内核：{store.runtimeState === "loading" ? store.runtimeMessage : (kernelStatusLabels[store.runtimeState] || "未知")}</span>
     </div>
     {loading && <div className="custom-notebook-loading"><div className="loading-bar" /><p>正在准备 Notebook</p></div>}
     {error && <div className="custom-notebook-error">{error}</div>}
@@ -926,8 +936,42 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     <Dialog open={noteOpen} onClose={() => setNoteOpen(false)} aria-labelledby="chapter-note-title" fullWidth maxWidth="sm">
       <DialogTitle id="chapter-note-title">本章学习笔记</DialogTitle>
       <DialogContent>
-        <DialogContentText sx={{ mb: 2 }}>记录易错点、分析结论或下次继续学习的线索。</DialogContentText>
-        <TextField autoFocus fullWidth multiline minRows={8} value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} placeholder="写下本章的学习笔记" inputProps={{ maxLength: 4000, "aria-label": "本章学习笔记" }} />
+        <DialogContentText sx={{ mb: 1.5 }}>
+          支持 Markdown：标题、列表、代码块、引用、表格和任务清单。保存后可在学习记录中继续查看。
+        </DialogContentText>
+        <Tabs
+          value={noteTab}
+          onChange={(_, value) => setNoteTab(value)}
+          aria-label="学习笔记编辑和预览"
+          className="chapter-note-tabs"
+          variant="fullWidth"
+        >
+          <Tab label="编辑 Markdown" />
+          <Tab label="预览" />
+        </Tabs>
+        {noteTab === 0 ? (
+          <TextField
+            autoFocus
+            fullWidth
+            multiline
+            minRows={10}
+            value={noteDraft}
+            onChange={(event) => setNoteDraft(event.target.value)}
+            placeholder={"# 本章重点\n\n- 记录一个易错点\n- 写下待验证的问题\n\n```python\n# 示例代码\n```"}
+            inputProps={{ maxLength: 4000, "aria-label": "本章学习笔记 Markdown 内容" }}
+            sx={{ mt: 1.5 }}
+          />
+        ) : (
+          <div className="chapter-note-preview" aria-label="学习笔记预览">
+            {noteDraft.trim() ? (
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
+                {noteDraft}
+              </ReactMarkdown>
+            ) : (
+              <p className="chapter-note-empty">暂无笔记内容，切换到“编辑 Markdown”开始记录。</p>
+            )}
+          </div>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={() => setNoteOpen(false)}>取消</Button>

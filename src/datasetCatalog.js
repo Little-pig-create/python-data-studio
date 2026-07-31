@@ -13,5 +13,5 @@ export const publicDatasets = [
 
 export const readCodeForDataset = (dataset) => {
   const options = dataset.separator ? `, sep=${JSON.stringify(dataset.separator)}` : "";
-  return `import pandas as pd\n\nurl = f"{window.location.origin}/datasets/${dataset.file}"\ndf = pd.read_csv(url${options})\ndf.head()`;
+  return `import pandas as pd\n\nurl = "/datasets/${dataset.file}"\ndf = pd.read_csv(url${options})\ndf.head()`;
 };

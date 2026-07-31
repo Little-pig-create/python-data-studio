@@ -246,10 +246,23 @@ export const machineLearningProjectProfiles = {
     codeCells: [
       { title: "1. 原始数据质量与类别不平衡审计", explanation: "检查分隔符、重复、unknown、目标比例和长尾变量。", code: lines(
         "import numpy as np", "import pandas as pd", "from js import window",
-        "raw=pd.read_csv(f\"{window.location.origin}/datasets/bank_marketing_full.csv\",sep=';')",
-        "unknown=(raw.astype(str)=='unknown').sum().sort_values(ascending=False)",
-        "audit=pd.Series({'行数':len(raw),'重复':raw.duplicated().sum(),'正类率':(raw.y=='yes').mean(),'多数类准确率':max((raw.y=='yes').mean(),(raw.y!='yes').mean()),'campaign_P99':raw.campaign.quantile(.99)})",
-        "print(audit.round(3).to_string()); print('unknown最多字段:\\n',unknown.head(8))"
+        "raw = pd.read_csv(\"/datasets/bank_marketing_full.csv\", sep=\";\")",
+        "unknown = (",
+        "    raw.astype(str) == \"unknown\"",
+        ").sum().sort_values(ascending=False)",
+        "positive_rate = (raw[\"y\"] == \"yes\").mean()",
+        "majority_accuracy = max(positive_rate, 1 - positive_rate)",
+        "audit = pd.Series(",
+        "    {",
+        "        \"行数\": len(raw),",
+        "        \"重复\": raw.duplicated().sum(),",
+        "        \"正类率\": positive_rate,",
+        "        \"多数类准确率\": majority_accuracy,",
+        "        \"campaign_P99\": raw[\"campaign\"].quantile(0.99),",
+        "    }",
+        ")",
+        "print(audit.round(3).to_string())",
+        "print(\"unknown 最多字段：\\n\", unknown.head(8))"
       )},
       { title: "2. 清理重复并探索响应差异", explanation: "unknown保留为显式类别，因为未知并不等于否；描述性组间差异不代表营销因果效果。", code: lines(
         "df=raw.drop_duplicates().copy(); df['target']=(df.y=='yes').astype(int)",

@@ -7,6 +7,8 @@
     "auth:dev": "cargo run --manifest-path server/Cargo.toml",
     "build": "vite build",
     "build:course": "node scripts/rebuild-course-notebooks.mjs",
+    "check:pep8": "python scripts/check-course-pep8.py",
+    "format:course": "node scripts/format-course-notebooks.mjs",
     "sync:catalog": "node scripts/sync-catalog.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "build:extensions": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-extensions.ps1",

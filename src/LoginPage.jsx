@@ -4,6 +4,7 @@ import LockRounded from "@mui/icons-material/LockRounded";
 import SchoolRounded from "@mui/icons-material/SchoolRounded";
 import { Link, useNavigate } from "react-router-dom";
 import { ROLE_LABELS, demoAccounts, roleHome, useAuth } from "./AuthProvider";
+import { AuthRouteNav } from "./AuthRouteNav";
 
 const SAVED_LOGIN_KEY = "python-data-studio:saved-login:v1";
 
@@ -57,6 +58,7 @@ export function LoginPage() {
   }
 
   return <main className="login-page">
+    <AuthRouteNav active="login" />
     <section className="login-intro">
       <div className="login-brand"><span><SchoolRounded /></span>Python Data Studio</div>
       <div>
