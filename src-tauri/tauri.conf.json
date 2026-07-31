@@ -43,9 +43,9 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDRBQTc5QUQyMTFCOUUzODYKUldTRzQ3a1IwcHFuU3BBMkduSlFHbjIwby9GVytTRGViUnhrdUJkQW9OMys2NkZ5aU1rNWtBN0oK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcyQjY3OTNEMzFFQTVBRTMKUldUald1b3hQWG0yY2tFeUpXKzl1c3dzeEFqQzYvRDFGS2hzUU1zdjAxNDVKWUVzQ3NtcW9Od2kK",
       "endpoints": [
-        "https://github.com/PLACEHOLDER_OWNER/PLACEHOLDER_REPO/releases/latest/download/latest.json"
+        "https://github.com/Little-pig-create/python-data-studio/releases/latest/download/latest.json"
       ],
       "dialog": false,
       "headers": {
