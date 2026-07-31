@@ -1,0 +1,16 @@
+{
+  "name": "python-data-studio-jupyterlab-core",
+  "version": "4.6.0",
+  "dependencies": {
+    "@jupyterlab/application": "^4.6.0",
+    "@jupyterlab/notebook": "^4.6.0",
+    "@jupyterlab/apputils": "^4.6.0"
+  },
+  "jupyterlab": {
+    "singletonPackages": [
+      "@jupyterlab/application",
+      "@jupyterlab/notebook",
+      "@jupyterlab/apputils"
+    ]
+  }
+}

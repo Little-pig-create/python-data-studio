@@ -1,0 +1,30 @@
+# Node / Vite
+node_modules/
+dist/
+*.log
+
+# Local environment and secrets
+.env
+.env.*
+!.env.desktop
+!.env.desktop-online
+!.env.example
+
+# Generated release configuration and Tauri build cache
+src-tauri/tauri.release.conf.json
+src-tauri/target/
+server/target/
+
+# Python / notebook caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Local raw dataset archives and duplicate source files
+datasets/
+
+# Local screenshots and audit exports
+audit-*.png
+vite-*.log
+dev-server*.log

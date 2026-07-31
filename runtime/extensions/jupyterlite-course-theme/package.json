@@ -1,0 +1,17 @@
+{
+  "name": "jupyterlite-course-theme",
+  "version": "0.1.0",
+  "description": "Course notebook theme for JupyterLite",
+  "license": "BSD-3-Clause",
+  "main": "lib/index.js",
+  "files": ["lib", "style"],
+  "jupyterlab": {
+    "extension": true,
+    "sharedPackages": {
+      "@jupyterlab/application": { "bundled": false },
+      "@jupyterlab/apputils": { "bundled": false }
+    }
+  },
+  "styleModule": "style/index.css",
+  "dependencies": {}
+}

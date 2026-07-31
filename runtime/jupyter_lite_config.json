@@ -1,0 +1,16 @@
+{
+  "LiteBuildConfig": {
+    "apps": ["lab"],
+    "contents": ["notebooks"],
+    "settings_overrides": ["lab/overrides.json"],
+    "federated_extensions": [
+      "runtime/extensions/jupyterlite-course-bridge/static",
+      "runtime/extensions/jupyterlite-course-theme/static"
+    ]
+  },
+  "PipliteAddon": {
+    "piplite_urls": [
+      "runtime/wheels"
+    ]
+  }
+}

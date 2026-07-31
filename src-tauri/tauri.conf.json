@@ -1,0 +1,56 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Python Data Studio",
+  "version": "0.1.0",
+  "identifier": "com.python.datastudio",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://127.0.0.1:5173",
+    "beforeDevCommand": "npm run dev -- --port 5173",
+    "beforeBuildCommand": "npm run build:desktop-web"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Python Data Studio",
+        "width": 1440,
+        "height": 900,
+        "resizable": true,
+        "fullscreen": false,
+        "label": "main",
+        "minWidth": 1100,
+        "minHeight": 720,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDRBQTc5QUQyMTFCOUUzODYKUldTRzQ3a1IwcHFuU3BBMkduSlFHbjIwby9GVytTRGViUnhrdUJkQW9OMys2NkZ5aU1rNWtBN0oK",
+      "endpoints": [
+        "https://github.com/PLACEHOLDER_OWNER/PLACEHOLDER_REPO/releases/latest/download/latest.json"
+      ],
+      "dialog": false,
+      "headers": {
+        "Accept": "application/json"
+      }
+    }
+  }
+}

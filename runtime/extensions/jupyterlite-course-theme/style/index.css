@@ -1,0 +1,910 @@
+:root {
+  --course-canvas: #f8fafd;
+  --course-surface: #ffffff;
+  --course-toolbar: #f0f4f9;
+  --course-code-surface: #ffffff;
+  --course-border: #c4c7c5;
+  --course-divider: rgb(196 199 197 / 40%);
+  --course-blue: #0b57d0;
+  --course-blue-hover: #0842a0;
+  --course-blue-soft: #e8f0fe;
+  --course-blue-muted: #a8c7fa;
+  --course-text: #1f1f1f;
+  --course-muted: #5f6368;
+  --course-subtle: #747775;
+  --course-error: #b3261e;
+  --course-page-gutter-left: 4px;
+  --course-page-gutter-right: 12px;
+  --jp-layout-color0: var(--course-surface);
+  --jp-layout-color1: var(--course-surface);
+  --jp-layout-color2: var(--course-toolbar);
+  --jp-layout-color3: #e9eef6;
+  --jp-border-color0: var(--course-border);
+  --jp-border-color1: var(--course-border);
+  --jp-brand-color1: var(--course-blue);
+  --jp-private-toolbar-height: 40px;
+  --jp-ui-font-family: "Google Sans Text", "Google Sans", Arial, "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --jp-content-font-family: "Google Sans Text", "Google Sans", Arial, "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --jp-code-font-family: "Roboto Mono", "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  --jp-content-font-size1: 16px;
+  --jp-content-line-height: 1.6;
+}
+
+/* The course shell owns navigation; JupyterLite only supplies the live document. */
+[data-course-mode="true"] .jp-SideArea[data-side="left"],
+[data-course-mode="true"] .jp-SideArea[data-side="right"],
+[data-course-mode="true"] #jp-left-stack,
+[data-course-mode="true"] #jp-right-stack,
+[data-course-mode="true"] #jp-down-stack,
+[data-course-mode="true"] .jp-SideBar,
+[data-course-mode="true"] .jp-MenuBar,
+[data-course-mode="true"] #jp-menu-panel,
+[data-course-mode="true"] .jp-StatusBar {
+  display: none !important;
+}
+
+[data-course-mode="true"] body,
+[data-course-mode="true"] #main,
+[data-course-mode="true"] #jp-main-content-panel,
+[data-course-mode="true"] #jp-main-dock-panel,
+[data-course-mode="true"] .jp-NotebookPanel {
+  background: var(--course-canvas);
+}
+
+[data-course-mode="true"] #jp-main-content-panel {
+  top: 0 !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+[data-course-mode="true"] #jp-main-dock-panel {
+  padding: 0 !important;
+}
+
+[data-course-mode="true"] #jp-main-dock-panel > .lm-DockPanel-tabBar {
+  display: none !important;
+}
+
+/* Colab-style command strip. */
+[data-course-mode="true"] .jp-NotebookPanel-toolbar {
+  box-sizing: border-box;
+  width: calc(100% - 24px);
+  min-height: 40px !important;
+  height: 40px !important;
+  margin: 8px 12px;
+  padding: 0 8px;
+  gap: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: var(--course-toolbar);
+  box-shadow: none;
+  scrollbar-width: none;
+}
+
+[data-course-mode="true"] .jp-NotebookPanel-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+[data-course-mode="true"] .jp-NotebookPanel-toolbar .jp-Toolbar-item {
+  flex: 0 0 auto;
+}
+
+[data-course-mode="true"] .jp-NotebookPanel-toolbar button {
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 50%;
+  color: var(--course-muted);
+}
+
+[data-course-mode="true"] .jp-NotebookPanel-toolbar button:hover {
+  color: var(--course-text);
+  background: rgb(31 31 31 / 8%);
+}
+
+[data-course-mode="true"] .jp-NotebookPanel-toolbar button:focus-visible {
+  outline: 2px solid var(--course-blue);
+  outline-offset: -2px;
+}
+
+/* Continuous white notebook sheet. */
+[data-course-mode="true"] .jp-NotebookPanel-notebook {
+  padding: 0;
+  background: var(--course-surface);
+}
+
+[data-course-mode="true"] .jp-Notebook {
+  --jp-notebook-padding: 0;
+  --jp-notebook-multiselected-color: transparent;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: calc(100vh - 56px);
+  margin: 0;
+  padding: 18px var(--course-page-gutter-right) 96px var(--course-page-gutter-left);
+  outline: none;
+  background: var(--course-surface);
+}
+
+[data-course-mode="true"] .jp-Notebook .jp-WindowedPanel-viewport {
+  padding: 0 !important;
+}
+
+[data-course-mode="true"] .jp-Cell {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none !important;
+}
+
+[data-course-mode="true"] .jp-Cell.jp-mod-active::before,
+[data-course-mode="true"] .jp-Cell.jp-mod-selected::before,
+[data-course-mode="true"] .jp-Cell.jp-mod-active .jp-Cell-inputWrapper::before,
+[data-course-mode="true"] .jp-Cell.jp-mod-selected .jp-Cell-inputWrapper::before,
+[data-course-mode="true"] .jp-Cell.jp-mod-active .jp-Cell-outputWrapper::before,
+[data-course-mode="true"] .jp-Cell.jp-mod-selected .jp-Cell-outputWrapper::before {
+  display: none !important;
+}
+
+/* Markdown follows Colab's document typography instead of card styling. */
+[data-course-mode="true"] .jp-MarkdownCell {
+  width: calc(100% - 40px);
+  margin-left: 40px;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent !important;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell .jp-Cell-inputWrapper,
+[data-course-mode="true"] .jp-MarkdownCell .jp-Cell-inputArea,
+[data-course-mode="true"] .jp-MarkdownCell .jp-InputArea,
+[data-course-mode="true"] .jp-MarkdownCell .jp-InputArea-editor {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none !important;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell .jp-Collapser,
+[data-course-mode="true"] .jp-MarkdownCell .jp-InputPrompt,
+[data-course-mode="true"] .jp-RawCell .jp-Collapser,
+[data-course-mode="true"] .jp-RawCell .jp-InputPrompt {
+  display: none !important;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell .jp-Cell-inputWrapper,
+[data-course-mode="true"] .jp-MarkdownCell .jp-Cell-inputArea,
+[data-course-mode="true"] .jp-MarkdownCell .jp-InputArea {
+  display: block;
+  overflow: visible;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown {
+  width: min(100%, 1000px);
+  max-width: none;
+  padding: 0;
+  overflow: visible;
+  border: 0 !important;
+  outline: 0;
+  color: var(--course-text);
+  font-family: "Google Sans Text", "Google Sans", Arial, "Noto Sans SC", "Microsoft YaHei", sans-serif !important;
+  font-size: 16px;
+  line-height: 25.6px;
+  flex: none;
+  text-wrap: pretty;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown h1,
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown h2,
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown h3,
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown h4 {
+  color: var(--course-text);
+  font-family: var(--jp-content-font-family);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown h1 {
+  margin: 14px 0 16px;
+  font-size: 32px;
+  line-height: 46px;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown h2 {
+  margin: 18px 0 10px;
+  font-size: 23px;
+  line-height: 36.8px;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown h3 {
+  margin: 14px 0 8px;
+  font-size: 20px;
+  line-height: 32px;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown h4 {
+  margin: 12px 0 6px;
+  font-size: 17px;
+  line-height: 27.2px;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown p,
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown ul,
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown ol,
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown blockquote {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown li {
+  margin: 2px 0;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: #174ea6;
+  background: #f1f3f4;
+  font-family: var(--jp-code-font-family);
+  font-size: 0.875em;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown pre {
+  padding: 12px 16px;
+  overflow-x: auto;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  background: #f8f9fa;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown pre code {
+  padding: 0;
+  color: var(--course-text);
+  background: transparent;
+}
+
+[data-course-mode="true"] .jp-RenderedMarkdown .jp-InternalAnchorLink {
+  opacity: 0;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell:hover .jp-InternalAnchorLink,
+[data-course-mode="true"] .jp-MarkdownCell:focus-within .jp-InternalAnchorLink {
+  opacity: 1;
+}
+
+[data-course-mode="true"] .jp-RawCell {
+  width: calc(100% - 40px);
+  margin: 4px 0;
+  margin-left: 40px;
+  padding: 8px;
+  border: 1px solid #dadce0;
+  background: #f8f9fa;
+}
+
+/* A code cell is one frame: run gutter, editor, divider, output. */
+[data-course-mode="true"] .jp-CodeCell {
+  margin: 8px 0 12px;
+  padding: 0 0 0 40px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none !important;
+}
+
+[data-course-mode="true"] .jp-CodeCell .jp-Cell-inputWrapper {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: stretch;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 8px 8px 0 0;
+  background: var(--course-code-surface);
+}
+
+[data-course-mode="true"] .jp-CodeCell.jp-mod-noOutputs .jp-Cell-inputWrapper {
+  border: 0;
+  border-radius: 8px;
+}
+
+[data-course-mode="true"] .jp-CodeCell .jp-Collapser,
+[data-course-mode="true"] .jp-CodeCell .jp-InputPrompt {
+  display: none !important;
+}
+
+[data-course-mode="true"] .course-cell-controls {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 40px;
+  padding: 6px 0;
+  background: transparent;
+  pointer-events: auto;
+}
+
+[data-course-mode="true"] .course-cell-execution,
+[data-course-mode="true"] .course-output-execution {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  display: block;
+  box-sizing: border-box;
+  width: 36px;
+  min-width: 0;
+  padding-right: 4px;
+  color: var(--course-muted);
+  font-family: var(--jp-code-font-family);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  text-align: right;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+[data-course-mode="true"] .course-cell-execution {
+  top: 10px;
+}
+
+[data-course-mode="true"] .course-cell-run {
+  display: grid;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #ffffff;
+  background: var(--course-text);
+  box-shadow: none;
+  cursor: pointer;
+  font-size: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 250ms, color 250ms;
+}
+
+[data-course-mode="true"] .course-cell-run::before {
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  content: "";
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid currentcolor;
+}
+
+[data-course-mode="true"] .course-cell-run:hover {
+  color: #ffffff;
+  background: var(--course-text);
+  box-shadow: none;
+}
+
+[data-course-mode="true"] .course-cell-run:focus-visible {
+  outline: 2px solid var(--course-blue);
+  outline-offset: 2px;
+}
+
+[data-course-mode="true"] .course-cell-run.is-running {
+  color: #ffffff;
+  background: var(--course-text);
+  cursor: wait;
+  opacity: 1;
+  pointer-events: auto;
+  animation: course-cell-spin 720ms linear infinite;
+}
+
+[data-course-mode="true"] .course-cell-run.is-running::before {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  border: 2px solid #d2e3fc;
+  border-top-color: var(--course-blue);
+  border-radius: 50%;
+}
+
+[data-course-mode="true"] .jp-CodeCell:hover .course-cell-run,
+[data-course-mode="true"] .jp-CodeCell.jp-mod-active .course-cell-run,
+[data-course-mode="true"] .jp-CodeCell.jp-mod-selected .course-cell-run,
+[data-course-mode="true"] .jp-CodeCell:focus-within .course-cell-run {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+[data-course-mode="true"] .jp-CodeCell .jp-Cell-inputArea {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  padding: 8px 12px 8px 4px;
+  background: transparent;
+}
+
+[data-course-mode="true"] .jp-CodeCell .jp-InputArea {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0;
+  overflow: visible;
+}
+
+[data-course-mode="true"] .jp-CodeCell .jp-InputArea-editor,
+[data-course-mode="true"] .jp-Notebook.jp-mod-editMode .jp-CodeCell.jp-mod-active .jp-InputArea-editor {
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none !important;
+}
+
+[data-course-mode="true"] .jp-CodeCell .cm-editor,
+[data-course-mode="true"] .jp-CodeCell .jp-CodeMirrorEditor {
+  color: #202124;
+  background: transparent;
+  font-family: var(--jp-code-font-family);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+[data-course-mode="true"] .jp-CodeCell .cm-content {
+  padding: 0;
+}
+
+[data-course-mode="true"] .jp-CodeCell .cm-focused {
+  outline: 0;
+}
+
+[data-course-mode="true"] .jp-CodeCell.jp-mod-noOutputs .jp-Cell-outputWrapper {
+  display: none;
+}
+
+[data-course-mode="true"] .jp-CodeCell:not(.jp-mod-noOutputs) .jp-Cell-outputWrapper {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-top: 1px solid var(--course-divider);
+  border-radius: 0 0 8px 8px;
+  background: var(--course-surface);
+}
+
+[data-course-mode="true"] .jp-CodeCell .jp-Cell-outputCollapser,
+[data-course-mode="true"] .jp-CodeCell .jp-OutputPrompt {
+  display: none !important;
+}
+
+[data-course-mode="true"] .course-output-execution {
+  top: 10px;
+  left: -40px;
+}
+
+[data-course-mode="true"] .course-output-gutter {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 40px;
+  min-height: 100%;
+  padding: 7px 0;
+  background: transparent;
+}
+
+[data-course-mode="true"] .course-output-toggle {
+  display: grid;
+  width: 28px;
+  height: 22px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--course-muted);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--jp-code-font-family);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 18px;
+}
+
+[data-course-mode="true"] .course-output-toggle:hover {
+  color: var(--course-blue);
+  background: var(--course-blue-soft);
+}
+
+[data-course-mode="true"] .course-output-toggle:focus-visible {
+  outline: 2px solid var(--course-blue);
+  outline-offset: 1px;
+}
+
+[data-course-mode="true"] .jp-CodeCell .jp-Cell-outputArea {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+[data-course-mode="true"] .jp-CodeCell .jp-OutputArea {
+  margin: 0;
+  padding: 9px 12px 11px 4px;
+  overflow-x: auto;
+  border: 0;
+  border-radius: 0 0 8px 0;
+  background: var(--course-surface);
+}
+
+[data-course-mode="true"] .jp-CodeCell .jp-OutputArea .jp-RenderedText {
+  padding: 0;
+  color: #202124;
+  font-family: var(--jp-code-font-family);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+[data-course-mode="true"] .course-output-collapsed .jp-Cell-outputArea {
+  display: none;
+}
+
+/* Colab uses a complete crisp outline around the frame, not the count column. */
+[data-course-mode="true"] .jp-Notebook.jp-mod-commandMode .jp-Cell.jp-mod-selected,
+[data-course-mode="true"] .jp-Notebook.jp-mod-commandMode .jp-Cell.jp-mod-active.jp-mod-selected:not(.jp-mod-multiSelected) {
+  background: transparent !important;
+}
+
+[data-course-mode="true"] .jp-MarkdownCell.jp-mod-active,
+[data-course-mode="true"] .jp-MarkdownCell.jp-mod-selected:not(.jp-mod-multiSelected),
+[data-course-mode="true"] .jp-MarkdownCell:focus-within,
+[data-course-mode="true"] .jp-RawCell.jp-mod-active,
+[data-course-mode="true"] .jp-RawCell.jp-mod-selected:not(.jp-mod-multiSelected),
+[data-course-mode="true"] .jp-RawCell:focus-within {
+  outline: 2px solid var(--course-blue) !important;
+  outline-offset: 0;
+  border-radius: 8px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+[data-course-mode="true"] .jp-CodeCell::after {
+  position: absolute;
+  z-index: 10;
+  inset: 0 0 0 40px;
+  display: block !important;
+  box-sizing: border-box;
+  content: "";
+  border: 0;
+  border-radius: 8px;
+  outline: 1px solid var(--course-border);
+  outline-offset: 0;
+  pointer-events: none;
+}
+
+[data-course-mode="true"] .jp-CodeCell.jp-mod-active,
+[data-course-mode="true"] .jp-CodeCell.jp-mod-selected:not(.jp-mod-multiSelected),
+[data-course-mode="true"] .jp-CodeCell:focus-within {
+  border-color: transparent;
+  outline: 0 !important;
+  background: transparent !important;
+}
+
+[data-course-mode="true"] .jp-CodeCell.jp-mod-active::after,
+[data-course-mode="true"] .jp-CodeCell.jp-mod-selected:not(.jp-mod-multiSelected)::after,
+[data-course-mode="true"] .jp-CodeCell:focus-within::after {
+  outline: 2px solid var(--course-blue);
+}
+
+[data-course-mode="true"] .jp-MarkdownCell.jp-mod-multiSelected:not(.jp-mod-active),
+[data-course-mode="true"] .jp-RawCell.jp-mod-multiSelected:not(.jp-mod-active) {
+  outline: 2px solid var(--course-blue-muted) !important;
+  outline-offset: 0;
+  background: transparent !important;
+}
+
+[data-course-mode="true"] .jp-CodeCell.jp-mod-multiSelected:not(.jp-mod-active)::after {
+  outline: 2px solid var(--course-blue-muted);
+}
+
+/* Colab-style insertion rail on the boundary between adjacent cells. */
+[data-course-mode="true"] .course-cell-insert {
+  position: absolute;
+  z-index: 24;
+  right: 0;
+  bottom: -16px;
+  left: 0;
+  display: flex;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+[data-course-mode="true"] .jp-CodeCell > .course-cell-insert {
+  left: 40px;
+}
+
+[data-course-mode="true"] .course-cell-insert-divider {
+  position: absolute;
+  right: 0;
+  left: 0;
+  top: 50%;
+  height: 1px;
+  background: #dadce0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 100ms ease-out;
+}
+
+[data-course-mode="true"] .course-cell-insert-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  background: var(--course-surface);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(2px);
+  transition:
+    opacity 100ms ease-out,
+    transform 100ms ease-out;
+}
+
+[data-course-mode="true"] .course-cell-insert:hover .course-cell-insert-divider,
+[data-course-mode="true"] .course-cell-insert:focus-within .course-cell-insert-divider {
+  opacity: 1;
+}
+
+[data-course-mode="true"] .course-cell-insert:hover .course-cell-insert-actions,
+[data-course-mode="true"] .course-cell-insert:focus-within .course-cell-insert-actions {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+[data-course-mode="true"] .course-cell-insert-button {
+  display: inline-flex;
+  box-sizing: border-box;
+  min-width: 76px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 13px;
+  border: 1px solid var(--course-subtle);
+  border-radius: 999px;
+  color: var(--course-blue);
+  background: var(--course-surface);
+  box-shadow: none;
+  cursor: pointer;
+  font-family: var(--jp-ui-font-family);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 30px;
+  white-space: nowrap;
+}
+
+[data-course-mode="true"] .course-cell-insert-plus {
+  font-size: 23px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+[data-course-mode="true"] .course-cell-insert-button:hover {
+  border-color: var(--course-blue);
+  color: var(--course-blue-hover);
+  background: var(--course-blue-soft);
+}
+
+[data-course-mode="true"] .course-cell-insert-button:active {
+  background: #d3e3fd;
+}
+
+[data-course-mode="true"] .course-cell-insert-button:focus-visible {
+  outline: 2px solid var(--course-blue);
+  outline-offset: 2px;
+}
+
+[data-course-mode="true"] .course-cell-insert-button:disabled {
+  cursor: wait;
+  opacity: 0.56;
+}
+
+/* The focused cell toolbar floats above the frame like Colab's action palette. */
+[data-course-mode="true"] .jp-cell-toolbar {
+  position: absolute !important;
+  top: -20px !important;
+  right: 16px !important;
+  z-index: 21;
+  display: flex;
+  box-sizing: border-box;
+  width: 160px !important;
+  min-width: 160px;
+  height: 32px !important;
+  min-height: 32px !important;
+  gap: 0;
+  padding: 2px;
+  overflow: visible;
+  border: 0;
+  border-radius: 8px;
+  background: var(--course-surface);
+  box-shadow:
+    rgb(0 0 0 / 15%) 0 1px 3px 1px,
+    rgb(0 0 0 / 30%) 0 1px 2px 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 100ms;
+}
+
+[data-course-mode="true"] .jp-Cell.jp-mod-selected .jp-cell-toolbar,
+[data-course-mode="true"] .jp-Cell.jp-mod-active .jp-cell-toolbar,
+[data-course-mode="true"] .jp-Cell:focus-within .jp-cell-toolbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+[data-course-mode="true"] .jp-cell-toolbar .jp-Toolbar-item {
+  width: 26px !important;
+  min-width: 26px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  flex: 0 0 26px;
+  margin: 0;
+  padding: 0;
+}
+
+[data-course-mode="true"] .jp-cell-toolbar jp-button,
+[data-course-mode="true"] .jp-cell-toolbar button {
+  width: 24px;
+  height: 24px;
+  margin: 2px 1px;
+  border-radius: 50%;
+  color: var(--course-muted);
+}
+
+[data-course-mode="true"] .jp-cell-toolbar jp-button:hover,
+[data-course-mode="true"] .jp-cell-toolbar button:hover {
+  color: var(--course-text);
+  background: #f1f3f4;
+}
+
+[data-course-mode="true"] .jp-RenderedHTMLCommon table {
+  max-width: 100%;
+  border-collapse: collapse;
+}
+
+[data-course-mode="true"] .jp-RenderedHTMLCommon th {
+  color: #3c4043;
+  background: #f1f3f4;
+  font-weight: 500;
+}
+
+[data-course-mode="true"] .jp-RenderedHTMLCommon td,
+[data-course-mode="true"] .jp-RenderedHTMLCommon th {
+  padding: 7px 10px;
+  border-color: #dadce0;
+}
+
+[data-course-mode="true"] .jp-RenderedHTMLCommon img,
+[data-course-mode="true"] .jp-OutputArea-output img {
+  max-width: 100%;
+  height: auto;
+}
+
+[data-course-mode="true"] .jp-OutputArea-output.jp-mod-error {
+  color: var(--course-error);
+  background: #fce8e6;
+}
+
+@keyframes course-cell-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --course-page-gutter-left: 4px;
+    --course-page-gutter-right: 10px;
+  }
+
+  [data-course-mode="true"] .jp-Notebook {
+    padding-top: 14px;
+    padding-bottom: 72px;
+  }
+
+  [data-course-mode="true"] .course-cell-execution,
+  [data-course-mode="true"] .course-output-execution {
+    width: 36px;
+    padding-right: 2px;
+    font-size: 10px;
+  }
+
+  [data-course-mode="true"] .course-output-execution {
+    left: -40px;
+  }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --course-page-gutter-left: 2px;
+    --course-page-gutter-right: 8px;
+  }
+
+  [data-course-mode="true"] .jp-NotebookPanel-toolbar {
+    width: calc(100% - 16px);
+    margin-inline: 8px;
+  }
+
+  [data-course-mode="true"] .jp-Notebook {
+    padding-top: 10px;
+    padding-bottom: 56px;
+  }
+
+  [data-course-mode="true"] .jp-MarkdownCell {
+    padding-inline: 6px;
+  }
+
+  [data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown {
+    font-size: 15px;
+    line-height: 24px;
+  }
+
+  [data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown h1 {
+    font-size: 28px;
+    line-height: 40px;
+  }
+
+  [data-course-mode="true"] .jp-MarkdownCell .jp-RenderedMarkdown h2 {
+    font-size: 21px;
+    line-height: 32px;
+  }
+
+  [data-course-mode="true"] .course-cell-execution,
+  [data-course-mode="true"] .course-output-execution {
+    width: 36px;
+    font-size: 9px;
+  }
+
+  [data-course-mode="true"] .course-output-execution {
+    left: -40px;
+  }
+
+  [data-course-mode="true"] .jp-CodeCell .jp-Cell-inputArea,
+  [data-course-mode="true"] .jp-CodeCell .jp-OutputArea {
+    padding-right: 8px;
+  }
+
+  [data-course-mode="true"] .jp-cell-toolbar {
+    right: 8px !important;
+    max-width: calc(100% - 16px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-course-mode="true"] .jp-CodeCell,
+  [data-course-mode="true"] .jp-cell-toolbar,
+  [data-course-mode="true"] .course-cell-insert-divider,
+  [data-course-mode="true"] .course-cell-insert-actions {
+    transition: none;
+  }
+
+  [data-course-mode="true"] .course-cell-run.is-running {
+    animation: none;
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "@jupyterlab/application-extension:shell": {
+    "startMode": "single",
+    "dockPanelPadding": false
+  },
+  "@jupyter-notebook/notebook-extension:full-width-notebook": {
+    "fullWidthNotebook": true
+  },
+  "@jupyterlab/translation-extension:plugin": {
+    "locale": "zh_CN"
+  }
+}

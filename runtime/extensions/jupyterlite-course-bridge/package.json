@@ -1,0 +1,17 @@
+{
+  "name": "jupyterlite-course-bridge",
+  "version": "0.1.0",
+  "description": "Runtime bridge between Python Data Studio and JupyterLite",
+  "license": "BSD-3-Clause",
+  "main": "lib/index.js",
+  "files": ["lib", "style"],
+  "jupyterlab": {
+    "extension": true,
+    "sharedPackages": {
+      "@jupyterlab/application": { "bundled": false },
+      "@jupyterlab/notebook": { "bundled": false }
+    }
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
