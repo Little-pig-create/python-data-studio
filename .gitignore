@@ -19,6 +19,7 @@ server/target/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.pep8-course-cells/
 .ipynb_checkpoints/
 
 # Local raw dataset archives and duplicate source files
