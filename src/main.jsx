@@ -36,6 +36,7 @@ import { CdKeyManagement } from "./CdKeyManagement";
 import { SessionDock } from "./PortalHeader";
 import { AppUpdater } from "./AppUpdater";
 import { AboutPage } from "./AboutPage";
+import { RuntimeDiagnostics } from "./RuntimeDiagnostics";
 import { LandingPage } from "./LandingPage";
 import CampaignRounded from "@mui/icons-material/CampaignRounded";
 import { listPublishedAnnouncements } from "./announcementRepository";
@@ -367,6 +368,7 @@ function App() {
     <Route path="/login" element={<LoginPage />} />
     <Route path="/register" element={<RegistrationPage />} />
     <Route path="/about" element={<AboutPage />} />
+    <Route path="/runtime-diagnostics" element={<RequireAuth><SessionDock /><RuntimeDiagnostics /></RequireAuth>} />
     <Route path="/forbidden" element={<RequireAuth><ForbiddenPage /></RequireAuth>} />
     <Route path="/course/:chapterId" element={<RequireAuth roles={[ROLES.STUDENT, ROLES.TEACHER]}><Workspace catalog={catalog} /></RequireAuth>} />
     <Route path="/progress" element={<RequireAuth roles={[ROLES.STUDENT]}><SessionDock /><ProgressPage catalog={catalog} /></RequireAuth>} />

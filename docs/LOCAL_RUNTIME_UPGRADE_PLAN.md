@@ -4,7 +4,7 @@
 
 本文档用于指导“Python 数据工作台”从当前的浏览器端 JupyterLite/Pyodide 运行模式，逐步完善为可下载、可离线使用、支持真实 CPython 的 Tauri 桌面应用。
 
-本文档只描述架构、迁移顺序、工程边界和验收标准，不要求立即修改现有代码。
+本文档同时作为实现规格和验收清单。当前仓库已经落地浏览器/桌面双运行时主链路；后续变更必须继续同步本文件及第 22 节列出的配套文档。
 
 ## 2. 当前项目状态
 
@@ -40,12 +40,7 @@ NotebookWorkspace.jsx
 
 ### 2.3 当前缺口
 
-- Tauri Rust 端没有启动、监控和关闭本地 Python/Jupyter Server 的能力。
-- `runtime/requirements.txt` 只覆盖 JupyterLite，不是完整 CPython 运行环境。
-- 没有桌面版运行时选择器。
-- Notebook 代码中的 `/datasets/...`、浏览器 origin 和本地文件路径尚未统一。
-- 没有正式的 Python Runtime 安装、升级、修复和诊断流程。
-- 运行时、课程内容、用户工作区和缓存目录边界还不够清晰。
+- 本节记录的是迁移前基线；实现状态见第 24 节。
 
 ## 3. 目标架构
 
@@ -785,3 +780,28 @@ Tauri 创建窗口
 6. 确认 Runtime 缺失、损坏和升级时的用户体验；
 7. 再开始 Runtime Adapter 和 Rust Runtime Manager 的实现。
 
+## 24. 当前实现状态与验收证据
+
+本仓库已实现以下计划项：
+
+| 计划项 | 实现位置 | 验收证据 |
+|---|---|---|
+| 浏览器版保留 JupyterLite | `src/notebookRuntime.js` | 非 Tauri 环境使用 `createJupyterLiteRuntime` |
+| 桌面版原生 CPython 选择 | `src/notebookRuntime.js` | Tauri 环境调用 `start_native_runtime`，并通过 `@jupyterlab/services` 建立 Kernel WebSocket |
+| Rust Runtime Manager | `src-tauri/src/lib.rs` | 随机本地端口、随机 Token、127.0.0.1、`/api/status` 就绪检查、日志、停止和退出清理 |
+| 用户工作区和 Notebook 落盘 | `src-tauri/src/lib.rs`、`src/notebookRepository.js` | 用户数据目录下的 `workspace/`、`notebooks/`、`logs/`，桌面草稿不写入安装目录 |
+| Runtime 构建和锁定 | `runtime/native/requirements.lock`、`scripts/build-native-runtime.ps1` | 生成不依赖构建机路径的自包含 CPython、锁定包和 `runtime-manifest.json`，首次运行不安装包 |
+| 运行时选择器和统一 Adapter | `src/notebookRuntime.js`、`src/RuntimeDiagnostics.jsx`、`src/NotebookWorkspace.jsx` | 桌面默认 Native，可切换 JupyterLite；工作区只调用 `execute`、`interrupt`、`restart`、`dispose` |
+| 运行时诊断 | `src/RuntimeDiagnostics.jsx`、`native_runtime_diagnostics` | 显示状态、Python、服务、工作区、数据集、日志和 manifest |
+| 数据集路径环境变量 | `src-tauri/src/lib.rs`、`src/notebookRuntime.js` | 启动 Server 时注入 `PDS_DATASETS_DIR` 和 `PDS_WORKSPACE_DIR`，原生 Adapter 注入并校验 `studio_dataset()`；浏览器仍由兼容转换处理 |
+| 产物校验 | `scripts/build-native-runtime.ps1` | 生成 `checksums.txt`，至少覆盖 manifest 校验值 |
+
+实现边界：桌面发行包必须先执行 `npm run build:native-runtime`，再执行 `npm run desktop:build`。未生成 `runtime/native/dist/python-runtime` 时，打包配置会保留资源缺失错误，不会静默改用系统 Python。
+
+当前验证命令：
+
+```powershell
+npm install --ignore-scripts
+npm run build
+cargo check --manifest-path src-tauri/Cargo.toml
+```

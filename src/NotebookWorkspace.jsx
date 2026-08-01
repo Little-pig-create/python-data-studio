@@ -39,7 +39,7 @@ import MenuBookRounded from "@mui/icons-material/MenuBookRounded";
 import { Alert, Button, ButtonGroup, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, IconButton, Menu, MenuItem, Snackbar, Tab, Tabs, TextField, Tooltip } from "@mui/material";
 import { StudioSpeedDial } from "./StudioSpeedDial";
 import { useAppStore } from "./store";
-import { createNotebookRuntime, ensureCoursePackages, executeNotebookCell } from "./notebookRuntime";
+import { createRuntimeAdapter, stopNotebookRuntime } from "./notebookRuntime";
 import { deleteNotebookDraft, loadCustomNotebook, loadNotebookDraft, saveNotebookDraft } from "./notebookRepository";
 import { convertErrorToFriendly } from "./errorMessageHelper";
 import { normalizeNotebook, serializeNotebook, useNotebookStore } from "./notebookStore";
@@ -113,11 +113,13 @@ const getChapterMeta = (lesson) => {
 async function shutdownNotebookRuntime(runtime) {
   const session = runtime?.session;
   if (!session) return;
+  if (runtime.dispose) { await runtime.dispose(); return; }
   try {
     await session.shutdown();
   } catch {
     session.dispose?.();
   }
+  if (runtime.native) await stopNotebookRuntime(runtime);
 }
 
 function CodeEditor({ value, onChange, onRun }) {
@@ -608,7 +610,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     const generation = runtimeGenerationRef.current;
     const initialization = (async () => {
       useNotebookStore.getState().setRuntime("loading", "正在启动原生 Python 内核");
-      const runtime = await createNotebookRuntime(notebookPath);
+      const runtime = await createRuntimeAdapter(notebookPath);
       if (generation !== runtimeGenerationRef.current) {
         await shutdownNotebookRuntime(runtime);
         throw new Error("Notebook 已切换，内核初始化已取消");
@@ -659,8 +661,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
       const currentCell = store.document?.cells.find((item) => item.id === cell.id);
       if (!currentCell) throw new Error("单元格不存在");
 
-      await ensureCoursePackages(runtime, currentCell.source || "");
-      const result = await executeNotebookCell(runtime, currentCell.source || "");
+      const result = await runtime.execute(currentCell.source || "");
 
       store.updateCellResult(cell.id, {
         outputs: result.outputs,
@@ -771,7 +772,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
   };
   const stopRuntime = async () => {
     try {
-      await runtimeRef.current?.session?.kernel?.interrupt();
+      await runtimeRef.current?.interrupt?.();
       const kernel = runtimeRef.current?.session?.kernel;
       if (kernel) publishKernelStatus(kernel.status);
       showToast("已停止当前运行", "success");
@@ -792,7 +793,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     }
     try {
       showToast("正在重启 Python");
-      await session.restart();
+      await runtimeRef.current.restart();
       if (session.kernel?.status === "dead") throw new Error("Python 内核已停止");
       publishKernelStatus(session.kernel?.status);
       showToast("Python 已重新启动", "success");

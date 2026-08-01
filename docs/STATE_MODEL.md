@@ -226,6 +226,8 @@ python-data-studio:preferences:v1
 
 ## 11. 调试与测试
 
+桌面版的 Notebook 工作副本由 Tauri 命令写入用户数据目录 `notebooks/`；浏览器版继续使用 IndexedDB。两者都不写入课程原稿、`src` 或安装资源。
+
 - 每个 Store 单独测试 actions 和 selectors；
 - Bridge 事件通过适配器写入 Store；
 - 不在测试中启动真实 Pyodide 来验证 Store；

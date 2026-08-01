@@ -13,7 +13,7 @@
 | 动效组件 | React Bits |
 | 状态管理 | Zustand |
 | Notebook | JupyterLite Notebook |
-| Python | Pyodide Kernel |
+| Python | 浏览器 Pyodide Kernel；桌面锁定版 CPython + Jupyter Server |
 | 单元测试 | Vitest |
 | 浏览器与视觉测试 | Playwright |
 | 工作区 | npm workspaces |
@@ -21,6 +21,8 @@
 具体版本在运行时原型验证后锁定，并提交 lockfile。不得使用浮动版本构建生产站点。
 
 ## 2. 技术职责
+
+桌面 Runtime 的进程生命周期由 `src-tauri/src/lib.rs` 管理，前端通过 `src/notebookRuntime.js` 的统一入口连接 `@jupyterlab/services`。React 不启动进程、不读取安装目录，也不保存 Token。
 
 ### React
 

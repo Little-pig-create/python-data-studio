@@ -1,6 +1,12 @@
 const DB_NAME = "python-data-studio-notebooks";
 const STORE_NAME = "documents";
 
+const isTauriDesktop = () => Boolean(globalThis.__TAURI_INTERNALS__ || globalThis.__TAURI_METADATA__);
+const nativeInvoke = async (command, args) => {
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke(command, args);
+};
+
 function openDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
@@ -11,6 +17,7 @@ function openDatabase() {
 }
 
 export async function loadNotebookDraft(key) {
+  if (isTauriDesktop()) return nativeInvoke("load_user_notebook", { key }).catch(() => null);
   if (!window.indexedDB) return null;
   const database = await openDatabase();
   return new Promise((resolve, reject) => {
@@ -21,6 +28,7 @@ export async function loadNotebookDraft(key) {
 }
 
 export async function saveNotebookDraft(key, document) {
+  if (isTauriDesktop()) return nativeInvoke("save_user_notebook", { key, document });
   if (!window.indexedDB) return;
   const database = await openDatabase();
   return new Promise((resolve, reject) => {

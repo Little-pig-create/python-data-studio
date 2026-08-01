@@ -181,6 +181,15 @@ Notebook 界面使用 JupyterLab 官方简体中文语言包，不通过前端�
 
 ## Tauri 桌面版
 
+桌面版默认使用资源内的 CPython + Jupyter Server，浏览器版继续使用 JupyterLite。构建桌面 Runtime 和安装包：
+
+```powershell
+npm run build:native-runtime
+npm run desktop:build
+```
+
+运行时诊断页为 `/runtime-diagnostics`。桌面用户 Notebook 写入应用用户数据目录，课程资源保持只读。
+
 首次安装桌面构建依赖：
 
 ```powershell

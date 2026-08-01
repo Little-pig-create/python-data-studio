@@ -129,6 +129,17 @@
 
 ## 11. 发布
 
+## 12. 本地 CPython Runtime
+
+- [ ] 先执行 `npm run build:native-runtime` 并确认 manifest、锁定包和 Python 可执行文件存在；
+- [ ] Tauri 运行时只监听 `127.0.0.1`，端口和 Token 每次启动变化；
+- [ ] `/api/status` 就绪后才创建 Kernel；
+- [ ] 桌面执行 `print(sys.executable)` 返回打包 Runtime；
+- [ ] 用户 Notebook 写入用户数据目录，重启后可恢复；
+- [ ] 诊断页显示 Python、Jupyter、Kernel、工作区、数据集、manifest 和日志；
+- [ ] 关闭窗口后没有残留 Python/Jupyter 进程；
+- [ ] 无网络时不触发 pip 安装；
+
 - [ ] `dist/index.html` 可访问；
 - [ ] `dist/runtime` 可访问；
 - [ ] React 与 Runtime 同源；

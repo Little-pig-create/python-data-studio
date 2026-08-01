@@ -4,6 +4,11 @@
 
 Runtime Bridge 是 React 工作台与 JupyterLite 之间唯一的业务通信通道。
 
+桌面自定义工作区不使用 iframe Bridge：`src/notebookRuntime.js` 通过
+`@jupyterlab/services` 连接 Rust 启动的本地 Jupyter Server。两条链路共享
+Notebook 输出模型和工作区 UI，但不共享 Token；Native Token 只存在于当前
+运行时对象和 ServerConnection 内存中。
+
 它解决：
 
 - 打开 Notebook；
@@ -171,6 +176,20 @@ notebook:save
 ```
 
 ## 11. 禁止模式
+
+## 12. Native Adapter 边界
+
+```text
+NotebookWorkspace
+  -> RuntimeAdapter.execute / interrupt / restart / dispose
+  -> @jupyterlab/services SessionManager
+  -> local Jupyter Server / Kernel WebSocket
+```
+
+Native Adapter 启动前从 Tauri 获取随机端口和 Token，连接前等待 `/api/status`。
+课程代码中的 `/datasets/name` 由 Adapter 转换为 `studio_dataset("name")`，并
+由 `PDS_DATASETS_DIR` 解析到只读资源目录。Native 失败时可切换到 JupyterLite，
+代码执行不会自动重放。
 
 - `document.querySelector` 访问 iframe 内容；
 - 定时轮询单元格；

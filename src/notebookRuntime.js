@@ -3,6 +3,7 @@ import {
   makeRenderMimeRegistry,
   ThebeServer
 } from "thebe-core";
+import { ServerConnection, SessionManager } from "@jupyterlab/services";
 
 let serverRuntimePromise;
 
@@ -85,7 +86,7 @@ async function getServerRuntime(notebookPath = "course-runtime.ipynb") {
   return serverRuntimePromise;
 }
 
-export async function createNotebookRuntime(notebookPath) {
+async function createJupyterLiteRuntime(notebookPath) {
   const runtime = await getServerRuntime(notebookPath);
   const sessionPath = normalizeNotebookPath(notebookPath);
   const session = await runtime.server.startNewSession(runtime.renderMime, {
@@ -113,7 +114,81 @@ export async function createNotebookRuntime(notebookPath) {
   };
 }
 
+const isTauriDesktop = () => Boolean(globalThis.__TAURI_INTERNALS__ || globalThis.__TAURI_METADATA__);
+const RUNTIME_PREFERENCE_KEY = "python-data-studio:runtime-kind:v1";
+
+export function getPreferredRuntimeKind() {
+  if (!isTauriDesktop()) return "jupyterlite";
+  return window.localStorage?.getItem(RUNTIME_PREFERENCE_KEY) === "jupyterlite" ? "jupyterlite" : "native";
+}
+
+export function setPreferredRuntimeKind(kind) {
+  const value = kind === "jupyterlite" ? "jupyterlite" : "native";
+  window.localStorage?.setItem(RUNTIME_PREFERENCE_KEY, value);
+  return value;
+}
+
+async function tauriInvoke(command, args) {
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke(command, args);
+}
+
+async function createNativeRuntime(notebookPath) {
+  const info = await tauriInvoke("start_native_runtime");
+  if (!info?.serverUrl || !info?.token) throw new Error("本地 Jupyter Server 未返回连接信息");
+  const settings = ServerConnection.makeSettings({
+    baseUrl: `${info.serverUrl}/`,
+    wsUrl: `${info.serverUrl.replace(/^http/, "ws")}/`,
+    token: info.token,
+    appendToken: true
+  });
+  const sessions = new SessionManager({ serverSettings: settings });
+  const session = await sessions.startNew({
+    path: String(notebookPath || "course-runtime.ipynb").replace(/^\/+/, ""),
+    type: "notebook",
+    name: String(notebookPath || "course-runtime.ipynb").split("/").at(-1) || "course-runtime.ipynb",
+    kernel: { name: "python" }
+  });
+  if (!session?.kernel) {
+    session?.dispose?.();
+    await tauriInvoke("stop_native_runtime").catch(() => {});
+    throw new Error("本地 Python 内核不可用");
+  }
+  await session.kernel.info;
+  return { kind: "native", info, session, server: sessions, notebookPath, native: true };
+}
+
+export async function createNotebookRuntime(notebookPath) {
+  if (isTauriDesktop() && getPreferredRuntimeKind() === "native") {
+    try { return await createNativeRuntime(notebookPath); }
+    catch (reason) {
+      const fallback = await createJupyterLiteRuntime(notebookPath).catch(() => null);
+      if (fallback) return { ...fallback, fallbackFrom: "native" };
+      throw new Error(errorMessage(reason, "本地 Python Runtime 启动失败"));
+    }
+  }
+  return createJupyterLiteRuntime(notebookPath);
+}
+
+export async function createRuntimeAdapter(notebookPath) {
+  const runtime = await createNotebookRuntime(notebookPath);
+  return {
+    ...runtime,
+    capabilities: runtime.info?.capabilities || (runtime.native
+      ? { nativeFileSystem: true, packageInstall: false, interrupt: true, richOutput: true, offline: true }
+      : { nativeFileSystem: false, packageInstall: true, interrupt: true, richOutput: true, offline: true }),
+    execute: async (source) => {
+      await ensureCoursePackages(runtime, source);
+      return executeNotebookCell(runtime, source);
+    },
+    interrupt: () => runtime.session?.kernel?.interrupt(),
+    restart: () => restartNotebookRuntime(runtime),
+    dispose: () => stopNotebookRuntime(runtime)
+  };
+}
+
 export async function ensureCoursePackages(runtime, source) {
+  if (runtime?.native) return;
   const requestedPackages = requiredCoursePackages(source);
   if (!requestedPackages.length) return;
 
@@ -217,6 +292,19 @@ if not __import__("pathlib").Path(_studio_path).exists():
   return `from pyodide.http import pyfetch\n${downloads}\n${rewritten}`;
 };
 
+const normalizeNativeNotebookSource = (source) => {
+  const text = String(source || "");
+  const files = [...text.matchAll(/\/datasets\/([A-Za-z0-9._-]+)/g)].map((match) => match[1]).filter((file, index, all) => all.indexOf(file) === index);
+  if (!files.length && !/window\.location\.origin|\{base_url\}|\{base\}/.test(text)) return text;
+  const rewritten = text
+    .replace(/\{window\.location\.origin\}\/datasets\/([A-Za-z0-9._-]+)/g, (_, file) => `{studio_dataset("${file}")}`)
+    .replace(/\{base_url\}\/datasets\/([A-Za-z0-9._-]+)/g, (_, file) => `{studio_dataset("${file}")}`)
+    .replace(/\{base\}\/datasets\/([A-Za-z0-9._-]+)/g, (_, file) => `{studio_dataset("${file}")}`)
+    .replace(/(["'])\/datasets\/([A-Za-z0-9._-]+)\1/g, (_, quote, file) => `studio_dataset("${file}")`)
+    .replace(/\/datasets\/([A-Za-z0-9._-]+)/g, (_, file) => `studio_dataset("${file}")`);
+  return `import os\nfrom pathlib import Path\n\ndef studio_dataset(name):\n    path = (Path(os.environ.get("PDS_DATASETS_DIR", ".")) / str(name)).resolve()\n    if not path.is_file():\n        raise FileNotFoundError(f"课程数据文件缺失: {path}")\n    return str(path)\n\n${rewritten}`;
+};
+
 export async function executeNotebookCell(runtime, source) {
   const kernel = runtime?.session?.kernel;
   if (!kernel || kernel.isDisposed || kernel.status === "dead") {
@@ -246,7 +334,7 @@ export async function executeNotebookCell(runtime, source) {
   };
 
   const future = kernel.requestExecute({
-    code: normalizeNotebookSource(source),
+    code: runtime?.native ? normalizeNativeNotebookSource(source) : normalizeNotebookSource(source),
     silent: false,
     store_history: true,
     user_expressions: {},
@@ -325,6 +413,17 @@ export async function executeNotebookCell(runtime, source) {
     error: reply.content.status === "error"
       || outputs.some((output) => output.output_type === "error")
   };
+}
+
+export async function stopNotebookRuntime(runtime) {
+  if (!runtime) return;
+  await runtime.session?.shutdown?.().catch(() => runtime.session?.dispose?.());
+  if (runtime.native) await tauriInvoke("stop_native_runtime").catch(() => {});
+}
+
+export async function restartNotebookRuntime(runtime) {
+  if (!runtime?.session?.restart) throw new Error("当前运行时不支持重启");
+  await runtime.session.restart();
 }
 
 export async function disposeNotebookRuntime() {
