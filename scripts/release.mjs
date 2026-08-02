@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 /**
- * 一键发版脚本
+ * 纯 Git 发版脚本
  * 用法: node scripts/release.mjs <新版本号>
  * 例如: node scripts/release.mjs 0.1.2
  *
  * 自动完成:
- *   1. 更新 package.json / tauri.conf.json / Cargo.toml / AboutPage.jsx 的版本号
- *   2. 校验工作区、远程仓库和 Tag，创建提交与 Tag
- *   3. 推送 main 和 v<version>，触发 GitHub Actions 编译并发布安装包
+ *   1. 更新应用版本号
+ *   2. 创建版本提交和 v<version> Tag
+ *   3. 使用 git push 推送 main 和 Tag
+ *
+ * 本脚本不调用 GitHub Release、GitHub Actions 或任何 GitHub API。
  */
 
 import fs from "node:fs";
@@ -19,7 +21,11 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const remote = process.env.RELEASE_REMOTE || "origin";
 
 function git(args, options = {}) {
-  return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: options.stdio || ["ignore", "pipe", "pipe"] }).trim();
+  return execFileSync("git", args, {
+    cwd: root,
+    encoding: "utf8",
+    stdio: options.stdio || ["ignore", "pipe", "pipe"],
+  }).trim();
 }
 
 function runGit(args) {
@@ -32,6 +38,19 @@ function fail(message) {
   process.exit(1);
 }
 
+function parseVersion(version) {
+  const match = String(version).match(/^(\d+)\.(\d+)\.(\d+)$/);
+  return match ? match.slice(1).map(Number) : null;
+}
+
+function isGreaterVersion(next, current) {
+  for (let index = 0; index < next.length; index += 1) {
+    if (next[index] > current[index]) return true;
+    if (next[index] < current[index]) return false;
+  }
+  return false;
+}
+
 const newVersion = process.argv[2];
 if (!newVersion || !/^\d+\.\d+\.\d+$/.test(newVersion)) {
   fail("用法: node scripts/release.mjs <版本号>，版本号必须是 x.y.z，例如 0.1.2");
@@ -40,15 +59,9 @@ if (!newVersion || !/^\d+\.\d+\.\d+$/.test(newVersion)) {
 const pkgPath = path.join(root, "package.json");
 const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
 const oldVersion = pkg.version;
-
-function parseVersion(version) {
-  const match = String(version).match(/^(\d+)\.(\d+)\.(\d+)$/);
-  return match ? match.slice(1).map(Number) : null;
-}
-
 const oldParts = parseVersion(oldVersion);
 const newParts = parseVersion(newVersion);
-if (!oldParts || newParts.every((part, index) => part === oldParts[index]) || newParts.some((part, index) => part < oldParts[index] && newParts.slice(0, index).every((value, i) => value === oldParts[i]))) {
+if (!oldParts || !isGreaterVersion(newParts, oldParts)) {
   fail(`新版本 ${newVersion} 必须严格高于当前版本 ${oldVersion}`);
 }
 
@@ -58,19 +71,14 @@ if (status) {
 }
 
 try {
-  const remoteUrl = git(["remote", "get-url", remote]);
-  if (!/^https:\/\/github\.com\/[^/]+\/[^/]+(?:\.git)?$/i.test(remoteUrl) && !/^git@github\.com:[^/]+\/[^/]+(?:\.git)?$/i.test(remoteUrl)) {
-    fail(`远程 ${remote} 不是 GitHub 仓库：${remoteUrl}`);
-  }
+  git(["remote", "get-url", remote]);
 } catch {
   fail(`找不到远程仓库 ${remote}。可通过 RELEASE_REMOTE 环境变量指定远程名称。`);
 }
 
 const tag = `v${newVersion}`;
-try {
-  if (git(["tag", "--list", tag])) fail(`Tag ${tag} 已存在，请使用新的版本号。`);
-} catch {
-  fail(`无法检查 Tag ${tag}。`);
+if (git(["tag", "--list", tag])) {
+  fail(`Tag ${tag} 已存在，请使用新的版本号。`);
 }
 
 console.log(`\n🚀 发版: ${oldVersion} → ${newVersion}`);
@@ -78,23 +86,29 @@ console.log(`\n🚀 发版: ${oldVersion} → ${newVersion}`);
 function updateFile(filePath, transformer) {
   const content = fs.readFileSync(filePath, "utf8");
   const updated = transformer(content, oldVersion, newVersion);
-  if (content === updated) fail(`未找到需要更新的版本号: ${path.relative(root, filePath)}`);
+  if (content === updated) {
+    fail(`未找到需要更新的版本号: ${path.relative(root, filePath)}`);
+  }
   fs.writeFileSync(filePath, updated, "utf8");
   console.log(`  ✅ ${path.relative(root, filePath)}`);
 }
 
-updateFile(pkgPath, (src, _ov, nv) => {
-  const obj = JSON.parse(src);
-  obj.version = nv;
-  return JSON.stringify(obj, null, 2) + "\n";
+updateFile(pkgPath, (src, _old, next) => {
+  const data = JSON.parse(src);
+  data.version = next;
+  return JSON.stringify(data, null, 2) + "\n";
 });
-updateFile(path.join(root, "src-tauri", "tauri.conf.json"), (src, _ov, nv) => {
-  const obj = JSON.parse(src);
-  obj.version = nv;
-  return JSON.stringify(obj, null, 2) + "\n";
+updateFile(path.join(root, "src-tauri", "tauri.conf.json"), (src, _old, next) => {
+  const data = JSON.parse(src);
+  data.version = next;
+  return JSON.stringify(data, null, 2) + "\n";
 });
-updateFile(path.join(root, "src-tauri", "Cargo.toml"), (src, _ov, nv) => src.replace(/^(version\s*=\s*)"[\d.]+"(\s*#.*)?$/m, `$1"${nv}"$2`));
-updateFile(path.join(root, "src", "AboutPage.jsx"), (src, _ov, nv) => src.replace(/const APP_VERSION\s*=\s*"[\d.]+"/, `const APP_VERSION = "${nv}"`));
+updateFile(path.join(root, "src-tauri", "Cargo.toml"), (src, _old, next) =>
+  src.replace(/^(version\s*=\s*)"[\d.]+"(\s*#.*)?$/m, `$1"${next}"$2`)
+);
+updateFile(path.join(root, "src", "AboutPage.jsx"), (src, _old, next) =>
+  src.replace(/const APP_VERSION\s*=\s*"[\d.]+"/, `const APP_VERSION = "${next}"`)
+);
 
 try {
   runGit(["add", "package.json", "src-tauri/tauri.conf.json", "src-tauri/Cargo.toml", "src/AboutPage.jsx"]);
@@ -107,6 +121,6 @@ try {
   process.exit(error.status || 1);
 }
 
-console.log(`\n✨ 完成！GitHub Actions 正在编译 ${tag}，完成后自动发布安装包。`);
-console.log(`   查看进度: https://github.com/Little-pig-create/python-data-studio/actions`);
-console.log(`   发布页面: https://github.com/Little-pig-create/python-data-studio/releases`);
+console.log(`\n✨ Git 发版完成：${tag}`);
+console.log(`   已推送分支：${remote}/main`);
+console.log(`   已推送 Tag：${remote}/${tag}`);

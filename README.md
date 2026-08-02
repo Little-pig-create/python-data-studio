@@ -210,27 +210,29 @@ npm run desktop:build
 
 构建产物位于 `src-tauri/target/release/`，安装包位于其下的 `bundle/msi` 与 `bundle/nsis`。浏览器版仍使用原有 `npm run dev` 和 `npm run build`。
 
-### 在线更新发布
+### Git 发版
 
-在线更新包必须使用签名私钥构建，私钥不要提交到仓库。GitHub Release 使用 tag 触发 `.github/workflows/release.yml`：
+项目不使用 GitHub Release 或 GitHub Actions 作为发布机制。版本发布只通过 Git 提交和 Tag 完成：
 
 ```powershell
-$env:TAURI_UPDATER_PROVIDER = "github"
-$env:TAURI_RELEASE_OWNER = "your-org"
-$env:TAURI_RELEASE_REPO = "python-data-studio"
-$env:TAURI_UPDATER_PUBKEY = "<tauri signer 公钥>"
-$env:TAURI_SIGNING_PRIVATE_KEY = "<tauri signer 私钥>"
-$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "<私钥密码>"
-npm run desktop:build:online
+npm run release -- 0.1.3
 ```
 
-GitHub 模式会自动使用：
+脚本会同步更新应用版本号，创建版本提交和 `v0.1.3` Tag，并执行：
 
 ```text
-https://github.com/{owner}/{repo}/releases/latest/download/latest.json
+git push origin main
+git push origin v0.1.3
 ```
 
-Gitee 可以通过 `TAURI_UPDATER_MANIFEST_URL` 指向稳定托管的 `latest.json`（例如 Gitee Pages 或自有 CDN），安装包仍可放在 Gitee Release 中。这样客户端不需要把某一个旧 tag 写死，后续发布新 tag 时仍能检测到更新。
+如需使用其他 Git 远程：
+
+```powershell
+$env:RELEASE_REMOTE = "github"
+npm run release -- 0.1.3
+```
+
+安装包需要在本地通过 `npm run desktop:build` 构建，构建结果位于 `src-tauri/target/release/`。Git Tag 是版本标识，不会自动创建 GitHub Release，也不会自动上传二进制文件。
 
 ## 目录
 
@@ -244,3 +246,4 @@ docs/                        产品、交互、状态和 QA 设计文档
 ```
 
 Notebook 内部不由 React 查询或覆盖 DOM。主题通过 JupyterLab 正式主题扩展加载，运行、保存、内核和选中状态通过 `postMessage` 协议传回外壳。
+
