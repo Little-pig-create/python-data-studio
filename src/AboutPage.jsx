@@ -14,7 +14,7 @@ import SystemUpdateAltRounded from "@mui/icons-material/SystemUpdateAltRounded";
 import { useNavigate } from "react-router-dom";
 import { roleHome, useAuth } from "./AuthProvider";
 
-const APP_VERSION = "0.1.0";
+const APP_VERSION = "0.1.1";
 const COURSE_CONTENT_VERSION = 14;
 const PROJECT_URL = "https://github.com/Little-pig-create/python-data-studio";
 const RELEASE_URL = `${PROJECT_URL}/releases/latest`;
