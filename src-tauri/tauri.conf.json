@@ -47,7 +47,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcyQjY3OTNEMzFFQTVBRTMKUldUald1b3hQWG0yY2tFeUpXKzl1c3dzeEFqQzYvRDFGS2hzUU1zdjAxNDVKWUVzQ3NtcW9Od2kK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY5Nzg2NTlDMTgxRkNEMkYKUldRdnpSOFluR1Y0K2FycDBUYlNIZ2tTc0pEekRJTXhQaWRMVlBjaFgxcERqZUV0algzVXNSQWcK",
       "endpoints": [
         "https://github.com/Little-pig-create/python-data-studio/releases/latest/download/latest.json"
       ],
