@@ -52,6 +52,20 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Check signing credentials
+        shell: bash
+        env:
+          PUBKEY_VAR: ${{ vars.TAURI_UPDATER_PUBKEY }}
+          PUBKEY_SECRET: ${{ secrets.TAURI_UPDATER_PUBKEY }}
+          PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          # 只打印长度，不打印内容，避免泄露密钥
+          echo "vars.TAURI_UPDATER_PUBKEY            length=${#PUBKEY_VAR}"
+          echo "secrets.TAURI_UPDATER_PUBKEY         length=${#PUBKEY_SECRET}"
+          echo "secrets.TAURI_SIGNING_PRIVATE_KEY    length=${#PRIVATE_KEY}"
+          echo "secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD length=${#PRIVATE_KEY_PASSWORD}"
+
       - name: Prepare signed updater config
         run: node scripts/prepare-tauri-release.mjs
         env:
