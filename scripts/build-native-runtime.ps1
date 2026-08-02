@@ -26,11 +26,16 @@ if (-not $env:PDS_SKIP_INSTALL) {
   foreach ($directory in @("DLLs", "libs", "tcl")) {
     Copy-Item -LiteralPath (Join-Path $baseRoot $directory) -Destination $output -Recurse -Force
   }
-  $baseLib = Join-Path $baseRoot "Lib"
-  $runtimeLib = Join-Path $output "Lib"
-  Copy-Item -Path (Join-Path $baseLib "*") -Destination $runtimeLib -Recurse -Force
-  Remove-Item -LiteralPath (Join-Path $output "pyvenv.cfg") -Force -ErrorAction SilentlyContinue
-  $runtimePython = Join-Path $output "python.exe"
+$baseLib = Join-Path $baseRoot "Lib"
+$runtimeLib = Join-Path $output "Lib"
+Copy-Item -Path (Join-Path $baseLib "*") -Destination $runtimeLib -Recurse -Force
+Remove-Item -LiteralPath (Join-Path $output "pyvenv.cfg") -Force -ErrorAction SilentlyContinue
+
+# Trim __pycache__, standard-library test/demo folders and site-packages test
+# suites so the bundled runtime stays small and packaging stays fast.
+& (Join-Path $PSScriptRoot "trim-native-runtime.ps1")
+
+$runtimePython = Join-Path $output "python.exe"
 } else {
   $runtimePython = if (Test-Path -LiteralPath (Join-Path $output "python.exe")) { Join-Path $output "python.exe" } else { Join-Path $output "Scripts\python.exe" }
 }
