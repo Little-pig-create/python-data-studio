@@ -27,6 +27,59 @@ const sanitizeNotebookCode = (source) => String(source || "")
   .replace(/f'\{base_url\}\/datasets\//g, "'/datasets/")
   .replace(/f'\{base\}\/datasets\//g, "'/datasets/");
 
+
+// ---- 中文字体支持：生成时注入（seaborn set_theme 会重置 matplotlib rcParams）----
+const CJK_FONT_BLOCK = `# ===== Python Data Studio: CJK font support =====
+def _pds_cjk_font():
+    import os as _os
+    from matplotlib import font_manager as _fm
+    import matplotlib.pyplot as _plt
+    for _fp in [
+        "/tmp/NotoSansSC-Regular.otf",
+        "C:/Windows/Fonts/msyh.ttc",
+        "C:/Windows/Fonts/simhei.ttf",
+        "/System/Library/Fonts/PingFang.ttc",
+    ]:
+        if _os.path.exists(_fp):
+            try:
+                _fm.fontManager.addfont(_fp)
+                _name = _fm.FontProperties(fname=_fp).get_name()
+                # 必须使用真实字体名，不能只写 sans-serif；seaborn 会将 sans-serif
+                # 重置为 Arial/DejaVu，导致中文再次退化成方框。
+                _plt.rcParams["font.family"] = [_name]
+                _plt.rcParams["font.sans-serif"] = [_name, "DejaVu Sans"]
+                _plt.rcParams["axes.unicode_minus"] = False
+                break
+            except Exception:
+                continue
+
+_pds_cjk_font()
+`;
+
+// 给涉及绘图的代码单元格注入字体配置；sns.set_theme/set 后自动重新应用。
+const injectCjkFontSupport = (notebook) => {
+  notebook.cells = notebook.cells.map((cell) => {
+    if (cell.cell_type !== "code") return cell;
+    const text = (cell.source || []).join("");
+    if (!/(matplotlib|seaborn|\bplt\.|\bsns\.)/.test(text)) return cell;
+    if (text.includes("_pds_cjk_font")) return cell;
+    const patched = text
+      .replace(
+        /(sns\.set_theme\s*\([^)]*\)|sns\.set\s*\([^)]*\))/g,
+        "$&\n_pds_cjk_font()"
+      )
+      // sns.axes_style/plotting_context 会在进入 with 块时恢复 font.family，
+      // 因此必须在上下文内部再次应用中文字体。
+      .replace(
+        /^([ \t]*)(with\s+sns\.(?:axes_style|plotting_context)\s*\([^\n]*\):)/gm,
+        "$1$2\n$1    _pds_cjk_font()"
+      );
+    return { ...cell, source: sourceLines(`${CJK_FONT_BLOCK}\n${patched}`) };
+  });
+  return notebook;
+};
+
+
 const largeOrderSetup = `import numpy as np
 import pandas as pd
 from js import window
@@ -560,6 +613,7 @@ for (const lesson of chapters) {
   notebook.cells = notebook.cells.map((cell) => cell.cell_type === "code"
     ? { ...cell, source: (cell.source || []).map(sanitizeNotebookCode) }
     : cell);
+  injectCjkFontSupport(notebook);
   const fileName = path.basename(decodeURIComponent(lesson.path));
   const outputPath = path.join(outputDirectory, fileName);
   fs.writeFileSync(outputPath, `${JSON.stringify(notebook, null, 2)}\n`, "utf8");

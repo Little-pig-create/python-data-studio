@@ -1,3 +1,6 @@
+> **文档状态说明（2026-08-02）**：本文档保留了 2026-07-26 时期的课程运行时和练习闭环设计，作为历史实现基线与技术背景参考。关于当前课程内容的权威方案，以 `MODULE_CAPSTONE_REDESIGN_AND_NOTEBOOK_ENHANCEMENT_PLAN.md`、`NOTEBOOK_NEXT_IMPROVEMENT_ROADMAP.md` 和 `NOTEBOOK_TEACHING_QUALITY_EVALUATION.md` 为准。
+>
+> 当前内容方案已经发生以下变更：取消正式章节作业和独立实训主路径，改为模块末大作业；课程 Notebook 不再以 `assert` 作为教学自检要求；方法和函数改为独立说明与独立示例；章节单元格顺序按由浅入深的教学流程组织。本文中关于 `assert`、TODO 章节作业、75 章/7 模块和旧生成路径的描述，不应作为当前课程内容规范。
 # 课程内容与交互改进方案
 
 > 文档用途：记录课程内容、Notebook 运行时和交互层的改进基线，作为后续内容迭代与验收依据。

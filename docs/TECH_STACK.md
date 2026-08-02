@@ -141,9 +141,14 @@ Notebook 视觉由正式主题扩展控制，应用层不注入覆盖样式。
 src/                         React 工作台、状态和 Bridge 客户端
 runtime/extensions/          JupyterLab federated extensions
 runtime/                     JupyterLite 构建配置
-notebooks/course/            正式课程内容
-notebooks/extras/            补充练习内容
-docs/                        设计与验收文档
+public/course/               当前浏览器课程发布内容
+public/course/module-capstones/ 8 个模块大作业 Notebook
+datasets/                    源数据、快照和 Manifest
+docs/                        设计、教学与验收文档
+
+# 历史生成链路（不作为当前发布路径）
+notebooks/course/            早期正式课程内容
+notebooks/extras/            早期补充练习内容
 ```
 
 ## 4. 依赖方向
@@ -187,3 +192,22 @@ React 与 JupyterLite 必须同源部署，以便 Bridge 能使用严格 origin 
 - 不与现有库争夺相同职责。
 
 不得仅为了展示“技术栈丰富”而安装未使用的包。
+
+## 7. 课程内容与发布路径说明
+
+课程内容文档与运行时发布目录需要区分：
+
+- `public/course/`：当前浏览器课程静态内容入口；
+- `dist/course/`：构建/发布后的同步内容入口；
+- `datasets/`：源数据、数据说明和 Manifest；
+- `public/datasets/`：浏览器运行时可读取的数据副本；
+- `docs/`：课程结构、Notebook 编写规范、数据治理和验收文档。
+
+历史文档中的 `notebooks/course/` 仅表示早期生成链路，不应被误读为当前发布目录。内容改造不主动修改 `src/`、路由或运行时实现；修改课程 Notebook 后应按课程索引要求同步静态发布目录，并重新执行 JSON、路径、冷启动和质量审计。
+
+当前课程内容基线为 117 个课程章节（109 个连续教学章节 + 8 个独立模块大作业章节）、8 个模块；第 10 章文件操作是普通教学章节。技术栈文档只说明文件和运行边界，模块划分、教学顺序、方法示例和作业规则以课程内容权威文档为准。
+
+
+## 文件操作专题（Python 基础）
+
+Python 基础模块第 10 章是普通教学章节“文件操作专题：读取、写入与目录管理”，主线使用 `os`、`open`、`csv`、`json`，覆盖路径检查、目录创建、文本读写、追加/覆盖写入、表格文件、结构化结果和错误处理。日期与时间专题的内容规范以 `FOUNDATION_AND_MODULE_TEACHING_DESIGN.md` 为准。

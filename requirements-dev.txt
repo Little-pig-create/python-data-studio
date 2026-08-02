@@ -1,0 +1,5 @@
+# Notebook code formatting and PEP 8 validation
+# Install with: python -m pip install -r requirements-dev.txt
+autopep8>=2.0.4,<3
+pycodestyle>=2.10.0,<3
+black>=23.3,<25

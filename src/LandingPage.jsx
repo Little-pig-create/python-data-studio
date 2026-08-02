@@ -203,7 +203,7 @@ export function LandingPage({ catalog }) {
               <div className="landing-catalog-chapters-heading"><strong>{activeCatalogModule?.label || "课程章节"}</strong><span>{activeChapters.length} 章</span></div>
               <div className="landing-catalog-chapter-list">
                 {activeChapters.map((chapter) => <a key={chapter.id} href={`/course/${chapter.id}`} onClick={() => setCatalogOpen(false)}>
-                  <span className="chapter-number">{String(chapter.chapter).padStart(2, "0")}</span>
+                  <span className="chapter-number">{chapter.kind === "capstone" ? "★" : String(chapter.chapter).padStart(2, "0")}</span>
                   <span className="chapter-title"><b>{chapter.title}</b><small>{(chapter.tags || []).slice(0, 2).join(" · ")}</small></span>
                   <span className={`chapter-kind ${chapter.kind === "project" ? "project" : ""}`}>{chapter.kind === "project" ? "项目" : `${chapter.estimatedMinutes || 35} 分钟`}</span>
                   <ArrowForwardRounded />

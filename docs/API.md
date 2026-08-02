@@ -1,5 +1,7 @@
 # Python Data Studio API 文档
 
+> **课程内容映射说明（2026-08-02）**：当前课程采用 117 个课程章节（108 个原有教学章节 + 1 个文件操作专题 + 8 个模块大作业章节）。本文中的 assignments/tasks/practice 接口是未来服务化接入的兼容契约；默认不代表当前前端已经启用章节作业或独立实训。若实现提交流程，应优先使用 `capstone`/模块大作业语义，并在接口版本或资源类型中明确区分。
+
 版本：`1.0`  
 更新日期：2026-07-30
 
@@ -70,10 +72,10 @@
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | `GET` | `/me` | 当前学生资料、班级和账号状态 |
-| `GET` | `/assignments?status=&page=&pageSize=` | 我的实训任务列表 |
-| `GET` | `/assignments/{assignmentId}` | 实训详情、允许数据集和截止时间 |
-| `POST` | `/assignments/{assignmentId}/attempts` | 开始一次实训尝试 |
-| `POST` | `/assignments/{assignmentId}/submissions` | 提交 Notebook、答案和运行结果 |
+| `GET` | `/assignments?status=&type=capstone&page=&pageSize=` | 我的模块大作业或教师扩展任务列表（预留） |
+| `GET` | `/assignments/{assignmentId}` | 大作业详情、允许数据集和截止时间（预留） |
+| `POST` | `/assignments/{assignmentId}/attempts` | 开始一次模块大作业尝试（预留） |
+| `POST` | `/assignments/{assignmentId}/submissions` | 提交模块大作业 Notebook、答案和运行结果（预留） |
 | `PUT` | `/learning-progress` | 同步章节学习进度 |
 
 提交示例：
@@ -95,7 +97,7 @@
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | `GET` | `/tasks` | 任务列表，支持草稿、发布、截止、归档筛选 |
-| `POST` | `/tasks` | 创建实训任务 |
+| `POST` | `/tasks` | 创建模块大作业或教师扩展任务（预留） |
 | `PATCH` | `/tasks/{taskId}` | 修改任务内容或状态 |
 | `GET` | `/submissions?taskId=&classId=&status=` | 学生提交评阅队列 |
 | `GET` | `/submissions/{submissionId}` | 提交详情和评测结果 |
@@ -228,7 +230,7 @@
 | `GET` | `/notes` | 当前学生的学习笔记列表 |
 | `PUT` | `/notes/{chapterId}` | 新建或覆盖章节笔记 |
 | `DELETE` | `/notes/{chapterId}` | 删除章节笔记 |
-| `GET` | `/practice-items` | 按模块、难度和状态查询练习 |
+| `GET` | `/practice-items` | 按模块、难度和状态查询课堂自检项（预留） |
 | `POST` | `/practice-items/{itemId}/attempts` | 创建练习尝试 |
 | `POST` | `/practice-attempts/{attemptId}/submissions` | 提交练习答案 |
 
@@ -272,7 +274,7 @@ Idempotency-Key: progress-chapter-106-20260730-001
 | `GET` | `/ready` | 数据库、对象存储和队列就绪检查 |
 | `GET` | `/version` | 返回 API 合约版本和服务版本 |
 
-预留接口的实现顺序建议为：先完成 `/health`、`/ready`、`/courses`、`/chapters` 和 `/progress`，再接入 Notebook 版本管理、数据集服务、实训评测和公告发布。任何新接口必须同步更新本文档、权限矩阵和审计字段。
+预留接口的实现顺序建议为：先完成 `/health`、`/ready`、`/courses`、`/chapters` 和 `/progress`，再接入 Notebook 版本管理、数据集服务、模块大作业评阅和公告发布。任何新接口必须同步更新本文档、权限矩阵和审计字段。
 
 ## 10. 邮箱注册与 CDKey
 

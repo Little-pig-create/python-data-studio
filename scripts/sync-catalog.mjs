@@ -32,16 +32,27 @@ const isDryRun = process.argv.includes("--dry-run");
 const dataByChapter = new Map(dataChapters.map((c) => [c.chapter, c]));
 
 // ── 扫描 public/course/ 目录 ──────────────────────────────────────────────────
-const ipynbFiles = fs.readdirSync(courseDir)
+// 普通章节使用 course-chapter-{n}.ipynb；模块大作业使用
+// module-capstones/*.ipynb，并通过 Notebook metadata 插入到所属模块末尾。
+const chapterFiles = fs.readdirSync(courseDir)
   .filter((name) => /^course-chapter-(\d+)\.ipynb$/.test(name))
   .map((name) => {
     const chapter = parseInt(name.match(/^course-chapter-(\d+)\.ipynb$/)[1], 10);
-    return { name, chapter, filePath: path.join(courseDir, name) };
-  })
-  .sort((a, b) => a.chapter - b.chapter);
+    return { name, chapter, sortOrder: chapter, filePath: path.join(courseDir, name), isCapstone: false };
+  });
+const extraFiles = fs.readdirSync(courseDir)
+  .filter((name) => /^course-extra-.+\.ipynb$/.test(name))
+  .map((name) => ({ name, filePath: path.join(courseDir, name), relativePath: name, isCapstone: false, isExtra: true }));
+const capstoneDir = path.join(courseDir, "module-capstones");
+const capstoneFiles = fs.existsSync(capstoneDir)
+  ? fs.readdirSync(capstoneDir)
+    .filter((name) => name.endsWith(".ipynb"))
+    .map((name) => ({ name, filePath: path.join(capstoneDir, name), relativePath: `module-capstones/${name}`, isCapstone: true }))
+  : [];
+const ipynbFiles = [...chapterFiles, ...extraFiles, ...capstoneFiles];
 
 if (!ipynbFiles.length) {
-  console.error("❌ 未找到任何 course-chapter-*.ipynb 文件，请先把 Notebook 放入 public/course/");
+  console.error("❌ 未找到课程 Notebook 文件，请先把 Notebook 放入 public/course/");
   process.exit(1);
 }
 
@@ -77,25 +88,28 @@ function computeModuleRanges(chapters) {
 }
 
 // ── 构建章节列表 ──────────────────────────────────────────────────────────────
-const builtChapters = ipynbFiles.map(({ name, chapter, filePath }) => {
+const builtChapters = ipynbFiles.map(({ name, chapter, sortOrder, filePath, relativePath, isCapstone }) => {
   const nbMeta = readNotebookMeta(filePath);
   const fallback = dataByChapter.get(chapter);
-
-  const title = nbMeta.chapter_title || fallback?.title || `第${chapter}章`;
+  const resolvedChapter = Number(nbMeta.chapter ?? chapter ?? 0);
+  const resolvedSortOrder = Number(nbMeta.sort_order ?? sortOrder ?? resolvedChapter);
+  const title = nbMeta.chapter_title || fallback?.title || (isCapstone ? "模块大作业" : `第${resolvedChapter}章`);
   const module = nbMeta.chapter_module || fallback?.module || "python";
   const kind = nbMeta.chapter_kind || fallback?.kind || "lesson";
   const estimatedMinutes = Number(nbMeta.estimated_minutes) || fallback?.estimatedMinutes || 45;
   const tags = Array.isArray(nbMeta.tags) ? nbMeta.tags : (fallback?.tags || []);
   const difficulty = nbMeta.difficulty || fallback?.difficulty || undefined;
   const description = nbMeta.description || fallback?.description || undefined;
-
+  const id = nbMeta.course_id || `chapter-${resolvedChapter}`;
+  const label = nbMeta.chapter_label || (isCapstone ? title : `第${resolvedChapter}章 ${title}`);
   const entry = {
-    id: `chapter-${chapter}`,
-    chapter,
+    id,
+    chapter: resolvedChapter,
+    sortOrder: resolvedSortOrder,
     title,
-    label: `第${chapter}章 ${title}`,
+    label,
     module,
-    path: `/course/${name}`,
+    path: `/course/${relativePath || name}`,
     kind,
     estimatedMinutes,
     hasCode: hasCode(filePath),
@@ -104,7 +118,7 @@ const builtChapters = ipynbFiles.map(({ name, chapter, filePath }) => {
   if (difficulty) entry.difficulty = difficulty;
   if (description) entry.description = description;
   return entry;
-});
+}).sort((a, b) => a.sortOrder - b.sortOrder);
 
 // ── 构建模块列表（保留原始颜色，更新 range）────────────────────────────────────
 const ranges = computeModuleRanges(builtChapters);

@@ -1,12 +1,15 @@
-import {
-  makeConfiguration,
-  makeRenderMimeRegistry,
-  ThebeServer
-} from "thebe-core";
-import { ServerConnection, SessionManager } from "@jupyterlab/services";
+// ============================================================
+// notebookRuntime.js — Python 运行时适配层
+// 支持两种后端：
+//   - JupyterLite (WASM/Pyodide) — 浏览器内
+//   - Native (本地 Python 进程) — Tauri 桌面版
+// ============================================================
 
-let serverRuntimePromise;
+// 注意：不要在此文件顶层导入 thebe-core 或 @jupyterlab/services
+// 它们会在 createJupyterLiteRuntime / createNativeRuntime 中按需动态导入
+// 桌面版构建时 thebe-core 会被 vite 别名替换为空桩
 
+// ---- 常量 ----
 const coursePackages = {
   numpy: { loader: "pyodide", name: "numpy" },
   pandas: { loader: "pyodide", name: "pandas" },
@@ -18,6 +21,7 @@ const coursePackages = {
   plotly: { loader: "piplite", name: "plotly", prerequisites: ["nbformat"] }
 };
 
+// ---- 工具函数 ----
 const requiredCoursePackages = (source) => {
   const imports = [...String(source || "").matchAll(/^\s*(?:from|import)\s+([A-Za-z_]\w*)/gm)]
     .map((match) => match[1]);
@@ -47,18 +51,72 @@ const normalizeNotebookPath = (notebookPath) => {
   return normalized || "course-runtime.ipynb";
 };
 
-async function getServerRuntime(notebookPath = "course-runtime.ipynb") {
+const cloneValue = (value) => {
+  try { return JSON.parse(JSON.stringify(value)); } catch { return value; }
+};
+
+const isTauriDesktop = () => Boolean(globalThis.__TAURI_INTERNALS__ || globalThis.__TAURI_METADATA__);
+
+// ---- 运行时选择 ----
+export function getPreferredRuntimeKind() {
+  // Web 版固定使用 JupyterLite，Tauri 版固定使用本地 CPython。
+  // 不再让桌面版切回已被排除的 WASM 运行时。
+  return isTauriDesktop() ? "native" : "jupyterlite";
+}
+
+export function setPreferredRuntimeKind() {
+  return getPreferredRuntimeKind();
+}
+
+// ---- Tauri IPC ----
+async function tauriInvoke(command, args) {
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke(command, args);
+}
+
+// ---- JupyterLite 运行时创建（动态导入 thebe-core）----
+let serverRuntimePromise;
+let thebeLiteScriptPromise;
+
+async function ensureThebeLiteLoaded() {
+  if (typeof window === "undefined") throw new Error("浏览器环境不可用");
+  if (window.thebeLite?.startJupyterLiteServer) return window.thebeLite;
+  if (!thebeLiteScriptPromise) {
+    thebeLiteScriptPromise = new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[data-thebe-lite="true"]');
+      if (existing) {
+        existing.addEventListener("load", () => resolve(window.thebeLite), { once: true });
+        existing.addEventListener("error", () => reject(new Error("Python 运行时脚本加载失败")), { once: true });
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = new URL("/thebe-lite.min.js", window.location.origin).href;
+      script.async = true;
+      script.dataset.thebeLite = "true";
+      script.onload = () => resolve(window.thebeLite);
+      script.onerror = () => reject(new Error("Python 运行时脚本加载失败"));
+      document.head.appendChild(script);
+    }).catch((reason) => {
+      thebeLiteScriptPromise = null;
+      throw reason;
+    });
+  }
+  return thebeLiteScriptPromise;
+}
+
+async function getServerRuntime() {
   if (!serverRuntimePromise) {
     const initialization = (async () => {
-      if (typeof window === "undefined" || !window.thebeLite?.startJupyterLiteServer) {
+      // 动态导入 thebe-core（桌面版构建时会被别名替换为空桩）
+      const { makeConfiguration, makeRenderMimeRegistry, ThebeServer } = await import("thebe-core");
+
+      await ensureThebeLiteLoaded();
+      if (!window.thebeLite?.startJupyterLiteServer) {
         throw new Error("Python 运行时模块未加载");
       }
 
       const config = makeConfiguration({
-        kernelOptions: {
-          kernelName: "python",
-          path: notebookPath
-        },
+        kernelOptions: { kernelName: "python", path: "course-runtime.ipynb" },
         savedSessionOptions: { enabled: false }
       });
       const server = new ThebeServer(config);
@@ -87,7 +145,7 @@ async function getServerRuntime(notebookPath = "course-runtime.ipynb") {
 }
 
 async function createJupyterLiteRuntime(notebookPath) {
-  const runtime = await getServerRuntime(notebookPath);
+  const runtime = await getServerRuntime();
   const sessionPath = normalizeNotebookPath(notebookPath);
   const session = await runtime.server.startNewSession(runtime.renderMime, {
     path: `/${sessionPath}`,
@@ -110,32 +168,60 @@ async function createJupyterLiteRuntime(notebookPath) {
     session,
     notebookPath: sessionPath,
     config: runtime.config,
-    renderMime: runtime.renderMime
+    renderMime: runtime.renderMime,
+    native: false
   };
 }
 
-const isTauriDesktop = () => Boolean(globalThis.__TAURI_INTERNALS__ || globalThis.__TAURI_METADATA__);
-const RUNTIME_PREFERENCE_KEY = "python-data-studio:runtime-kind:v1";
+// ---- Native matplotlib 中文字体配置（桌面端）----
+// 打包的 CPython 只带 DejaVu 等西文字体，matplotlib 渲染中文会缺字形。
+// 内核就绪后静默执行一次：注册系统常见中文字体并写入 rcParams。
+async function configureNativeMatplotlibFont(kernel) {
+  if (!kernel || kernel.isDisposed) return;
+  const setupCode = `
+import os
+from matplotlib import font_manager
+import matplotlib
 
-export function getPreferredRuntimeKind() {
-  if (!isTauriDesktop()) return "jupyterlite";
-  return window.localStorage?.getItem(RUNTIME_PREFERENCE_KEY) === "jupyterlite" ? "jupyterlite" : "native";
+_studio_font_candidates = [
+    "C:/Windows/Fonts/msyh.ttc",
+    "C:/Windows/Fonts/msyhbd.ttc",
+    "C:/Windows/Fonts/simhei.ttf",
+    "C:/Windows/Fonts/simsun.ttc",
+    "/System/Library/Fonts/PingFang.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+]
+for _path in _studio_font_candidates:
+    if os.path.exists(_path):
+        try:
+            font_manager.fontManager.addfont(_path)
+            _name = font_manager.FontProperties(fname=_path).get_name()
+            matplotlib.rcParams["font.family"] = [_name]
+            matplotlib.rcParams["font.sans-serif"] = [_name, "DejaVu Sans"]
+            matplotlib.rcParams["axes.unicode_minus"] = False
+            break
+        except Exception:
+            continue
+`;
+  const future = kernel.requestExecute({
+    code: setupCode,
+    silent: true,
+    store_history: false,
+    user_expressions: {},
+    allow_stdin: false,
+    stop_on_error: true
+  });
+  await future.done;
 }
 
-export function setPreferredRuntimeKind(kind) {
-  const value = kind === "jupyterlite" ? "jupyterlite" : "native";
-  window.localStorage?.setItem(RUNTIME_PREFERENCE_KEY, value);
-  return value;
-}
-
-async function tauriInvoke(command, args) {
-  const { invoke } = await import("@tauri-apps/api/core");
-  return invoke(command, args);
-}
-
+// ---- Native 运行时创建（动态导入 @jupyterlab/services）----
 async function createNativeRuntime(notebookPath) {
   const info = await tauriInvoke("start_native_runtime");
   if (!info?.serverUrl || !info?.token) throw new Error("本地 Jupyter Server 未返回连接信息");
+
+  // 动态导入 jupyterlab 客户端协议（桌面版保留此依赖）
+  const { ServerConnection, SessionManager } = await import("@jupyterlab/services");
+
   const settings = ServerConnection.makeSettings({
     baseUrl: `${info.serverUrl}/`,
     wsUrl: `${info.serverUrl.replace(/^http/, "ws")}/`,
@@ -143,33 +229,42 @@ async function createNativeRuntime(notebookPath) {
     appendToken: true
   });
   const sessions = new SessionManager({ serverSettings: settings });
-  const session = await sessions.startNew({
-    path: String(notebookPath || "course-runtime.ipynb").replace(/^\/+/, ""),
-    type: "notebook",
-    name: String(notebookPath || "course-runtime.ipynb").split("/").at(-1) || "course-runtime.ipynb",
-    kernel: { name: "python" }
-  });
-  if (!session?.kernel) {
-    session?.dispose?.();
+  const normalizedPath = String(notebookPath || "course-runtime.ipynb").replace(/^\/+/, "");
+  try {
+    const session = await sessions.startNew({
+      path: normalizedPath,
+      type: "notebook",
+      name: normalizedPath.split("/").at(-1) || "course-runtime.ipynb",
+      kernel: { name: "python" }
+    });
+    if (!session?.kernel) {
+      session?.dispose?.();
+      throw new Error("Python 内核不可用");
+    }
+
+    await session.kernel.info;
+    await configureNativeMatplotlibFont(session.kernel).catch(() => {});
+    return {
+      info,
+      server: sessions,
+      session,
+      notebookPath: normalizedPath,
+      native: true
+    };
+  } catch (reason) {
     await tauriInvoke("stop_native_runtime").catch(() => {});
-    throw new Error("本地 Python 内核不可用");
+    throw new Error(errorMessage(reason, "本地 Python 内核启动失败"));
   }
-  await session.kernel.info;
-  return { kind: "native", info, session, server: sessions, notebookPath, native: true };
 }
 
-export async function createNotebookRuntime(notebookPath) {
-  if (isTauriDesktop() && getPreferredRuntimeKind() === "native") {
-    try { return await createNativeRuntime(notebookPath); }
-    catch (reason) {
-      const fallback = await createJupyterLiteRuntime(notebookPath).catch(() => null);
-      if (fallback) return { ...fallback, fallbackFrom: "native" };
-      throw new Error(errorMessage(reason, "本地 Python Runtime 启动失败"));
-    }
-  }
+// ---- 公共入口与兼容适配器 ----
+async function createNotebookRuntime(notebookPath) {
+  const kind = getPreferredRuntimeKind();
+  if (kind === "native") return createNativeRuntime(notebookPath);
   return createJupyterLiteRuntime(notebookPath);
 }
 
+// ---- 公共入口 ----
 export async function createRuntimeAdapter(notebookPath) {
   const runtime = await createNotebookRuntime(notebookPath);
   return {
@@ -188,6 +283,8 @@ export async function createRuntimeAdapter(notebookPath) {
 }
 
 export async function ensureCoursePackages(runtime, source) {
+  // Native CPython is distributed with the course dependencies already
+  // installed. Only JupyterLite needs package loading at execution time.
   if (runtime?.native) return;
   const requestedPackages = requiredCoursePackages(source);
   if (!requestedPackages.length) return;
@@ -231,8 +328,10 @@ if not font_path.exists():
     response.raise_for_status()
     font_path.write_bytes(bytes(await response.bytes()))
 font_manager.fontManager.addfont(str(font_path))
-matplotlib.rcParams["font.family"] = "sans-serif"
-matplotlib.rcParams["font.sans-serif"] = [font_manager.FontProperties(fname=str(font_path)).get_name()]
+_font_name = font_manager.FontProperties(fname=str(font_path)).get_name()
+# 使用真实字体名，避免 seaborn 将 sans-serif 重置为 Arial/DejaVu。
+matplotlib.rcParams["font.family"] = [_font_name]
+matplotlib.rcParams["font.sans-serif"] = [_font_name, "DejaVu Sans"]
 matplotlib.rcParams["axes.unicode_minus"] = False
 `);
   }
@@ -254,12 +353,7 @@ matplotlib.rcParams["axes.unicode_minus"] = False
   if (pyodidePackages.includes("matplotlib")) runtime.matplotlibConfigured = true;
 }
 
-const cloneValue = (value) => {
-  if (value == null) return value;
-  if (typeof structuredClone === "function") return structuredClone(value);
-  return JSON.parse(JSON.stringify(value));
-};
-
+// ---- 代码源转换 ----
 // JupyterLite kernels may expose `js` without a browser `window` export.
 // Keep existing course cells portable by mapping that import to the current app origin.
 const normalizeNotebookSource = (source) => {
@@ -267,7 +361,7 @@ const normalizeNotebookSource = (source) => {
   const origin = typeof window !== "undefined" && window.location ? window.location.origin : "";
   const datasetBase = `${origin}/datasets/`;
   const normalized = text
-    .replace(/^(\s*)from\s+js\s+import\s+window\s*$/gm, "")
+    .replace(/^\s*from\s+js\s+import\s+window\s*$/gm, "")
     .replace(/f["']\{window\.location\.origin\}\/datasets\//g, (match) => match.startsWith("f'") ? "'" + datasetBase : '"' + datasetBase)
     .replace(/\{window\.location\.origin\}\/datasets\//g, datasetBase)
     .replace(/\{base_url\}\/datasets\//g, datasetBase)
@@ -287,24 +381,106 @@ if not __import__("pathlib").Path(_studio_path).exists():
     _studio_response = await pyfetch(${JSON.stringify(`${datasetBase}${file}`)})
     _studio_response.raise_for_status()
     __import__("pathlib").Path(_studio_path).write_bytes(bytes(await _studio_response.bytes()))
-` ).join("\n");
-  const rewritten = datasetFiles.reduce((code, file) => code.replaceAll(`${datasetBase}${file}`, `/tmp/studio-${file}`).replaceAll(`/datasets/${file}`, `/tmp/studio-${file}`), normalized);
+`).join("\n");
+  const rewritten = datasetFiles.reduce(
+    (code, file) => code.replaceAll(`${datasetBase}${file}`, `/tmp/studio-${file}`).replaceAll(`/datasets/${file}`, `/tmp/studio-${file}`),
+    normalized
+  );
   return `from pyodide.http import pyfetch\n${downloads}\n${rewritten}`;
 };
 
 const normalizeNativeNotebookSource = (source) => {
-  const text = String(source || "");
-  const files = [...text.matchAll(/\/datasets\/([A-Za-z0-9._-]+)/g)].map((match) => match[1]).filter((file, index, all) => all.indexOf(file) === index);
+  const text = String(source || "")
+    .replace(/^\s*from\s+js\s+import\s+window\s*$/gm, "");
+  const files = [...text.matchAll(/\/datasets\/([A-Za-z0-9._-]+)/g)]
+    .map((match) => match[1])
+    .filter((file, index, all) => all.indexOf(file) === index);
   if (!files.length && !/window\.location\.origin|\{base_url\}|\{base\}/.test(text)) return text;
+
   const rewritten = text
-    .replace(/\{window\.location\.origin\}\/datasets\/([A-Za-z0-9._-]+)/g, (_, file) => `{studio_dataset("${file}")}`)
-    .replace(/\{base_url\}\/datasets\/([A-Za-z0-9._-]+)/g, (_, file) => `{studio_dataset("${file}")}`)
-    .replace(/\{base\}\/datasets\/([A-Za-z0-9._-]+)/g, (_, file) => `{studio_dataset("${file}")}`)
-    .replace(/(["'])\/datasets\/([A-Za-z0-9._-]+)\1/g, (_, quote, file) => `studio_dataset("${file}")`)
+    // f"{base_url}/datasets/foo.csv" must become a normal Python expression;
+    // leaving braces inside the f-string would generate invalid nested quotes.
+    .replace(/f(["'])\{(?:window\.location\.origin|base_url|base)\}\/datasets\/([A-Za-z0-9._-]+)\1/g, (_, _quote, file) => `studio_dataset("${file}")`)
+    .replace(/\{(?:window\.location\.origin|base_url|base)\}\/datasets\/([A-Za-z0-9._-]+)/g, (_, file) => `studio_dataset("${file}")`)
+    .replace(/(["'])\/datasets\/([A-Za-z0-9._-]+)\1/g, (_, _quote, file) => `studio_dataset("${file}")`)
     .replace(/\/datasets\/([A-Za-z0-9._-]+)/g, (_, file) => `studio_dataset("${file}")`);
+
   return `import os\nfrom pathlib import Path\n\ndef studio_dataset(name):\n    path = (Path(os.environ.get("PDS_DATASETS_DIR", ".")) / str(name)).resolve()\n    if not path.is_file():\n        raise FileNotFoundError(f"课程数据文件缺失: {path}")\n    return str(path)\n\n${rewritten}`;
 };
 
+// ---- Native 每 cell 中文字体兜底（seaborn set_theme 会重置 rcParams）----
+const nativeCjkFontSetup = `def _studio_ensure_cjk_font():
+    try:
+        from matplotlib import font_manager
+        import matplotlib
+        import os as _os
+        _path = "C:/Windows/Fonts/msyh.ttc"
+        if not _os.path.exists(_path):
+            _path = "C:/Windows/Fonts/simhei.ttf"
+        if _os.path.exists(_path):
+            font_manager.fontManager.addfont(_path)
+            _name = font_manager.FontProperties(fname=_path).get_name()
+            matplotlib.rcParams["font.family"] = [_name]
+            matplotlib.rcParams["font.sans-serif"] = [_name, "DejaVu Sans"]
+            matplotlib.rcParams["axes.unicode_minus"] = False
+    except Exception:
+        pass
+
+_studio_ensure_cjk_font()
+`;
+
+const jupyterLiteCjkFontSetup = `def _studio_ensure_cjk_font():
+    try:
+        from matplotlib import font_manager
+        import matplotlib
+        import os as _os
+        _font_candidates = [
+            "/tmp/NotoSansSC-Regular.otf",
+            "C:/Windows/Fonts/msyh.ttc",
+            "C:/Windows/Fonts/simhei.ttf",
+        ]
+        for _path in _font_candidates:
+            if not _os.path.exists(_path):
+                continue
+            font_manager.fontManager.addfont(_path)
+            _name = font_manager.FontProperties(fname=_path).get_name()
+            matplotlib.rcParams["font.family"] = [_name]
+            matplotlib.rcParams["font.sans-serif"] = [_name, "DejaVu Sans"]
+            matplotlib.rcParams["axes.unicode_minus"] = False
+            break
+    except Exception:
+        pass
+
+_studio_ensure_cjk_font()
+`;
+
+const applyCjkFont = (source, setup) => {
+  const text = String(source || "");
+  const needsCjk = /(matplotlib|seaborn|\bplt\.|\bsns\.)/.test(text);
+  if (!needsCjk) return text;
+  // seaborn 的 set_theme / set 会重置 font.sans-serif，紧跟其后重新应用真实中文字体。
+  const patched = text
+    .replace(/(sns\.set_theme\s*\([^)]*\)|sns\.set\s*\([^)]*\))/g, "$&\n_studio_ensure_cjk_font()")
+    // sns.axes_style/plotting_context 会在进入上下文时恢复默认西文字体，
+    // 在 with 块内部重新应用中文字体，避免 Glyph missing。
+    .replace(/^([ \t]*)(with\s+sns\.(?:axes_style|plotting_context)\s*\([^\n]*\):)/gm, "$1$2\n$1    _studio_ensure_cjk_font()");
+  return setup + patched;
+};
+
+const applyNativeCjkFont = (source) => {
+  const text = String(source || "");
+  const needsCjk = /(matplotlib|seaborn|\bplt\.|\bsns\.)/.test(text);
+  if (!needsCjk) return text;
+  // seaborn 的 set_theme / set 会重置 font.sans-serif，紧跟其后重新应用字体
+  const patched = text
+    .replace(/(sns\.set_theme\s*\([^)]*\)|sns\.set\s*\([^)]*\))/g, "$&\n_studio_ensure_cjk_font()")
+    .replace(/^([ \t]*)(with\s+sns\.(?:axes_style|plotting_context)\s*\([^\n]*\):)/gm, "$1$2\n$1    _studio_ensure_cjk_font()");
+  return nativeCjkFontSetup + patched;
+};
+
+const applyJupyterLiteCjkFont = (source) => applyCjkFont(source, jupyterLiteCjkFontSetup);
+
+// ---- 单元格执行 ----
 export async function executeNotebookCell(runtime, source) {
   const kernel = runtime?.session?.kernel;
   if (!kernel || kernel.isDisposed || kernel.status === "dead") {
@@ -334,7 +510,9 @@ export async function executeNotebookCell(runtime, source) {
   };
 
   const future = kernel.requestExecute({
-    code: runtime?.native ? normalizeNativeNotebookSource(source) : normalizeNotebookSource(source),
+    code: runtime?.native
+      ? applyNativeCjkFont(normalizeNativeNotebookSource(source))
+      : applyJupyterLiteCjkFont(normalizeNotebookSource(source)),
     silent: false,
     store_history: true,
     user_expressions: {},
@@ -415,6 +593,7 @@ export async function executeNotebookCell(runtime, source) {
   };
 }
 
+// ---- 生命周期管理 ----
 export async function stopNotebookRuntime(runtime) {
   if (!runtime) return;
   await runtime.session?.shutdown?.().catch(() => runtime.session?.dispose?.());
@@ -433,3 +612,6 @@ export async function disposeNotebookRuntime() {
   runtime.server.dispose();
   serverRuntimePromise = null;
 }
+
+export { requiredCoursePackages };
+

@@ -28,8 +28,9 @@ Python Data Studio
 
 | 路由 | 用途 |
 |---|---|
-| `/course/:chapterId` | 打开正式章节 |
-| `/extras/:notebookId` | 打开补充练习 |
+| `/course/:chapterId` | 打开章节 Notebook；模块末章中的大作业入口沿用章节上下文 |
+| `/practice` | 课堂自检与补充材料入口（不作为章节正式作业） |
+| `/training` | 历史实训兼容入口；当前课程不作为主路径 |
 | `/progress` | 学习进度与模块概览 |
 | `/settings` | 主题、字体和编辑器偏好 |
 
@@ -57,6 +58,7 @@ tags
 - `setup`
 - `lesson`
 - `project`
+- `capstone`（模块大作业资源，当前入口由模块末章关联）
 - `extra`
 
 ## 4. 桌面布局
@@ -92,7 +94,7 @@ tags
 4. 目录、数据、课程三个视图入口；
 5. Python 运行状态。
 
-课程树使用 MUI X RichTreeView。正式课程和补充练习分区显示，不混入 Notebook 内部标题目录。
+课程树使用 MUI X RichTreeView。八个模块按顺序显示，模块大作业作为模块末章的关联入口；课堂自检和补充材料单独分区，不混入 Notebook 内部标题目录。
 
 ## 6. Notebook 区域
 
@@ -121,7 +123,7 @@ Notebook 滚动画布
 
 ### 学习概览
 
-展示模块完成率、最近章节和 Notebook 执行记录。图表使用 MUI X Charts，避免自定义绘图组件。
+展示八个模块完成率、模块大作业状态、最近章节和 Notebook 执行记录。图表使用 MUI X Charts，避免自定义绘图组件。
 
 ## 8. 移动端
 

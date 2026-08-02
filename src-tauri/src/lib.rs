@@ -204,6 +204,34 @@ pub fn save_user_notebook(app: AppHandle, key: String, document: serde_json::Val
   let text = serde_json::to_string_pretty(&document).map_err(|error| error.to_string())?;
   fs::write(path, text).map_err(|error| error.to_string())
 }
+
+#[tauri::command]
+pub fn delete_user_notebook(app: AppHandle, key: String) -> Result<(), String> {
+  let path = notebook_file(&app, &key)?;
+  if path.exists() {
+    fs::remove_file(path).map_err(|error| error.to_string())?;
+  }
+  Ok(())
+}
+
+#[tauri::command]
+pub fn list_user_notebooks(app: AppHandle) -> Result<Vec<serde_json::Value>, String> {
+  let root = app.path().app_data_dir().map_err(|error| error.to_string())?.join("notebooks");
+  if !root.is_dir() { return Ok(Vec::new()); }
+
+  let mut records = Vec::new();
+  for entry in fs::read_dir(root).map_err(|error| error.to_string())? {
+    let path = entry.map_err(|error| error.to_string())?.path();
+    let is_custom = path.extension().and_then(|value| value.to_str()) == Some("ipynb")
+      && path.file_stem().and_then(|value| value.to_str()).map(|value| value.starts_with("custom-notebook_")) == Some(true);
+    if !is_custom { continue; }
+    let text = fs::read_to_string(path).map_err(|error| error.to_string())?;
+    if let Ok(document) = serde_json::from_str::<serde_json::Value>(&text) {
+      records.push(document);
+    }
+  }
+  Ok(records)
+}
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -212,7 +240,7 @@ pub fn run() {
     .manage(RuntimeManager { runtime: Mutex::new(None) })
     .plugin(tauri_plugin_process::init())
     .plugin(tauri_plugin_updater::Builder::new().build())
-    .invoke_handler(tauri::generate_handler![commands::start_native_runtime, commands::stop_native_runtime, commands::native_runtime_status, commands::native_runtime_diagnostics, commands::load_user_notebook, commands::save_user_notebook])
+    .invoke_handler(tauri::generate_handler![commands::start_native_runtime, commands::stop_native_runtime, commands::native_runtime_status, commands::native_runtime_diagnostics, commands::load_user_notebook, commands::save_user_notebook, commands::delete_user_notebook, commands::list_user_notebooks])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

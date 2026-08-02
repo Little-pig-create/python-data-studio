@@ -1,416 +1,29 @@
 import "./notebook.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import DOMPurify from "dompurify";
-import { basicSetup } from "codemirror";
-import { python } from "@codemirror/lang-python";
-import { EditorState } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
 import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
-import MoreHorizRounded from "@mui/icons-material/MoreHorizRounded";
-import ArrowUpwardRounded from "@mui/icons-material/ArrowUpwardRounded";
-import ArrowDownwardRounded from "@mui/icons-material/ArrowDownwardRounded";
-import EditRounded from "@mui/icons-material/EditRounded";
-import ChevronRightRounded from "@mui/icons-material/ChevronRightRounded";
 import StopRounded from "@mui/icons-material/StopRounded";
 import RestartAltRounded from "@mui/icons-material/RestartAltRounded";
-import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
-import ContentCopyRounded from "@mui/icons-material/ContentCopyRounded";
-import ContentCutRounded from "@mui/icons-material/ContentCutRounded";
-import DownloadRounded from "@mui/icons-material/DownloadRounded";
-import VisibilityOffRounded from "@mui/icons-material/VisibilityOffRounded";
 import MenuRounded from "@mui/icons-material/MenuRounded";
 import PlaylistPlayRounded from "@mui/icons-material/PlaylistPlayRounded";
-import ArrowBackRounded from "@mui/icons-material/ArrowBackRounded";
-import ArrowForwardRounded from "@mui/icons-material/ArrowForwardRounded";
+import DownloadRounded from "@mui/icons-material/DownloadRounded";
+import NoteAltRounded from "@mui/icons-material/NoteAltRounded";
+import RestorePageRounded from "@mui/icons-material/RestorePageRounded";
 import DeleteSweepRounded from "@mui/icons-material/DeleteSweepRounded";
 import FormatListBulletedRounded from "@mui/icons-material/FormatListBulletedRounded";
-import RestorePageRounded from "@mui/icons-material/RestorePageRounded";
-import NoteAltRounded from "@mui/icons-material/NoteAltRounded";
-import AccessTimeRounded from "@mui/icons-material/AccessTimeRounded";
-import CheckCircleOutlineRounded from "@mui/icons-material/CheckCircleOutlineRounded";
-import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
-import FlagRounded from "@mui/icons-material/FlagRounded";
-import MenuBookRounded from "@mui/icons-material/MenuBookRounded";
 import { Alert, Button, ButtonGroup, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, IconButton, Menu, MenuItem, Snackbar, Tab, Tabs, TextField, Tooltip } from "@mui/material";
 import { StudioSpeedDial } from "./StudioSpeedDial";
 import { useAppStore } from "./store";
-import { createRuntimeAdapter, stopNotebookRuntime } from "./notebookRuntime";
+import { createRuntimeAdapter } from "./notebookRuntime";
 import { deleteNotebookDraft, loadCustomNotebook, loadNotebookDraft, saveNotebookDraft } from "./notebookRepository";
-import { convertErrorToFriendly } from "./errorMessageHelper";
 import { normalizeNotebook, serializeNotebook, useNotebookStore } from "./notebookStore";
-
-const outputText = (value) => {
-  const text = Array.isArray(value) ? value.join("") : String(value ?? "");
-  return text.replace(/[\u001b\u009b]\[[0-?]*[ -/]*[@-~]/g, "");
-};
-const formatPythonSource = (source) => String(source || "").split(/\r?\n/).map((line) => {
-  let formatted = line.replace(/\t/g, "    ").replace(/\s+$/, "");
-  if (/^\s*[A-Za-z_]\w*\s*=/.test(formatted) && !/==|!=|<=|>=/.test(formatted)) {
-    formatted = formatted.replace(/^(\s*[A-Za-z_]\w*)\s*=\s*/, "$1 = ");
-  }
-  formatted = formatted.replace(/,\s*(?=[A-Za-z_\"'\[({])/g, ", ");
-  return formatted;
-}).join("\n");
-const markdownOutline = (notebook) => (notebook?.cells || []).flatMap((cell) => {
-  if (cell.type !== "markdown") return [];
-  return String(cell.source || "").split(/\r?\n/).flatMap((line) => {
-    const match = line.match(/^(#{1,3})\s+(.+?)\s*#*\s*$/);
-    if (!match) return [];
-    return [{ cellId: cell.id, level: match[1].length, title: match[2] }];
-  });
-});
-const kernelStatusLabels = { idle: "未启动", ready: "空闲", busy: "运行中", error: "错误" };
-const kernelStatusDetails = {
-  unknown: ["loading", "⏳ 正在连接内核..."],
-  starting: ["loading", "🚀 正在启动 Python（首次需要 10 秒）..."],
-  idle: ["ready", "✓ 内核就绪"],
-  busy: ["busy", "▶ 代码运行中..."],
-  terminating: ["loading", "⏹ 正在关闭内核..."],
-  restarting: ["loading", "🔄 正在重启 Python..."],
-  autorestarting: ["loading", "🔧 正在恢复 Python..."],
-  dead: ["error", "❌ Python 内核已停止"]
-};
-
-const moduleLabels = {
-  python: "Python 基础",
-  numpy: "NumPy",
-  pandas: "Pandas",
-  matplotlib: "Matplotlib",
-  seaborn: "Seaborn",
-  plotly: "Plotly",
-  projects: "综合项目",
-  "machine-learning": "机器学习"
-};
-
-const getChapterMeta = (lesson) => {
-  const isProject = lesson.kind === "project";
-  const difficulty = lesson.difficulty || (isProject ? "项目实训" : lesson.chapter <= 10 ? "基础" : lesson.chapter <= 75 ? "进阶" : "实训");
-  const description = lesson.description || (isProject
-    ? `围绕“${lesson.title}”完成一个从数据理解、清洗、建模到结果解读的完整实训。`
-    : `通过 Notebook 动手掌握${lesson.title}，把概念、代码和运行结果连成一条可复用的学习路径。`);
-  const objectives = Array.isArray(lesson.objectives) && lesson.objectives.length
-    ? lesson.objectives
-    : [
-      `理解${lesson.title}的核心概念和使用场景`,
-      "运行示例代码，并根据提示完成一处修改",
-      isProject ? "整理关键指标，形成可解释的分析结论" : "记录本节的关键方法，迁移到下一道练习"
-    ];
-  return {
-    moduleLabel: moduleLabels[lesson.module] || "课程章节",
-    difficulty,
-    description,
-    objectives,
-    estimatedMinutes: Number(lesson.estimatedMinutes) || 45,
-    isProject
-  };
-};
-
-async function shutdownNotebookRuntime(runtime) {
-  const session = runtime?.session;
-  if (!session) return;
-  if (runtime.dispose) { await runtime.dispose(); return; }
-  try {
-    await session.shutdown();
-  } catch {
-    session.dispose?.();
-  }
-  if (runtime.native) await stopNotebookRuntime(runtime);
-}
-
-function CodeEditor({ value, onChange, onRun }) {
-  const hostRef = useRef(null);
-  const viewRef = useRef(null);
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
-
-  useEffect(() => {
-    if (!hostRef.current) return undefined;
-    const state = EditorState.create({
-      doc: value,
-      extensions: [
-        basicSetup,
-        python(),
-        keymap.of([{ key: "Mod-Enter", run: () => { onRun(); return true; } }]),
-        EditorView.lineWrapping,
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) onChangeRef.current(update.state.doc.toString());
-        }),
-        EditorView.theme({
-          "&": { backgroundColor: "transparent", color: "#202124", fontSize: "14px" },
-          ".cm-content": { padding: "12px 14px", fontFamily: "JetBrains Mono, Cascadia Code, Consolas, monospace" },
-          ".cm-gutters": { display: "none" },
-          ".cm-scroller": { fontFamily: "inherit", lineHeight: "1.55" },
-          ".cm-focused": { outline: "none" }
-        })
-      ]
-    });
-    const view = new EditorView({ state, parent: hostRef.current });
-    viewRef.current = view;
-    return () => { view.destroy(); viewRef.current = null; };
-  }, []);
-
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view || value === view.state.doc.toString()) return;
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value } });
-  }, [value]);
-
-  return <div ref={hostRef} className="notebook-code-editor" />;
-}
-
-function PlotlyOutput({ figure }) {
-  const hostRef = useRef(null);
-  const [renderError, setRenderError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    let plotly;
-    let resizeObserver;
-    const host = hostRef.current;
-
-    const render = async () => {
-      try {
-        const module = await import("plotly.js-dist-min");
-        plotly = module.default || module;
-        if (cancelled || !host) return;
-
-        const payload = typeof figure === "string" ? JSON.parse(figure) : figure;
-        const layout = { ...(payload?.layout || {}), autosize: true };
-        delete layout.width;
-        await plotly.newPlot(
-          host,
-          payload?.data || [],
-          layout,
-          { responsive: true, displaylogo: false, ...(payload?.config || {}) }
-        );
-        if (cancelled) return;
-
-        resizeObserver = new ResizeObserver(() => plotly.Plots.resize(host));
-        resizeObserver.observe(host);
-      } catch (error) {
-        if (!cancelled) setRenderError(error instanceof Error ? error.message : String(error));
-      }
-    };
-
-    setRenderError("");
-    render();
-    return () => {
-      cancelled = true;
-      resizeObserver?.disconnect();
-      if (plotly && host) plotly.purge(host);
-    };
-  }, [figure]);
-
-  if (renderError) {
-    return <pre className="notebook-error-output">Plotly 图表渲染失败：{renderError}</pre>;
-  }
-  return <div ref={hostRef} className="notebook-output-plotly" aria-label="Plotly 交互式图表" />;
-}
-
-function OutputRenderer({ outputs = [] }) {
-  if (!outputs.length) return null;
-  return <div className="notebook-output-content">{outputs.map((output, index) => {
-    if (output.output_type === "stream") return <pre key={index} className="notebook-stream">{outputText(output.text)}</pre>;
-    if (output.output_type === "error") {
-      const isAssertionError = output.ename === "AssertionError";
-      const className = isAssertionError ? "notebook-assert-error" : "notebook-error-output";
-      const errorText = outputText([output.ename, output.evalue, ...(output.traceback || [])].filter(Boolean).join("\n"));
-
-      // 尝试转换为友好错误提示
-      const friendlyError = !isAssertionError ? convertErrorToFriendly(errorText) : null;
-
-      if (friendlyError && friendlyError.type !== 'UnknownError') {
-        return (
-          <div key={index} className="notebook-error-box">
-            <div className="error-title">{friendlyError.title}</div>
-            <div className="error-section">
-              <div className="error-label">💭 可能原因：</div>
-              <ul className="error-list">
-                {friendlyError.causes.map((cause, i) => <li key={i}>{cause}</li>)}
-              </ul>
-            </div>
-            <div className="error-section">
-              <div className="error-label">🔧 解决方法：</div>
-              <ol className="error-list">
-                {friendlyError.solutions.map((solution, i) => <li key={i}>{solution}</li>)}
-              </ol>
-            </div>
-            <details className="error-details">
-              <summary>📋 查看完整错误信息</summary>
-              <pre className="error-details-content">{friendlyError.original}</pre>
-            </details>
-          </div>
-        );
-      }
-
-      // 回退到原始错误显示
-      const prefix = isAssertionError ? "❌ 自检未通过：" : "";
-      return (
-        <pre key={index} className={className}>
-          {prefix}
-          {errorText}
-        </pre>
-      );
-    }
-    const data = output.data || {};
-    if (data["image/png"]) return <img key={index} className="notebook-output-image" src={`data:image/png;base64,${data["image/png"]}`} alt="Python 输出图像" />;
-    if (data["image/jpeg"]) return <img key={index} className="notebook-output-image" src={`data:image/jpeg;base64,${data["image/jpeg"]}`} alt="Python 输出图像" />;
-    if (data["application/vnd.plotly.v1+json"]) return <PlotlyOutput key={index} figure={data["application/vnd.plotly.v1+json"]} />;
-    if (data["text/html"]) return <div key={index} className="notebook-output-html" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(outputText(data["text/html"])) }} />;
-    if (data["text/plain"]) return <pre key={index} className="notebook-stream">{outputText(data["text/plain"])}</pre>;
-    return <pre key={index} className="notebook-stream">{JSON.stringify(data, null, 2)}</pre>;
-  })}</div>;
-}
-
-function CellToolbar({ cell, index, cellCount, onAdd, onMove, onEdit, onDelete, onDuplicate }) {
-  return <div className="notebook-cell-toolbar" onClick={(event) => event.stopPropagation()}>
-    <Tooltip title="上移单元格"><span><IconButton size="small" disabled={index === 0} onClick={() => onMove(cell.id, -1)}><ArrowUpwardRounded fontSize="small" /></IconButton></span></Tooltip>
-    <Tooltip title="下移单元格"><span><IconButton size="small" disabled={index === cellCount - 1} onClick={() => onMove(cell.id, 1)}><ArrowDownwardRounded fontSize="small" /></IconButton></span></Tooltip>
-    <Divider orientation="vertical" flexItem className="notebook-cell-toolbar-divider" />
-    <Tooltip title="编辑单元格"><IconButton size="small" onClick={onEdit}><EditRounded fontSize="small" /></IconButton></Tooltip>
-    <Tooltip title="复制单元格"><IconButton size="small" onClick={() => onDuplicate(index)}><ContentCopyRounded fontSize="small" /></IconButton></Tooltip>
-    <Tooltip title="剪切单元格"><IconButton size="small" onClick={() => onDelete(cell.id)}><ContentCutRounded fontSize="small" /></IconButton></Tooltip>
-    <Tooltip title="删除单元格"><IconButton size="small" onClick={() => onDelete(cell.id)}><DeleteOutlineRounded fontSize="small" /></IconButton></Tooltip>
-    <Divider orientation="vertical" flexItem className="notebook-cell-toolbar-divider" />
-    <Tooltip title="更多操作"><IconButton size="small"><MoreHorizRounded fontSize="small" /></IconButton></Tooltip>
-  </div>;
-}
-
-function NotebookCell({ cell, index, cellCount, runningCellId, onRun, onAdd, onMove, onDelete, onDuplicate, markdownCollapsed, onToggleMarkdown }) {
-  const { activeCellId, notebookKey, selectCell, updateCellSource } = useNotebookStore();
-  const [outputCollapsed, setOutputCollapsed] = useState(false);
-  const [markdownEditing, setMarkdownEditing] = useState(false);
-  const [checklistState, setChecklistState] = useState({});
-
-  const checklistStorageKey = notebookKey && cell.type === "markdown"
-    ? `notebook-checklist:${notebookKey}:${cell.id}`
-    : null;
-
-  useEffect(() => {
-    if (!checklistStorageKey) {
-      setChecklistState({});
-      return;
-    }
-    try {
-      const stored = JSON.parse(window.localStorage.getItem(checklistStorageKey) || "{}");
-      setChecklistState(stored && typeof stored === "object" ? stored : {});
-    } catch {
-      setChecklistState({});
-    }
-  }, [checklistStorageKey]);
-
-  // 检测 solution tag，默认折叠答案单元格
-  const isSolution = cell.metadata?.tags?.includes('solution');
-  const [solutionCollapsed, setSolutionCollapsed] = useState(isSolution);
-
-  const selected = activeCellId === cell.id;
-  const isRunning = runningCellId === cell.id;
-  const outputId = `cell-output-${cell.id}`;
-  const run = () => onRun(cell);
-  let checklistIndex = 0;
-  const markdownComponents = {
-    input: ({ checked, type, disabled: _disabled, ...props }) => {
-      if (type !== "checkbox") return <input {...props} type={type} />;
-      const itemIndex = checklistIndex++;
-      const isChecked = Object.prototype.hasOwnProperty.call(checklistState, itemIndex)
-        ? checklistState[itemIndex]
-        : Boolean(checked);
-      return <input
-        {...props}
-        type="checkbox"
-        checked={isChecked}
-        onChange={(event) => {
-          event.stopPropagation();
-          const nextState = { ...checklistState, [itemIndex]: event.target.checked };
-          setChecklistState(nextState);
-          if (checklistStorageKey) window.localStorage.setItem(checklistStorageKey, JSON.stringify(nextState));
-        }}
-      />;
-    }
-  };
-  return <article id={"notebook-cell-" + cell.id} className={`notebook-cell notebook-cell-${cell.type} ${selected ? "is-selected" : ""} ${isRunning ? "is-running" : ""} ${isSolution ? "is-solution" : ""}`} onClick={() => selectCell(cell.id)}>
-    <div className="notebook-cell-layout">
-      <div className="notebook-cell-gutter">
-        {cell.type === "code" && <>
-          <span className="notebook-execution-count">[{cell.executionCount ?? " "}]</span>
-          {!(isSolution && solutionCollapsed) && <button className="notebook-run-button" aria-label="运行单元格" onClick={(event) => { event.stopPropagation(); run(); }}>
-            {isRunning ? <span className="notebook-spinner" /> : <PlayArrowRounded fontSize="small" />}
-          </button>}
-        </>}
-      </div>
-      <div className="notebook-cell-frame">
-        <div className="notebook-cell-body">
-        {selected && <CellToolbar cell={cell} index={index} cellCount={cellCount} onAdd={onAdd} onMove={onMove} onEdit={() => setMarkdownEditing(true)} onDelete={onDelete} onDuplicate={onDuplicate} />}
-        {cell.type === "code" ? <>
-          {isSolution && solutionCollapsed ? (
-            <div className="solution-placeholder">
-              <button onClick={(event) => { event.stopPropagation(); setSolutionCollapsed(false); }}>
-                📝 显示参考答案
-              </button>
-            </div>
-          ) : (
-            <>
-              {isSolution && <div className="solution-toolbar" onClick={(event) => event.stopPropagation()}>
-                <Tooltip title="隐藏参考答案">
-                  <IconButton size="small" aria-label="隐藏参考答案" onClick={() => setSolutionCollapsed(true)}>
-                    <VisibilityOffRounded fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </div>}
-              <CodeEditor value={cell.source} onChange={(value) => updateCellSource(cell.id, value)} onRun={run} />
-            </>
-          )}
-          {cell.outputs?.length > 0 && <div className={`notebook-output ${outputCollapsed ? "is-collapsed" : ""}`}>
-            <div className="notebook-output-toolbar">
-              <button
-                className="notebook-output-toggle"
-                aria-controls={outputId}
-                aria-expanded={!outputCollapsed}
-                aria-label={outputCollapsed ? "展开输出" : "折叠输出"}
-                title={outputCollapsed ? "展开输出" : "折叠输出"}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setOutputCollapsed((value) => !value);
-                }}
-              >
-                <ChevronRightRounded className={outputCollapsed ? "" : "is-expanded"} fontSize="small" />
-              </button>
-              {outputCollapsed && <button className="notebook-output-link" onClick={(event) => { event.stopPropagation(); setOutputCollapsed(false); }}>展开输出</button>}
-            </div>
-            {!outputCollapsed && <div id={outputId}><OutputRenderer outputs={cell.outputs} /></div>}
-          </div>}
-        </> : markdownEditing ? <textarea className="notebook-markdown-editor" autoFocus value={cell.source} onChange={(event) => updateCellSource(cell.id, event.target.value)} onBlur={() => setMarkdownEditing(false)} /> : markdownCollapsed ? <button className="notebook-markdown-collapsed" type="button" onClick={(event) => { event.stopPropagation(); onToggleMarkdown?.(cell.id); }}><span><MenuBookRounded fontSize="small" />{String(cell.source || "本节说明").split(/\r?\n/).find((line) => line.trim())?.replace(/^#+\s*/, "") || "本节说明"}</span><span>展开说明 <ExpandMoreRounded fontSize="small" /></span></button> : <div className="notebook-markdown-content"><ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]} components={markdownComponents}>{cell.source}</ReactMarkdown></div>}
-        </div>
-      </div>
-    </div>
-    <div className="notebook-insert-rail" onClick={(event) => event.stopPropagation()}>
-      <div className="notebook-insert-actions"><button onClick={() => onAdd(index + 1, "code")}><AddRounded fontSize="small" />代码</button><button onClick={() => onAdd(index + 1, "markdown")}><AddRounded fontSize="small" />文本</button></div>
-    </div>
-  </article>;
-}
-
-function NotebookNavigation({ previousLesson, nextLesson, lessonPosition, totalLessons }) {
-  const item = (target, direction, Icon) => target
-    ? <Link className={`notebook-navigation-item is-${direction}`} to={`/course/${target.id}`}>
-      <Icon fontSize="small" />
-      <span><small>{direction === "previous" ? "上一节" : "下一节"}</small><strong>{target.label}</strong></span>
-    </Link>
-    : <span className={`notebook-navigation-item is-disabled is-${direction}`} aria-disabled="true">
-      <Icon fontSize="small" />
-      <span><small>{direction === "previous" ? "上一节" : "下一节"}</small><strong>{direction === "previous" ? "已经是第一节" : "已经是最后一节"}</strong></span>
-    </span>;
-
-  return <nav className="notebook-navigation" aria-label="课程章节导航">
-    {item(previousLesson, "previous", ArrowBackRounded)}
-    <span className="notebook-navigation-position"><small>课程位置</small><strong>{lessonPosition || "—"} / {totalLessons || "—"}</strong></span>
-    {item(nextLesson, "next", ArrowForwardRounded)}
-  </nav>;
-}
+import { NotebookCell } from "./components/NotebookCell";
+import { NotebookNavigation } from "./components/NotebookNavigation";
+import { formatPythonSource, getChapterMeta, kernelStatusDetails, kernelStatusLabels, markdownOutline, shutdownNotebookRuntime } from "./utils/notebookHelpers";
+import { NotebookSkeleton } from "./LoadingSkeletons";
 
 export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPosition, totalLessons, onOpenSidebar, onRuntimeState }) {
   const [loading, setLoading] = useState(true);
@@ -609,7 +222,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     if (runtimeInitRef.current) return runtimeInitRef.current;
     const generation = runtimeGenerationRef.current;
     const initialization = (async () => {
-      useNotebookStore.getState().setRuntime("loading", "正在启动原生 Python 内核");
+      useNotebookStore.getState().setRuntime("loading", "正在启动 Python 内核");
       const runtime = await createRuntimeAdapter(notebookPath);
       if (generation !== runtimeGenerationRef.current) {
         await shutdownNotebookRuntime(runtime);
@@ -641,7 +254,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     ensureRuntime()
       .then((runtime) => {
         if (active) {
-          setToast({ open: true, message: "原生内核已创建", severity: "success" });
+          setToast({ open: true, message: `${runtime.native ? "本地" : "浏览器内"} Python 内核已创建`, severity: "success" });
         }
       })
       .catch((reason) => {
@@ -904,9 +517,9 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
         {chapterNote && <Tooltip title="本章已有学习笔记"><span className="notebook-note-badge"><NoteAltRounded fontSize="small" />有笔记</span></Tooltip>}
       </div>
     </div>
-    {loading && <div className="custom-notebook-loading"><div className="loading-bar" /><p>正在准备 Notebook</p></div>}
+    {loading && <NotebookSkeleton />}
     {error && <div className="custom-notebook-error">{error}</div>}
-    {!loading && !error && document && <div className="custom-notebook-scroll"><div className="custom-notebook-canvas">{document.cells.map((cell, index) => <NotebookCell key={cell.id} cell={cell} index={index} cellCount={document.cells.length} runningCellId={runningCellId} onRun={runCellFromCell} onAdd={addCell} onMove={moveCell} onDelete={deleteCell} onDuplicate={duplicateCell} markdownCollapsed={markdownCollapsed && cell.type === "markdown"} onToggleMarkdown={(cellId) => { setMarkdownCollapsed(false); window.document.getElementById("notebook-cell-" + cellId)?.scrollIntoView({ behavior: "smooth", block: "center" }); }} />)}<NotebookNavigation previousLesson={previousLesson} nextLesson={nextLesson} lessonPosition={lessonPosition || lesson.chapter} totalLessons={totalLessons} /></div><div className="custom-notebook-end"><button onClick={() => addCell(document.cells.length, "code")}><AddRounded fontSize="small" />添加代码单元格</button><button onClick={() => addCell(document.cells.length, "markdown")}><AddRounded fontSize="small" />添加文本单元格</button></div></div>}
+    {!loading && !error && document && <div className="custom-notebook-scroll"><div className="custom-notebook-canvas">{document.cells.map((cell, index) => <NotebookCell key={cell.id} cell={cell} index={index} codeIndex={cell.type === "code" ? document.cells.slice(0, index + 1).filter((item) => item.type === "code").length : null} cellCount={document.cells.length} runningCellId={runningCellId} onRun={runCellFromCell} onAdd={addCell} onMove={moveCell} onDelete={deleteCell} onDuplicate={duplicateCell} markdownCollapsed={markdownCollapsed && cell.type === "markdown"} onToggleMarkdown={(cellId) => { setMarkdownCollapsed(false); window.document.getElementById("notebook-cell-" + cellId)?.scrollIntoView({ behavior: "smooth", block: "center" }); }} />)}<NotebookNavigation previousLesson={previousLesson} nextLesson={nextLesson} lessonPosition={lessonPosition || lesson.chapter} totalLessons={totalLessons} /></div><div className="custom-notebook-end"><button onClick={() => addCell(document.cells.length, "code")}><AddRounded fontSize="small" />添加代码单元格</button><button onClick={() => addCell(document.cells.length, "markdown")}><AddRounded fontSize="small" />添加文本单元格</button></div></div>}
     <Menu anchorEl={outlineAnchor} open={Boolean(outlineAnchor)} onClose={closeOutline} MenuListProps={{ "aria-label": "本章目录" }} PaperProps={{ className: "notebook-outline-menu" }}>
       {outline.map((item) => <MenuItem key={item.cellId + "-" + item.title} className={"notebook-outline-item level-" + item.level} onClick={() => jumpToOutline(item.cellId)}>{item.title}</MenuItem>)}
     </Menu>
@@ -984,5 +597,6 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     </Snackbar>
   </section>;
 }
+
 
 

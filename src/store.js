@@ -16,6 +16,20 @@ export const defaultLearningProfile = Object.freeze({
   isNotebookDirty: false,
 });
 
+function migratePersistedState(state) {
+  if (!state) return state;
+  const expandedModules = state.expandedModules || ["python"];
+  if (!expandedModules.includes("viz")) return state;
+  return {
+    ...state,
+    expandedModules: [
+      ...expandedModules.filter((id) => id !== "viz"),
+      "matplotlib",
+      "seaborn"
+    ]
+  };
+}
+
 export const useAppStore = create(persist((set) => ({
   activeChapterId: "chapter-1",
   expandedModules: ["python"],
@@ -64,18 +78,7 @@ export const useAppStore = create(persist((set) => ({
 }), {
   name: "python-data-studio:app:v1",
   version: 2,
-  migrate: (persistedState) => {
-    const expandedModules = persistedState?.expandedModules || ["python"];
-    if (!expandedModules.includes("viz")) return persistedState;
-    return {
-      ...persistedState,
-      expandedModules: [
-        ...expandedModules.filter((id) => id !== "viz"),
-        "matplotlib",
-        "seaborn"
-      ]
-    };
-  },
+  migrate: migratePersistedState,
   partialize: (state) => ({ activeChapterId: state.activeChapterId, expandedModules: state.expandedModules, sidebarMode: state.sidebarMode, recentIds: state.recentIds, completedIds: state.completedIds, chapterExecutionProgress: state.chapterExecutionProgress, chapterNotes: state.chapterNotes })
 }));
 
@@ -86,7 +89,7 @@ export function activateLearningProfile(userId) {
   let savedState = null;
   try {
     const raw = window.localStorage.getItem(storageName);
-    savedState = raw ? JSON.parse(raw)?.state || null : null;
+    savedState = migratePersistedState(JSON.parse(raw)?.state || null);
   } catch {
     savedState = null;
   }

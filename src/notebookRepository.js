@@ -7,12 +7,16 @@ const nativeInvoke = async (command, args) => {
   return invoke(command, args);
 };
 
+let _dbPromise;
 function openDatabase() {
-  return new Promise((resolve, reject) => {
+  return _dbPromise ??= new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
     request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME);
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onerror = () => {
+      _dbPromise = undefined;
+      reject(request.error);
+    };
   });
 }
 
@@ -39,6 +43,9 @@ export async function saveNotebookDraft(key, document) {
 }
 
 export async function deleteNotebookDraft(key) {
+  if (isTauriDesktop()) {
+    return nativeInvoke("delete_user_notebook", { key });
+  }
   if (!window.indexedDB) return;
   const database = await openDatabase();
   return new Promise((resolve, reject) => {
@@ -63,6 +70,7 @@ export async function deleteCustomNotebook(id) {
 }
 
 export async function listCustomNotebooks() {
+  if (isTauriDesktop()) return nativeInvoke("list_user_notebooks").catch(() => []);
   if (!window.indexedDB) return [];
   const database = await openDatabase();
   return new Promise((resolve, reject) => {

@@ -13,7 +13,7 @@ function readCustomChapterMetadata() {
 }
 
 export async function loadCourseCatalog() {
-  const response = await fetch(catalogUrl, { cache: "no-store" });
+  const response = await fetch(catalogUrl);
   if (!response.ok) throw new Error(`课程目录加载失败（${response.status}）`);
   const catalog = await response.json();
   if (!Array.isArray(catalog.modules) || !Array.isArray(catalog.chapters) || !catalog.chapters.length) {
@@ -27,7 +27,7 @@ export async function loadCourseCatalog() {
   const nextCatalog = {
     ...catalog,
     version: Number(catalog.version || 1) + 1,
-    chapters: [...catalog.chapters, ...customChapters].sort((a, b) => Number(a.chapter || 0) - Number(b.chapter || 0)),
+    chapters: [...catalog.chapters, ...customChapters].sort((a, b) => Number(a.sortOrder ?? a.chapter ?? 0) - Number(b.sortOrder ?? b.chapter ?? 0)),
     modules: catalog.modules.map((module) => {
       const moduleChapters = customChapters.filter((item) => item.module === module.id);
       if (!moduleChapters.length) return module;

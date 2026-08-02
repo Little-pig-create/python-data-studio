@@ -108,7 +108,7 @@ export function PracticeCenter({ catalog }) {
                 <article className="practice-card" key={chapter.id}>
                   <div>
                     <span className="dataset-category">{moduleInfo?.label}</span>
-                    <h2>第{chapter.chapter}章 {chapter.title}</h2>
+                    <h2>{chapter.label || `第${chapter.chapter}章 ${chapter.title}`}</h2>
                     <p>{chapter.tags.join(" · ")} · 约 {chapter.estimatedMinutes} 分钟</p>
                   </div>
                   <Button

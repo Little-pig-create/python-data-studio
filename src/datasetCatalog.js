@@ -1,4 +1,5 @@
 export const publicDatasets = [
+  { id: "module1-scores", name: "模块一班级成绩", file: "module1_scores.csv", category: "课程实训", rows: "500 行", description: "为模块一文件处理综合练习准备的模拟成绩数据，包含正常记录、重复记录和少量异常记录。" },
   { id: "titanic", name: "Titanic 生存预测", file: "titanic.csv", category: "分类", rows: "891 行", description: "经典二分类数据，适合缺失值处理、特征工程和分类模型入门。" },
   { id: "online-retail", name: "Online Retail 交易", file: "uci_online_retail_200k.csv", category: "消费分析", rows: "200,000 行", description: "英国零售交易样本，适合 RFM、复购和用户价值分析。" },
   { id: "olist-orders", name: "Olist 电商订单", file: "olist_orders_dataset.csv", category: "物流", rows: "99,441 行", description: "巴西电商订单主表，适合履约时效与延期风险分析。" },

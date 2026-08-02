@@ -34,3 +34,6 @@ datasets/
 audit-*.png
 vite-*.log
 dev-server*.log
+
+# Windows shortcuts
+*.lnk

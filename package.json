@@ -3,14 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
+    "dev": "npm run dev:web",
+    "dev:web": "vite --mode web --host 127.0.0.1",
+    "dev:desktop": "vite --mode desktop --host 127.0.0.1",
     "auth:dev": "cargo run --manifest-path server/Cargo.toml",
-    "build": "vite build",
+    "build": "npm run build:web",
+    "build:web": "node scripts/build-web.mjs",
+    "preview": "vite preview --host 127.0.0.1",
     "build:course": "node scripts/rebuild-course-notebooks.mjs",
     "check:pep8": "python scripts/check-course-pep8.py",
-    "format:course": "node scripts/format-course-notebooks.mjs",
+    "format:course": "python scripts/format-course-notebooks.py",
     "sync:catalog": "node scripts/sync-catalog.mjs",
-    "preview": "vite preview --host 127.0.0.1",
     "build:extensions": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-extensions.ps1",
     "build:runtime": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-runtime.ps1",
     "build:native-runtime": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-native-runtime.ps1",
@@ -18,8 +21,8 @@
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
     "desktop:build:online": "node scripts/prepare-tauri-release.mjs && npm run build:course && tauri build --config src-tauri/tauri.release.conf.json",
-    "build:desktop-web": "vite build --mode desktop",
-    "build:desktop-web:online": "vite build --mode desktop-online"
+    "build:desktop-web": "node scripts/build-desktop-web.mjs --mode desktop",
+    "build:desktop-web:online": "node scripts/build-desktop-web.mjs --mode desktop-online"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.2.1",
@@ -32,10 +35,8 @@
     "@mui/icons-material": "latest",
     "@mui/material": "latest",
     "@mui/x-charts": "latest",
-    "@mui/x-data-grid": "latest",
-    "@mui/x-tree-view": "latest",
-    "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.10.1",
     "codemirror": "^6.0.2",
     "dompurify": "^3.4.12",
@@ -47,8 +48,6 @@
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
     "thebe-core": "^0.5.0",
-    "thebe-lite": "^0.5.0",
-    "thebe-react": "^0.5.0",
     "zustand": "latest"
   },
   "devDependencies": {
@@ -57,13 +56,13 @@
     "@jupyterlab/coreutils": "^6.5.10",
     "@jupyterlab/docmanager": "^4.6.0",
     "@jupyterlab/notebook": "^4.6.0",
-    "@tailwindcss/postcss": "latest",
     "@tauri-apps/cli": "^2.11.4",
     "@vitejs/plugin-react": "latest",
-    "autoprefixer": "latest",
     "esbuild": "^0.28.1",
-    "postcss": "latest",
-    "tailwindcss": "latest",
+    "lightningcss": "^1.33.0",
+    "picomatch": "^4.0.5",
+    "rolldown": "~1.2.0",
+    "tinyglobby": "^0.2.17",
     "vite": "^8.2.0"
   }
 }
