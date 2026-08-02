@@ -23,7 +23,8 @@
     "desktop:build": "tauri build",
     "desktop:build:online": "node scripts/prepare-tauri-release.mjs && npm run build:course && tauri build --config src-tauri/tauri.release.conf.json",
     "build:desktop-web": "node scripts/build-desktop-web.mjs --mode desktop",
-    "build:desktop-web:online": "node scripts/build-desktop-web.mjs --mode desktop-online"
+    "build:desktop-web:online": "node scripts/build-desktop-web.mjs --mode desktop-online",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.2.1",

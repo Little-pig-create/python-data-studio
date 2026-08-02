@@ -7,9 +7,64 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "要发布的 Tag，例如 v0.1.2（必须已存在于仓库）"
+        required: true
+        type: string
+
+concurrency:
+  group: desktop-release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
 
 jobs:
+  validate:
+    name: Validate release tag
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Validate tag format
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release tag: $RELEASE_TAG"
+            echo "Expected format: vX.Y.Z"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Validate tag and application versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag_version="${RELEASE_TAG#v}"
+          package_version="$(node -p "require('./package.json').version")"
+          tauri_version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          cargo_version="$(sed -n 's/^version[[:space:]]*=[[:space:]]*"\([0-9.]*\)".*/\1/p' src-tauri/Cargo.toml | head -n1)"
+          about_version="$(sed -n 's/^const APP_VERSION = "\([0-9.]*\)".*/\1/p' src/AboutPage.jsx)"
+
+          echo "Tag version:     $tag_version"
+          echo "package.json:    $package_version"
+          echo "Tauri config:    $tauri_version"
+          echo "Cargo package:   $cargo_version"
+          echo "About page:      $about_version"
+
+          for value in "$package_version" "$tauri_version" "$cargo_version" "$about_version"; do
+            if [[ "$value" != "$tag_version" ]]; then
+              echo "Version mismatch: expected $tag_version, found $value"
+              exit 1
+            fi
+          done
+
   release:
+    needs: validate
     permissions:
       contents: write
     strategy:
@@ -26,6 +81,9 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -60,11 +118,15 @@ jobs:
           PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          # 只打印长度，不打印内容，避免泄露密钥
-          echo "vars.TAURI_UPDATER_PUBKEY            length=${#PUBKEY_VAR}"
-          echo "secrets.TAURI_UPDATER_PUBKEY         length=${#PUBKEY_SECRET}"
-          echo "secrets.TAURI_SIGNING_PRIVATE_KEY    length=${#PRIVATE_KEY}"
+          set -euo pipefail
+          echo "vars.TAURI_UPDATER_PUBKEY              length=${#PUBKEY_VAR}"
+          echo "secrets.TAURI_UPDATER_PUBKEY           length=${#PUBKEY_SECRET}"
+          echo "secrets.TAURI_SIGNING_PRIVATE_KEY      length=${#PRIVATE_KEY}"
           echo "secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD length=${#PRIVATE_KEY_PASSWORD}"
+          if [[ -z "$PUBKEY_VAR$PUBKEY_SECRET" || -z "$PRIVATE_KEY" ]]; then
+            echo "Missing updater signing credentials."
+            exit 1
+          fi
 
       - name: Prepare signed updater config
         run: node scripts/prepare-tauri-release.mjs
@@ -72,7 +134,6 @@ jobs:
           TAURI_UPDATER_PROVIDER: github
           TAURI_RELEASE_OWNER: ${{ github.repository_owner }}
           TAURI_RELEASE_REPO: ${{ github.event.repository.name }}
-          # 公钥不是敏感信息，放 Variables 更合适；为兼容误配到 Secrets 的情况，两处都读
           TAURI_UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY || secrets.TAURI_UPDATER_PUBKEY }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -81,14 +142,42 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # 在仓库 Settings → Secrets and variables → Actions 中配置这两个密钥
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "Python 数据工作台 ${{ github.ref_name }}"
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: "Python 数据工作台 ${{ env.RELEASE_TAG }}"
           releaseBody: "更新内容见下方文件列表。桌面端会自动检测此版本并提示更新。"
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
           args: "--config src-tauri/tauri.release.conf.json ${{ matrix.args }}"
+
+  verify-release:
+    name: Verify GitHub Release assets
+    needs: release
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - name: Verify release and updater manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease,assets
+          manifest_url="https://github.com/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG/latest.json"
+          curl --fail --location --retry 3 --silent --show-error "$manifest_url" -o latest.json
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const manifest = JSON.parse(fs.readFileSync('latest.json', 'utf8'));
+          const tagVersion = process.env.RELEASE_TAG.slice(1);
+          if (manifest.version !== tagVersion) {
+            throw new Error(`latest.json version ${manifest.version} does not match ${tagVersion}`);
+          }
+          if (!manifest.platforms || Object.keys(manifest.platforms).length === 0) {
+            throw new Error('latest.json has no platforms');
+          }
+          console.log(`Verified updater manifest v${manifest.version} for ${Object.keys(manifest.platforms).length} platform entries.`);
+          NODE
