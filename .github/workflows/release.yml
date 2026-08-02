@@ -58,7 +58,8 @@ jobs:
           TAURI_UPDATER_PROVIDER: github
           TAURI_RELEASE_OWNER: ${{ github.repository_owner }}
           TAURI_RELEASE_REPO: ${{ github.event.repository.name }}
-          TAURI_UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY }}
+          # 公钥不是敏感信息，放 Variables 更合适；为兼容误配到 Secrets 的情况，两处都读
+          TAURI_UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY || secrets.TAURI_UPDATER_PUBKEY }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
