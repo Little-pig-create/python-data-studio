@@ -37,3 +37,5 @@ dev-server*.log
 
 # Windows shortcuts
 *.lnk
+# Generated release artifacts
+release/
