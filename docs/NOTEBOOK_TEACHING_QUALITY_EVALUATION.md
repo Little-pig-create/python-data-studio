@@ -175,7 +175,7 @@ scikit-learn 数据集已同时保存于源数据目录和浏览器静态目录�
 | Python Code Cell AST 可解析 | 通过；未发现语法错误 |
 | 方法说明字段增强 | 1292 个方法说明 Cell |
 | 方法 Markdown → 独立 Code Cell 配对 | 1292/1292 |
-| 日期/时间衔接章节 | 第 21、25、77 章已加入 |
+| 日期/时间衔接章节 | Python 基础第 12 章已加入 `time`/`datetime`；第 21、25、77 章继续承接 |
 | 模块大作业交付自检 | 8/8 |
 | Notebook 中 `assert` 字面量 | 0 |
 | `public/course/` 与 `dist/course/` 内容一致 | 通过 |

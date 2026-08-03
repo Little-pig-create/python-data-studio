@@ -39,7 +39,7 @@ export const useNotebookStore = create((set) => ({
   selectedCellId: null,
   dirty: false,
   runtimeState: "idle",
-  runtimeMessage: "正在初始化内核",
+  runtimeMessage: "首次运行代码时启动 Python",
   setDocument: (notebookKey, document) => set({
     notebookKey,
     document,

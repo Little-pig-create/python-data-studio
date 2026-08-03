@@ -1,10 +1,14 @@
 // @ts-check
 import path from "node:path";
+import { readFileSync } from "node:fs";
 import react from "@vitejs/plugin-react";
+
+const packageInfo = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 
 /** @type {import("vite").UserConfigFn} */
 export default ({ mode, command }) => {
-  const isDesktop = mode === "desktop" || mode === "desktop-online";
+  const isDesktop = mode.startsWith("desktop");
+  const isStudentEdition = mode === "desktop-student";
 
   /** @type {import("vite").Plugin[]} */
   const plugins = [react()];
@@ -28,6 +32,12 @@ export default ({ mode, command }) => {
   return {
     plugins,
 
+    define: {
+      "import.meta.env.VITE_APP_VERSION": JSON.stringify(packageInfo.version),
+      "import.meta.env.VITE_DESKTOP_MODE": JSON.stringify(isDesktop ? "true" : "false"),
+      "import.meta.env.VITE_APP_EDITION": JSON.stringify(isStudentEdition ? "student" : "full"),
+    },
+
     // Tauri loads the bundled frontend from its asset protocol, so desktop
     // bundles must resolve JS/CSS relative to index.html.
     base: isDesktop ? "./" : "/",
@@ -37,6 +47,9 @@ export default ({ mode, command }) => {
     publicDir: isDesktop && command === "build" ? false : "public",
 
     optimizeDeps: {
+      include: isDesktop
+        ? ["@jupyterlab/services", "@tauri-apps/api/core"]
+        : [],
       exclude: isDesktop
         ? ["@tauri-apps/plugin-updater", "@tauri-apps/plugin-process"]
         : [],
@@ -49,15 +62,20 @@ export default ({ mode, command }) => {
     },
 
     // 桌面版：thebe-* 替换为空桩，不把 Web 版的 WASM 引擎打进主包。
-    resolve: isDesktop
-      ? {
-          alias: {
+    resolve: {
+      alias: {
+        "@pds/application-shell": path.resolve(
+          isStudentEdition ? "src/StudentApplicationShell.jsx" : "src/ApplicationShell.jsx",
+        ),
+        ...(isDesktop
+          ? {
             "thebe-core": path.resolve("src/stubs/thebe-core.js"),
             "thebe-lite": path.resolve("src/stubs/thebe-lite.js"),
             "thebe-react": path.resolve("src/stubs/thebe-react.js"),
-          },
-        }
-      : undefined,
+            }
+          : {}),
+      },
+    },
 
     build: {
       rollupOptions: {

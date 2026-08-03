@@ -28,9 +28,9 @@ def detail(title,old):
  base=old.split('<!-- 教学增强：方法字段 -->',1)[0].rstrip()
  return base+f'''\n\n<!-- 教学增强：方法字段 -->\n\n#### 方法说明\n\n- **作用**：说明 `{title.strip('# ')}` 在本章任务中解决的问题。\n- **调用形式**：以当前代码 Cell 为准，补充对象、参数和默认值。\n- **参数**：{params}\n- **返回值**：{ret}\n- **原对象是否改变**：{mutate}\n- **错误与边界**：检查空输入、缺失值、类型不匹配、越界、形状不一致或格式不匹配；文件和图形方法还要检查路径与输出副作用。\n- **相近方法区别**：与本章相近方法比较输入、返回值、是否修改原对象和适用场景。\n\n#### 学习动作\n\n先独立运行下一个代码 Cell，记录输入、输出、类型和形状；再修改一个参数，比较结果变化，并写出“观察到—说明—限制—下一步”。'''
 def add_time(nb,ch):
- if any('时间与日期专题：独立方法示例' in txt(c) for c in nb['cells']): return
+ if any(str(c.get('id','')).startswith(('time-', 'python-time-')) for c in nb['cells']): return
  if ch==21:
-  cells=[mk('markdown','''## 时间与日期专题：独立方法示例\n\n本节把日期处理拆成独立方法，逐一说明对象类型、格式、返回值、原对象变化、时区和边界。使用固定日期，避免把系统当前时间当成固定答案。''','time-intro'),mk('markdown','''### `datetime.date`\n\n- **作用**：表示年月日。\n- **调用形式**：`date(year, month, day)`。\n- **返回值**：`date` 对象；对象不可变。\n- **边界**：非法月份或日期会产生 `ValueError`。''','time-date-md'),mk('code','''from datetime import date\nstart_date = date(2026, 8, 2)\nprint("日期:", start_date)\nprint("年/月/日:", start_date.year, start_date.month, start_date.day)''','time-date-code'),mk('markdown','''### `datetime.datetime` 与 `datetime.now()`\n\n- **作用**：同时表示日期和时间；`now()` 返回运行时刻。\n- **返回值**：`datetime` 对象。\n- **边界**：动态时间每次运行可能不同；报告示例应使用固定时间。''','time-datetime-md'),mk('code','''from datetime import datetime\nfixed_time = datetime(2026, 8, 2, 9, 30)\nprint("固定时间:", fixed_time)\nprint("当前日期类型:", type(datetime.now()).__name__)''','time-datetime-code'),mk('markdown','''### `timedelta`、`strptime()` 与 `strftime()`\n\n- `timedelta` 表示时间间隔；`strptime()` 解析字符串；`strftime()` 格式化输出。\n- **边界**：`%m` 是月份，`%M` 是分钟；空字符串和非法日期要恢复处理。''','time-format-md'),mk('code','''from datetime import datetime, timedelta\nraw = "2026-08-02 09:30"\nparsed = datetime.strptime(raw, "%Y-%m-%d %H:%M")\nprint("解析:", parsed)\nprint("7天后:", parsed + timedelta(days=7))\nprint("报告格式:", parsed.strftime("%Y年%m月%d日 %H:%M"))\ntry:\n    datetime.strptime("2026-02-30", "%Y-%m-%d")\nexcept ValueError as error:\n    print("无效日期已识别:", error)''','time-format-code'),mk('markdown','''### 时间综合案例：订单履约时长\n\n保留原始字符串、解析后的对象和异常记录；不能静默丢弃坏数据。''','time-case-md'),mk('code','''from datetime import datetime\nrecords = [("A001", "2026-08-01 09:00", "2026-08-02 13:30"), ("A002", "bad", "2026-08-03 10:00")]\nfor order_id, created_text, delivered_text in records:\n    try:\n        created = datetime.strptime(created_text, "%Y-%m-%d %H:%M")\n        delivered = datetime.strptime(delivered_text, "%Y-%m-%d %H:%M")\n        print(order_id, "履约小时数:", round((delivered-created).total_seconds()/3600, 2))\n    except ValueError as error:\n        print(order_id, "时间字段异常:", error)''','time-case-code')]
+  cells=[mk('markdown','''## 时间与日期专题：独立方法示例\n\n本节把日期处理拆成独立方法，逐一说明对象类型、格式、返回值、原对象变化、时区和边界。使用固定日期，避免把系统当前时间当成固定答案。''','time-intro'),mk('markdown','''### `datetime.date`\n\n- **作用**：表示年月日。\n- **调用形式**：`date(year, month, day)`。\n- **返回值**：`date` 对象；对象不可变。\n- **边界**：非法月份或日期会产生 `ValueError`。''','time-date-md'),mk('code','''from datetime import date\nstart_date = date(2026, 8, 2)\nprint("日期:", start_date)\nprint("年/月/日:", start_date.year, start_date.month, start_date.day)''','time-date-code'),mk('markdown','''### `datetime.datetime` 与 `datetime.now()`\n\n- **作用**：同时表示日期和时间；`now()` 返回运行时刻。\n- **返回值**：`datetime` 对象。\n- **边界**：动态时间每次运行可能不同；报告示例应使用固定时间。''','time-datetime-md'),mk('code','''from datetime import datetime\nfixed_time = datetime(2026, 8, 2, 9, 30)\nprint("固定时间:", fixed_time)\nprint("当前日期类型:", type(datetime.now()).__name__)''','time-datetime-code'),mk('markdown','''### `timedelta`、`strptime()` 与 `strftime()`\n\n- `timedelta` 表示时间间隔；`strptime()` 解析字符串；`strftime()` 格式化输出。\n- **边界**：`%m` 是月份，`%M` 是分钟；空字符串和非法日期要恢复处理。''','time-format-md'),mk('code','''from datetime import datetime, timedelta\nraw = "2026-08-02 09:30"\nparsed = datetime.strptime(raw, "%Y-%m-%d %H:%M")\nprint("解析:", parsed)\nprint("7天后:", parsed + timedelta(days=7))\nprint("报告格式（ISO样式）:", parsed.strftime("%Y-%m-%d %H:%M"))\ntry:\n    datetime.strptime("2026-02-30", "%Y-%m-%d")\nexcept ValueError as error:\n    print("无效日期已识别:", error)''','time-format-code'),mk('markdown','''### 时间综合案例：订单履约时长\n\n保留原始字符串、解析后的对象和异常记录；不能静默丢弃坏数据。''','time-case-md'),mk('code','''from datetime import datetime\nrecords = [("A001", "2026-08-01 09:00", "2026-08-02 13:30"), ("A002", "bad", "2026-08-03 10:00")]\nfor order_id, created_text, delivered_text in records:\n    try:\n        created = datetime.strptime(created_text, "%Y-%m-%d %H:%M")\n        delivered = datetime.strptime(delivered_text, "%Y-%m-%d %H:%M")\n        print(order_id, "履约小时数:", round((delivered-created).total_seconds()/3600, 2))\n    except ValueError as error:\n        print(order_id, "时间字段异常:", error)''','time-case-code')]
  elif ch==25:
   cells=[mk('markdown','''## 时间序列衔接：解析、重采样与滚动窗口\n\n按“解析 → 排序 → 设置时间索引 → 重采样 → 滚动计算”的顺序执行。''','time-series-md'),mk('code','''import pandas as pd\ntraffic = pd.DataFrame({"date": pd.date_range("2026-08-01", periods=7), "orders": [10,12,8,15,20,18,22]})\ntraffic["date"] = pd.to_datetime(traffic["date"])\ntraffic = traffic.sort_values("date").set_index("date")\nprint("3日汇总:\\n", traffic.resample("3D").sum())\nprint("3日滚动均值:\\n", traffic["orders"].rolling(3).mean())''','time-series-code'),mk('markdown','''### 结果解释\n\n`resample()` 改变时间粒度，`rolling()` 保留局部趋势；窗口前的不足观测通常为 NaN。用于预测时，滞后特征只能使用预测时点之前的信息。''','time-series-explain')]
  elif ch==77:
@@ -39,6 +39,14 @@ def add_time(nb,ch):
  pos=next((i for i,c in enumerate(nb['cells']) if '## 本章小结' in txt(c)),len(nb['cells'])); nb['cells'][pos:pos]=cells
 def process(p):
  nb=json.loads(p.read_text(encoding='utf-8')); cells=nb.get('cells',[]); start=None; end=len(cells)
+ seen_time_ids=set(); deduplicated=[]
+ for c in cells:
+  ident=str(c.get('id',''))
+  if ident.startswith(('time-', 'python-time-')):
+   if ident in seen_time_ids: continue
+   seen_time_ids.add(ident)
+  deduplicated.append(c)
+ nb['cells']=cells=deduplicated
  for i,c in enumerate(cells):
   if c.get('cell_type')=='markdown' and '本章方法与' in txt(c):start=i;break
  if start is not None:
@@ -50,7 +58,7 @@ def process(p):
  for c in cells:
   if c.get('cell_type') in ('markdown','code'):c['source']=src(txt(c).replace('`assert`','断言语句').replace('assert 语句','断言语句'))
  ch=int(re.search(r'(\d+)',p.stem).group(1));
- if ch not in (21,25,77): nb['cells']=[c for c in nb['cells'] if not str(c.get('id','')).startswith('time-')]
+ if ch not in (21,25,77): nb['cells']=[c for c in nb['cells'] if not (str(c.get('id','')).startswith('time-') or str(c.get('id','')).startswith('python-time-'))]
  add_time(nb,ch);nb.setdefault('metadata',{})['teaching_enhancement_version']='2026-08-02-method-fields-time-v1';p.write_text(json.dumps(nb,ensure_ascii=False,indent=2)+'\n',encoding='utf-8');return len(cells)
 count=0;total=0
 for p in sorted(PUB.glob('course-chapter-*.ipynb'),key=lambda p:int(re.search(r'(\d+)',p.stem).group(1))):total+=process(p);count+=1

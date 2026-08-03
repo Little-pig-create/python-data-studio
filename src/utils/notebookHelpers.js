@@ -29,7 +29,7 @@ export const kernelStatusLabels = { idle: "未启动", ready: "空闲", busy: "�
 
 export const kernelStatusDetails = {
   unknown: ["loading", "⏳ 正在连接内核..."],
-  starting: ["loading", "🚀 正在启动 Python（首次需要 10 秒）..."],
+  starting: ["loading", "🚀 正在启动 Python 内核..."],
   idle: ["ready", "✓ 内核就绪"],
   busy: ["busy", "▶ 代码运行中..."],
   terminating: ["loading", "⏹ 正在关闭内核..."],

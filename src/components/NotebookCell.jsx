@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -13,6 +13,38 @@ import { useNotebookStore } from "../notebookStore";
 import { CodeEditor } from "./CodeEditor";
 import { OutputRenderer } from "./OutputRenderer";
 import { CellToolbar } from "./CellToolbar";
+
+function LazyCodeEditor({ value, onChange, onRun, active }) {
+  const hostRef = useRef(null);
+  const [ready, setReady] = useState(active);
+
+  useEffect(() => {
+    if (active) setReady(true);
+  }, [active]);
+
+  useEffect(() => {
+    if (ready || !hostRef.current) return undefined;
+    if (typeof IntersectionObserver === "undefined") {
+      setReady(true);
+      return undefined;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setReady(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "700px 0px" });
+    observer.observe(hostRef.current);
+    return () => observer.disconnect();
+  }, [ready]);
+
+  const lineCount = String(value || "").split(/\r?\n/).length;
+  return <div ref={hostRef}>
+    {ready
+      ? <CodeEditor value={value} onChange={onChange} onRun={onRun} />
+      : <pre className="notebook-code-preview" style={{ minHeight: Math.min(320, Math.max(70, lineCount * 22 + 24)) }}><code>{value || " "}</code></pre>}
+  </div>;
+}
 
 export function NotebookCell({ cell, index, codeIndex, cellCount, runningCellId, onRun, onAdd, onMove, onDelete, onDuplicate, markdownCollapsed, onToggleMarkdown }) {
   const { activeCellId, notebookKey, selectCell, updateCellSource } = useNotebookStore();
@@ -116,7 +148,7 @@ export function NotebookCell({ cell, index, codeIndex, cellCount, runningCellId,
                   </IconButton>
                 </Tooltip>
               </div>}
-              <CodeEditor value={cell.source} onChange={(value) => updateCellSource(cell.id, value)} onRun={run} />
+              <LazyCodeEditor value={cell.source} onChange={(value) => updateCellSource(cell.id, value)} onRun={run} active={selected || isRunning} />
             </>
           )}
           {cell.outputs?.length > 0 && <div className={`notebook-output ${outputCollapsed ? "is-collapsed" : ""}`}>

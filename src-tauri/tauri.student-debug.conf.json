@@ -1,0 +1,27 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Python Data Studio 学生端 Debug",
+  "identifier": "com.python.datastudio.student.debug",
+  "build": {
+    "beforeDevCommand": "npm run dev:desktop:student -- --port 5173",
+    "beforeBuildCommand": "npm run build:desktop-web:student"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Python Data Studio 学生端 Debug",
+        "width": 1440,
+        "height": 900,
+        "resizable": true,
+        "fullscreen": false,
+        "label": "main",
+        "minWidth": 1100,
+        "minHeight": 720,
+        "center": true
+      }
+    ]
+  },
+  "bundle": {
+    "targets": ["nsis"]
+  }
+}

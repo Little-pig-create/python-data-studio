@@ -1,10 +1,10 @@
 {
-  "version": 23,
+  "version": 25,
   "modules": [
     {
       "id": "python",
       "label": "Python 基础",
-      "range": "第1–11章",
+      "range": "第1–12章",
       "color": "#2563EB"
     },
     {
@@ -231,21 +231,21 @@
       ]
     },
     {
-      "id": "capstone-python",
-      "chapter": 11,
-      "sortOrder": 11.5,
-      "title": "极客联赛·成绩数据救援",
-      "label": "极客联赛·成绩数据救援",
+      "id": "chapter-time",
+      "chapter": 12,
+      "sortOrder": 12,
+      "title": "时间与日期（time / datetime）",
+      "label": "第12章 时间与日期（time / datetime）",
       "module": "python",
-      "path": "/course/module-capstones/module-capstone-python.ipynb",
-      "kind": "capstone",
-      "estimatedMinutes": 120,
+      "path": "/course/course-chapter-time.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "os 文件操作",
-        "字典与函数",
-        "字符串与列表",
-        "数据清洗"
+        "Python基础",
+        "时间处理",
+        "time",
+        "datetime"
       ]
     },
     {
@@ -261,6 +261,24 @@
       "hasCode": true,
       "tags": [
         "数据处理"
+      ]
+    },
+    {
+      "id": "capstone-python",
+      "chapter": 12,
+      "sortOrder": 12.5,
+      "title": "极客联赛·成绩数据救援",
+      "label": "模块大作业：极客联赛·成绩数据救援",
+      "module": "python",
+      "path": "/course/module-capstones/module-capstone-python.ipynb",
+      "kind": "capstone",
+      "estimatedMinutes": 120,
+      "hasCode": true,
+      "tags": [
+        "os 文件操作",
+        "字典与函数",
+        "字符串与列表",
+        "数据清洗"
       ]
     },
     {

@@ -17,13 +17,14 @@ import FormatListBulletedRounded from "@mui/icons-material/FormatListBulletedRou
 import { Alert, Button, ButtonGroup, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, IconButton, Menu, MenuItem, Snackbar, Tab, Tabs, TextField, Tooltip } from "@mui/material";
 import { StudioSpeedDial } from "./StudioSpeedDial";
 import { useAppStore } from "./store";
-import { createRuntimeAdapter } from "./notebookRuntime";
+import { createRuntimeAdapter, getPreferredRuntimeKind } from "./notebookRuntime";
 import { deleteNotebookDraft, loadCustomNotebook, loadNotebookDraft, saveNotebookDraft } from "./notebookRepository";
 import { normalizeNotebook, serializeNotebook, useNotebookStore } from "./notebookStore";
 import { NotebookCell } from "./components/NotebookCell";
 import { NotebookNavigation } from "./components/NotebookNavigation";
 import { formatPythonSource, getChapterMeta, kernelStatusDetails, kernelStatusLabels, markdownOutline, shutdownNotebookRuntime } from "./utils/notebookHelpers";
 import { NotebookSkeleton } from "./LoadingSkeletons";
+import { APP_VERSION } from "./appVersion";
 
 export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPosition, totalLessons, onOpenSidebar, onRuntimeState }) {
   const [loading, setLoading] = useState(true);
@@ -38,6 +39,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
   const [markdownCollapsed, setMarkdownCollapsed] = useState(false);
   const [overviewCollapsed, setOverviewCollapsed] = useState(false);
   const [runningCellId, setRunningCellId] = useState(null);
+  const [runtimeWarmupToken, setRuntimeWarmupToken] = useState(0);
   const runtimeRef = useRef(null);
   const runtimeInitRef = useRef(null);
   const runtimeGenerationRef = useRef(0);
@@ -157,7 +159,15 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
         });
       }
       if (!disposed) store.setDocument(key, loadedDocument);
-      if (!disposed) { setLoading(false); store.setRuntime("loading", "正在初始化内核"); }
+      if (!disposed) {
+        const nativeRuntime = getPreferredRuntimeKind() === "native";
+        setLoading(false);
+        store.setRuntime(
+          nativeRuntime ? "loading" : "idle",
+          nativeRuntime ? "正在准备 Python 内核" : "首次运行代码时启动 Python"
+        );
+        onRuntimeStateRef.current?.(nativeRuntime ? "loading" : "idle");
+      }
     }).catch((reason) => {
       if (!disposed) { setError(reason.message || "Notebook 加载失败"); setLoading(false); store.setRuntime("error", "Notebook 加载失败"); }
     });
@@ -223,7 +233,13 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     const generation = runtimeGenerationRef.current;
     const initialization = (async () => {
       useNotebookStore.getState().setRuntime("loading", "正在启动 Python 内核");
-      const runtime = await createRuntimeAdapter(notebookPath);
+      const runtime = await createRuntimeAdapter(notebookPath, {
+        onStatus: (message) => {
+          if (generation !== runtimeGenerationRef.current) return;
+          useNotebookStore.getState().setRuntime("loading", message);
+          onRuntimeStateRef.current?.("loading");
+        }
+      });
       if (generation !== runtimeGenerationRef.current) {
         await shutdownNotebookRuntime(runtime);
         throw new Error("Notebook 已切换，内核初始化已取消");
@@ -240,30 +256,32 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     }
   }, [bindKernelStatus, clearKernelStatusBinding, lesson.id]);
 
+  // Desktop uses the bundled CPython runtime. Warm it up as soon as the
+  // notebook is visible so the header shows a real kernel state instead of
+  // staying at “未启动” until the first click on Run.
   useEffect(() => {
     if (
-      !document
-      || store.notebookKey !== `course:${lesson.id}`
+      getPreferredRuntimeKind() !== "native"
       || loading
       || error
-      || useNotebookStore.getState().runtimeState === "error"
-      || runtimeRef.current
-      || runtimeInitRef.current
+      || !document?.notebookKey
     ) return undefined;
-    let active = true;
-    ensureRuntime()
-      .then((runtime) => {
-        if (active) {
-          setToast({ open: true, message: `${runtime.native ? "本地" : "浏览器内"} Python 内核已创建`, severity: "success" });
-        }
-      })
-      .catch((reason) => {
-        if (!active) return;
-        useNotebookStore.getState().setRuntime("error", reason.message || "内核初始化失败");
-        setToast({ open: true, message: reason.message || "内核初始化失败", severity: "error" });
+
+    let cancelled = false;
+    const warmup = window.setTimeout(() => {
+      ensureRuntime().catch((reason) => {
+        if (cancelled) return;
+        const message = reason?.message || "Python 内核启动失败";
+        useNotebookStore.getState().setRuntime("error", message);
+        onRuntimeStateRef.current?.("error");
       });
-    return () => { active = false; };
-  }, [document, error, ensureRuntime, lesson.id, loading, store.notebookKey]);
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(warmup);
+    };
+  }, [document?.notebookKey, ensureRuntime, error, loading, lesson.id, runtimeWarmupToken]);
 
   const runCell = useCallback(async (cell) => {
     if (cell.type !== "code" || !document) return false;
@@ -294,6 +312,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
 
       return true;
     } catch (reason) {
+      const failureMessage = reason?.message || (typeof reason === "string" ? reason : "Python 单元格运行失败");
       const kernel = runtime?.session?.kernel;
       if (
         kernel
@@ -302,9 +321,8 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
         && kernel.connectionStatus !== "disconnected"
       ) {
         publishKernelStatus(kernel.status);
-      } else {
-        store.setRuntime("error", reason?.message || "运行失败");
       }
+      store.setRuntime("error", failureMessage);
       return false;
     } finally {
       setRunningCellId((currentId) => currentId === cell.id ? null : currentId);
@@ -473,7 +491,13 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
       await shutdownNotebookRuntime(runtime);
       await deleteNotebookDraft("course:" + lesson.id);
       store.setDocument("course:" + lesson.id, normalizeNotebook(source));
-      store.setRuntime("loading", "正在初始化内核");
+      const nativeRuntime = getPreferredRuntimeKind() === "native";
+      store.setRuntime(
+        nativeRuntime ? "loading" : "idle",
+        nativeRuntime ? "正在准备 Python 内核" : "首次运行代码时启动 Python"
+      );
+      onRuntimeStateRef.current?.(nativeRuntime ? "loading" : "idle");
+      setRuntimeWarmupToken((value) => value + 1);
       setLoading(false);
       showToast("本章已恢复为课程原始内容", "success");
     } catch (reason) {
@@ -485,7 +509,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
   return <section className="custom-notebook-shell" aria-label={`${lesson.label} Notebook`}>
     <header className="chapter-learning-header chapter-learning-header-compact">
       <div className="chapter-learning-heading">
-        <div className="chapter-learning-kicker"><span>{chapterMeta.moduleLabel}</span><span className="chapter-position-chip">第 {lessonPosition || lesson.chapter} / {totalLessons || "—"} 章</span><span className="chapter-version-chip">v0.1.0</span><span className={`chapter-kernel-state state-${store.runtimeState}`}><span />{store.runtimeState === "loading" ? store.runtimeMessage : (kernelStatusLabels[store.runtimeState] || "未知")}</span></div>
+        <div className="chapter-learning-kicker"><span>{chapterMeta.moduleLabel}</span><span className="chapter-position-chip">第 {lessonPosition || lesson.chapter} / {totalLessons || "—"} 章</span><span className="chapter-version-chip">v{APP_VERSION}</span><span className={`chapter-kernel-state state-${store.runtimeState}`}><span />{store.runtimeState === "loading" ? store.runtimeMessage : (kernelStatusLabels[store.runtimeState] || "未知")}</span></div>
       </div>
       <div className="chapter-learning-header-actions" aria-label="工作台快捷入口">
         <StudioSpeedDial />

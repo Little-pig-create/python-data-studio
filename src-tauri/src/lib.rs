@@ -10,6 +10,8 @@ use std::{
   thread,
   time::{Duration, Instant},
 };
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use tauri::{AppHandle, Manager, State};
 
 #[derive(Debug, Serialize, Clone)]
@@ -56,6 +58,12 @@ impl RuntimeManager {
   fn stop(&self) {
     if let Ok(mut slot) = self.runtime.lock() {
       if let Some(mut runtime) = slot.take() {
+        request_server_shutdown(&runtime.info);
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while Instant::now() < deadline {
+          if matches!(runtime.child.try_wait(), Ok(Some(_))) { return; }
+          thread::sleep(Duration::from_millis(80));
+        }
         let _ = runtime.child.kill();
         let _ = runtime.child.wait();
       }
@@ -65,6 +73,20 @@ impl RuntimeManager {
   fn current(&self) -> Option<RuntimeInfo> {
     self.runtime.lock().ok().and_then(|slot| slot.as_ref().map(|runtime| runtime.info.clone()))
   }
+}
+
+fn request_server_shutdown(info: &RuntimeInfo) {
+  let (Some(url), Some(token)) = (&info.server_url, &info.token) else { return; };
+  let address = url.strip_prefix("http://").unwrap_or(url);
+  let Ok(mut stream) = TcpStream::connect_timeout(
+    &match address.parse() { Ok(value) => value, Err(_) => return },
+    Duration::from_millis(400),
+  ) else { return; };
+  let request = format!(
+    "POST /api/shutdown?token={} HTTP/1.1\r\nHost: {}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+    token, address
+  );
+  let _ = stream.write_all(request.as_bytes());
 }
 
 fn random_token() -> String {
@@ -99,6 +121,14 @@ fn python_executable(root: &PathBuf) -> PathBuf {
   }
 }
 
+#[cfg(windows)]
+fn configure_no_window(command: &mut Command) {
+  command.creation_flags(0x08000000);
+}
+
+#[cfg(not(windows))]
+fn configure_no_window(_command: &mut Command) {}
+
 fn wait_for_server(url: &str, token: &str) -> Result<(), String> {
   let deadline = Instant::now() + Duration::from_secs(20);
   let address = url.strip_prefix("http://").unwrap_or(url);
@@ -123,6 +153,8 @@ pub fn start_native_runtime(app: AppHandle, state: State<'_, RuntimeManager>) ->
   state.stop();
   let root = runtime_root(&app)?;
   let python = python_executable(&root);
+  eprintln!("[native-runtime] root={} python={}", root.display(), python.display());
+  log::info!("native runtime root={} python={}", root.display(), python.display());
   if !python.exists() { return Err("Runtime 未找到：缺少打包的 Python 可执行文件".into()); }
 
   let app_data = app.path().app_data_dir().map_err(|error| error.to_string())?;
@@ -138,23 +170,34 @@ pub fn start_native_runtime(app: AppHandle, state: State<'_, RuntimeManager>) ->
   let port = TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?.local_addr().map_err(|error| error.to_string())?.port();
   let token = random_token();
   let server_url = format!("http://127.0.0.1:{}", port);
-  let python_version = Command::new(&python).arg("--version").output().ok().and_then(|output| {
+  let mut version_command = Command::new(&python);
+  configure_no_window(&mut version_command);
+  let python_version = version_command.arg("--version").output().ok().and_then(|output| {
     let bytes = if output.stdout.is_empty() { output.stderr } else { output.stdout };
     String::from_utf8(bytes).ok().map(|value| value.trim().replace("Python ", ""))
   });
   let mut command = Command::new(&python);
-  command.args(["-m", "jupyter", "server", "--no-browser", "--ServerApp.ip=127.0.0.1"])
+  configure_no_window(&mut command);
+  command.args(["-m", "jupyter_server", "--no-browser", "--ServerApp.ip=127.0.0.1"])
     .arg(format!("--ServerApp.port={}", port))
     .arg(format!("--ServerApp.token={}", token))
-    .args(["--ServerApp.open_browser=False", "--ServerApp.allow_remote_access=False", "--ServerApp.port_retries=0"])
+    .args([
+      "--ServerApp.open_browser=False",
+      "--ServerApp.allow_remote_access=False",
+      "--ServerApp.port_retries=0",
+      "--ServerApp.allow_origin_pat=^(https?://)?(tauri\\.localhost|localhost|127\\.0\\.0\\.1)(:\\d+)?$",
+    ])
     .arg(format!("--ServerApp.root_dir={}", workspace.display()))
-    .arg(format!("--ServerApp.allow_origin={}", "tauri://localhost"))
     .env("PDS_DATASETS_DIR", &datasets)
     .env("PDS_WORKSPACE_DIR", &workspace)
     .stdout(Stdio::from(log_file.try_clone().map_err(|error| error.to_string())?))
     .stderr(Stdio::from(log_file));
+  eprintln!("[native-runtime] spawning jupyter_server on 127.0.0.1:{}", port);
+  log::info!("spawning jupyter_server on 127.0.0.1:{}", port);
   let child = command.spawn().map_err(|error| format!("Runtime 启动失败：{}", error))?;
   if let Err(error) = wait_for_server(&server_url, &token) {
+    eprintln!("[native-runtime] server startup failed: {}", error);
+    log::error!("native runtime server startup failed: {}", error);
     let mut failed_child = child;
     let _ = failed_child.kill();
     return Err(error);
@@ -232,6 +275,37 @@ pub fn list_user_notebooks(app: AppHandle) -> Result<Vec<serde_json::Value>, Str
   }
   Ok(records)
 }
+
+#[tauri::command]
+pub fn open_external_url(url: String) -> Result<(), String> {
+  if !(url.starts_with("https://") || url.starts_with("http://")) {
+    return Err("仅支持打开 HTTP/HTTPS 链接".into());
+  }
+
+  #[cfg(windows)]
+  {
+    let mut command = Command::new("cmd");
+    configure_no_window(&mut command);
+    command.args(["/C", "start", "", &url]);
+    command.status().map_err(|error| error.to_string()).and_then(|status| {
+      if status.success() { Ok(()) } else { Err(format!("默认浏览器启动失败：{}", status)) }
+    })
+  }
+
+  #[cfg(target_os = "macos")]
+  {
+    Command::new("open").arg(&url).status().map_err(|error| error.to_string()).and_then(|status| {
+      if status.success() { Ok(()) } else { Err(format!("默认浏览器启动失败：{}", status)) }
+    })
+  }
+
+  #[cfg(all(unix, not(target_os = "macos")))]
+  {
+    Command::new("xdg-open").arg(&url).status().map_err(|error| error.to_string()).and_then(|status| {
+      if status.success() { Ok(()) } else { Err(format!("默认浏览器启动失败：{}", status)) }
+    })
+  }
+}
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -240,12 +314,20 @@ pub fn run() {
     .manage(RuntimeManager { runtime: Mutex::new(None) })
     .plugin(tauri_plugin_process::init())
     .plugin(tauri_plugin_updater::Builder::new().build())
-    .invoke_handler(tauri::generate_handler![commands::start_native_runtime, commands::stop_native_runtime, commands::native_runtime_status, commands::native_runtime_diagnostics, commands::load_user_notebook, commands::save_user_notebook, commands::delete_user_notebook, commands::list_user_notebooks])
-    .setup(|app| {
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
+    .invoke_handler(tauri::generate_handler![commands::start_native_runtime, commands::stop_native_runtime, commands::native_runtime_status, commands::native_runtime_diagnostics, commands::load_user_notebook, commands::save_user_notebook, commands::delete_user_notebook, commands::list_user_notebooks, commands::open_external_url])
+    .setup(|_app| {
+      #[cfg(feature = "desktop-debug")]
+      {
+        _app.handle().plugin(
           tauri_plugin_log::Builder::default()
             .level(log::LevelFilter::Info)
+            // The default LogDir target can fail with ERROR_ACCESS_DENIED on
+            // locked-down Windows machines. Debugging must still be possible
+            // without requiring write access to the OS application log dir.
+            .targets([
+              tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+              tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stderr),
+            ])
             .build(),
         )?;
       }

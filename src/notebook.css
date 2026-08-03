@@ -107,6 +107,7 @@
 .notebook-markdown-content pre { overflow: auto; border-radius: 6px; padding: 12px; background: #f8f9fa; }
 .notebook-markdown-content pre code { padding: 0; color: #202124; background: transparent; }
 .notebook-code-editor { min-height: 50px; border-radius: 8px 8px 0 0; background: #fbfcfe; background-clip: padding-box; }
+.notebook-code-preview { overflow: hidden; box-sizing: border-box; margin: 0; border-radius: 8px 8px 0 0; padding: 12px 14px; color: #202124; background: #fbfcfe; font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace; font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
 .notebook-code-editor:last-child { border-radius: 8px; }
 .notebook-output { border-top: 1px solid #e0e3e7; border-radius: 0 0 8px 8px; background: #fff; background-clip: padding-box; }
 .notebook-output-toolbar { position: relative; display: flex; min-height: 34px; align-items: center; padding: 0 14px; color: #5f6368; }

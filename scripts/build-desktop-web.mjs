@@ -10,6 +10,7 @@ const mode = modeIndex >= 0 ? args[modeIndex + 1] : "desktop";
 if (!mode || !mode.startsWith("desktop")) {
   throw new Error(`桌面构建脚本需要 desktop 模式，收到：${mode || "(空)"}`);
 }
+const isStudentEdition = mode === "desktop-student";
 
 const distDir = path.join(root, "dist");
 
@@ -60,7 +61,8 @@ console.log("  [desktop-entry] renamed: index.desktop.html -> index.html");
 
 console.log(`[desktop-build] runtime after vite: ${fs.existsSync(path.join(distDir, "runtime")) ? "present" : "absent"}`);
 
-// 桌面版需要课程、数据集和字体，但不需要 Web 版 JupyterLite/WASM 资源。
+// 学生端的数据集作为 Tauri 原生资源单独打包，避免在 frontendDist 中
+// 再复制一份。完整桌面版仍保留静态 datasets，兼容教师数据预览页。
 const copyDirectory = (source, target) => {
   fs.mkdirSync(target, { recursive: true });
   for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
@@ -70,7 +72,10 @@ const copyDirectory = (source, target) => {
     else fs.copyFileSync(from, to);
   }
 };
-for (const directory of ["course", "datasets", "fonts"]) {
+const desktopAssetDirectories = isStudentEdition
+  ? ["course", "fonts"]
+  : ["course", "datasets", "fonts"];
+for (const directory of desktopAssetDirectories) {
   const source = path.join(root, "public", directory);
   const target = path.join(distDir, directory);
   copyDirectory(source, target);
@@ -86,8 +91,9 @@ for (const entry of fs.readdirSync(distDir, { withFileTypes: true })) {
 }
 
 const leftovers = [path.join(distDir, "runtime"), path.join(distDir, "service-worker.js")];
+if (isStudentEdition) leftovers.push(path.join(distDir, "datasets"));
 if (leftovers.some((target) => fs.existsSync(target))) {
-  throw new Error("桌面构建清理失败：Web 运行时资源仍存在于 dist/");
+  throw new Error("桌面构建清理失败：学生端不需要的 Web 资源仍存在于 dist/");
 }
 
 const files = [];

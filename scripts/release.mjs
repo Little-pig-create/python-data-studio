@@ -150,9 +150,6 @@ updateFile(path.join(root, "src-tauri", "tauri.conf.json"), (src, _old, next) =>
 updateFile(path.join(root, "src-tauri", "Cargo.toml"), (src, _old, next) =>
   src.replace(/^(version\s*=\s*)"[\d.]+"(\s*#.*)?$/m, `$1"${next}"$2`)
 );
-updateFile(path.join(root, "src", "AboutPage.jsx"), (src, _old, next) =>
-  src.replace(/const APP_VERSION\s*=\s*"[\d.]+"/, `const APP_VERSION = "${next}"`)
-);
 
 // ── Release 产物：本地构建 + 归档 ─────────────────────────────────────────────
 const releaseDir = path.join(root, "release", tag);
@@ -162,7 +159,7 @@ if (skipBuild) {
 } else {
   console.log("\n🔨 本地构建桌面安装包...");
   try {
-    runLocal(["npm", "run", "desktop:build"], { label: "npm run desktop:build" });
+    runLocal(["npm", "run", "desktop:build:student:release"], { label: "npm run desktop:build:student:release" });
   } catch (error) {
     console.error("\n❌ 桌面构建失败，版本号文件已被修改但未提交。");
     console.error("   可修复后重试；如确认无需构建，请使用 --skip-build 跳过。\n");
@@ -214,7 +211,7 @@ console.log(`📝 已生成 release/${tag}/RELEASE_NOTES.md`);
 
 // ── Git 提交、Tag、推送 ───────────────────────────────────────────────────────
 try {
-  runGit(["add", "package.json", "src-tauri/tauri.conf.json", "src-tauri/Cargo.toml", "src/AboutPage.jsx"]);
+  runGit(["add", "package.json", "src-tauri/tauri.conf.json", "src-tauri/Cargo.toml"]);
   runGit(["commit", "-m", `chore: bump version to ${newVersion}`]);
   runGit(["tag", tag]);
   runGit(["push", remote, "HEAD:main"]);

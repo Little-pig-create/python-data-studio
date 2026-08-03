@@ -22,6 +22,7 @@ import { RoleWorkspaceNav } from "./RoleWorkspaceNav";
 import { DatasetCenter } from "./DatasetCenter";
 import { NotebookContentCenter } from "./NotebookContentCenter";
 import { listPublishedAnnouncements, syncAnnouncements } from "./announcementRepository";
+import { APP_VERSION } from "./appVersion";
 
 const teacherNavigation = [
   { to: "/teaching", label: "教学概览", icon: <DashboardRounded fontSize="small" />, end: true },
@@ -166,7 +167,7 @@ function TeacherUpdates() {
   const check = () => { setChecking(true); setTimeout(() => { setChecking(false); setToast("已完成更新源检查，当前没有新的发布任务"); }, 700); };
   return <>
     <section className="workspace-action-bar"><div><span className="eyebrow">发布服务</span><h2>在线更新管理</h2><p>这里维护版本说明和发布状态；真正的安装包签名、上传和灰度策略应由发布服务完成。</p></div><Button variant="outlined" startIcon={<SystemUpdateAltRounded />} onClick={check} disabled={checking}>{checking ? "检查中…" : "检查更新源"}</Button></section>
-    <section className="workspace-kpi-grid"><article><span>当前版本</span><strong>v0.1.0</strong><small>桌面端</small></article><article><span>更新通道</span><strong>稳定版</strong><small>stable</small></article><article><span>发布状态</span><strong>已就绪</strong><small>等待服务接入</small></article><article><span>最后检查</span><strong>--</strong><small>由发布服务提供</small></article></section>
+    <section className="workspace-kpi-grid"><article><span>当前版本</span><strong>v{APP_VERSION}</strong><small>桌面端</small></article><article><span>更新通道</span><strong>稳定版</strong><small>stable</small></article><article><span>发布状态</span><strong>已就绪</strong><small>等待服务接入</small></article><article><span>最后检查</span><strong>--</strong><small>由发布服务提供</small></article></section>
     <section className="workspace-panel-grid two-columns"><article className="workspace-panel"><div className="workspace-panel-heading"><div><span className="eyebrow">版本清单</span><h2>桌面端发布配置</h2></div></div><dl className="management-detail"><div><dt>产品标识</dt><dd>com.python.datastudio</dd></div><div><dt>更新清单</dt><dd>latest.json</dd></div><div><dt>更新地址</dt><dd>GitHub Releases / 自建对象存储</dd></div><div><dt>安全要求</dt><dd>签名校验、HTTPS、发布审计</dd></div></dl></article><article className="workspace-panel"><div className="workspace-panel-heading"><div><span className="eyebrow">发布流程</span><h2>上线前检查</h2></div></div><ul className="requirement-list"><li><strong>构建并签名</strong><span>生成各平台安装包和签名文件</span></li><li><strong>填写更新说明</strong><span>说明功能、修复和兼容性变化</span></li><li><strong>灰度发布</strong><span>先面向测试账号验证下载与重启</span></li><li><strong>正式发布</strong><span>更新 latest.json 并保留可回滚版本</span></li></ul></article></section>
     <Snackbar open={Boolean(toast)} autoHideDuration={2500} onClose={() => setToast("")}><Alert severity="success">{toast}</Alert></Snackbar>
   </>;

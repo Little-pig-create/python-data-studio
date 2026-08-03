@@ -259,6 +259,7 @@ button, input { font: inherit; }
 .landing-nav { display: flex; height: 64px; align-items: center; justify-content: space-between; gap: 32px; }
 .landing-brand { display: inline-flex; align-items: center; gap: 10px; color: #152033; text-decoration: none; }
 .landing-brand-mark { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 9px; color: #fff; background: #2563eb; box-shadow: 0 7px 16px rgba(37, 99, 235, .2); }
+.landing-glyph { display: inline-flex; align-items: center; justify-content: center; min-width: 1em; font-family: Inter, "Segoe UI", sans-serif; font-size: 1em; font-weight: 800; line-height: 1; }
 .landing-brand-mark svg { font-size: 21px; }
 .landing-brand strong, .landing-brand small { display: block; }
 .landing-brand strong { font-size: 14px; letter-spacing: -.01em; }
@@ -323,6 +324,7 @@ button, input { font: inherit; }
 .landing-stats strong { color: #172237; font-size: 29px; letter-spacing: -.04em; }
 .landing-stats span { color: #8994a3; font-size: 11px; }
 .landing-section { padding: 110px 0; }
+.landing-stats, .landing-section, .landing-roles, .landing-footer { content-visibility: auto; contain-intrinsic-size: auto 520px; }
 .landing-section-heading { max-width: 620px; margin-bottom: 30px; }
 .landing-section-heading.compact { margin-bottom: 28px; }
 .landing-overline { display: block; color: #2563eb; font-size: 10px; font-weight: 800; letter-spacing: .13em; }
@@ -651,7 +653,7 @@ button, input { font: inherit; }
 .is-available .about-status-dot { background: #2563eb; }
 .is-error .about-status-dot { background: #f04438; }
 .about-release-preview { margin-top: 13px; border-left: 3px solid #2563eb; padding: 2px 0 2px 11px; }
-.about-release-preview p { margin: 5px 0; color: #667085; font-size: 11px; line-height: 1.6; white-space: pre-wrap; }
+.about-release-preview p { margin: 5px 0; color: #667085; font-size: 11px; line-height: 1.6; }
 .about-release-preview small, .about-update-hint, .about-muted { color: #98a2b3; font-size: 10px; }
 .about-update-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
 .about-update-hint { margin: 13px 0 0; }
@@ -664,7 +666,27 @@ button, input { font: inherit; }
 .about-notes-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .about-notes-meta strong { color: #344054; font-size: 13px; }
 .about-notes-meta span { color: #98a2b3; font-size: 10px; }
-.about-notes p { margin: 0; color: #475467; font-size: 12px; line-height: 1.75; white-space: pre-wrap; }
+.about-notes p { margin: 0 0 9px; color: #475467; font-size: 12px; line-height: 1.75; }
+.about-markdown { color: #475467; font-size: 12px; line-height: 1.75; overflow-wrap: anywhere; }
+.about-release-preview .about-markdown { font-size: 11px; line-height: 1.6; }
+.about-markdown > :first-child { margin-top: 0; }
+.about-markdown > :last-child { margin-bottom: 0; }
+.about-markdown h1, .about-markdown h2, .about-markdown h3, .about-markdown h4 { color: #344054; line-height: 1.35; margin: 14px 0 7px; }
+.about-release-preview .about-markdown h1, .about-release-preview .about-markdown h2, .about-release-preview .about-markdown h3, .about-release-preview .about-markdown h4 { margin: 9px 0 5px; }
+.about-markdown h1 { font-size: 20px; }
+.about-markdown h2 { font-size: 16px; }
+.about-markdown h3 { font-size: 14px; }
+.about-markdown ul, .about-markdown ol { margin: 7px 0; padding-left: 22px; }
+.about-markdown li { margin: 3px 0; }
+.about-markdown a { color: #2563eb; text-decoration: none; }
+.about-markdown a:hover { text-decoration: underline; }
+.about-markdown code { border-radius: 4px; padding: 2px 4px; color: #175cd3; background: #eff6ff; font-size: .92em; }
+.about-markdown pre { overflow-x: auto; border-radius: 7px; padding: 10px 12px; background: #f8fafc; }
+.about-markdown pre code { padding: 0; color: #344054; background: transparent; }
+.about-markdown blockquote { margin: 9px 0; border-left: 3px solid #bfd2ef; padding-left: 12px; color: #667085; }
+.about-markdown table { width: 100%; border-collapse: collapse; margin: 9px 0; }
+.about-markdown th, .about-markdown td { border: 1px solid #e4e7ec; padding: 6px 8px; text-align: left; }
+.about-markdown th { background: #f8fafc; color: #344054; }
 .about-secondary-grid { margin-top: 16px; }
 .about-link-list { display: grid; gap: 4px; }
 .about-link-list a { display: flex; align-items: center; gap: 8px; border-radius: 6px; padding: 9px 8px; color: #344054; font-size: 12px; text-decoration: none; }

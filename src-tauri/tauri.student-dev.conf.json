@@ -1,0 +1,23 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Python Data Studio 学生端 Tauri Dev",
+  "identifier": "com.python.datastudio.student.dev",
+  "build": {
+    "beforeDevCommand": "npm run dev:desktop:student -- --port 5173"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Python Data Studio 学生端 Tauri Dev",
+        "width": 1440,
+        "height": 900,
+        "resizable": true,
+        "fullscreen": false,
+        "label": "main",
+        "minWidth": 1100,
+        "minHeight": 720,
+        "center": true
+      }
+    ]
+  }
+}

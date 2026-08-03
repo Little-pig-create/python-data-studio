@@ -8,12 +8,15 @@ dist/
 .env.*
 !.env.desktop
 !.env.desktop-online
+!.env.desktop-student
 !.env.example
 
 # Generated release configuration and Tauri build cache
 src-tauri/tauri.release.conf.json
 src-tauri/target/
+src-tauri/generated/
 server/target/
+.tmp-runtime/
 
 # Generated native CPython runtime
 runtime/native/dist/python-runtime/*

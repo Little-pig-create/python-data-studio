@@ -6,7 +6,7 @@ import { chapterProgress, matchesCourseSearch, moduleStats } from "../utils/prog
 import { ChapterProgressRing } from "./ChapterProgressRing";
 
 function chapterNavigationLabel(item) {
-  if (item.kind === "capstone") return "模块作业";
+  if (item.kind === "capstone") return item.label || item.title || "模块大作业";
   return item.label || `第${item.chapter}章 ${item.title}`;
 }
 

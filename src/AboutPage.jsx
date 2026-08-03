@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Chip, CircularProgress, Divider, LinearProgress } from "@mui/material";
+import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
+import remarkGfm from "remark-gfm";
 import ArrowBackRounded from "@mui/icons-material/ArrowBackRounded";
 import CheckCircleOutlineRounded from "@mui/icons-material/CheckCircleOutlineRounded";
 import CodeRounded from "@mui/icons-material/CodeRounded";
@@ -13,11 +16,20 @@ import SchoolRounded from "@mui/icons-material/SchoolRounded";
 import SystemUpdateAltRounded from "@mui/icons-material/SystemUpdateAltRounded";
 import { useNavigate } from "react-router-dom";
 import { roleHome, useAuth } from "./AuthProvider";
+import { APP_VERSION } from "./appVersion";
+import {
+  GITHUB_RELEASE_URL,
+  UPDATE_KIND,
+  checkForAppUpdate,
+  installAppUpdate,
+  openManualUpdate,
+  openExternalUrl,
+  relaunchApp,
+} from "./updaterService";
 
-const APP_VERSION = "0.1.2";
 const COURSE_CONTENT_VERSION = 14;
 const PROJECT_URL = "https://github.com/Little-pig-create/python-data-studio";
-const RELEASE_URL = `${PROJECT_URL}/releases/latest`;
+const RELEASE_URL = GITHUB_RELEASE_URL;
 const GITEE_URL = "https://gitee.com/xiaozhusir/python-data-studio";
 const LICENSE = "MIT";
 const IS_TAURI = typeof window !== "undefined" && Boolean(window.__TAURI_INTERNALS__);
@@ -57,15 +69,42 @@ function AboutInfoRow({ label, value, children }) {
   return <div className="about-info-row"><span>{label}</span><strong>{children || value}</strong></div>;
 }
 
+function MarkdownNotes({ value }) {
+  return <div className="about-markdown">
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeSanitize]}
+      components={{
+        a: ({ href, children, ...props }) => <a
+          {...props}
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(event) => {
+            event.preventDefault();
+            void openExternalUrl(href).catch(() => {});
+          }}
+        >{children}</a>,
+      }}
+    >{value || "该版本暂未提供更新说明。"}</ReactMarkdown>
+  </div>;
+}
+
 export function AboutPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [updateState, setUpdateState] = useState(UPDATE_STATE.IDLE);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [updateError, setUpdateError] = useState("");
+  const [updateNotice, setUpdateNotice] = useState("");
   const [progress, setProgress] = useState(0);
   const [releaseNotes, setReleaseNotes] = useState(null);
   const [notesState, setNotesState] = useState("loading");
+
+  const openReleaseLink = (event, url = RELEASE_URL) => {
+    event.preventDefault();
+    void openExternalUrl(url).catch(() => {});
+  };
 
   const platform = useMemo(platformLabel, []);
   const buildMode = useMemo(buildModeLabel, []);
@@ -93,6 +132,7 @@ export function AboutPage() {
 
   async function checkForUpdate() {
     setUpdateError("");
+    setUpdateNotice("");
     if (!IS_TAURI) {
       setUpdateState(UPDATE_STATE.ERROR);
       setUpdateError("浏览器版不支持桌面端自动更新，请前往项目 Release 页面下载新版本。");
@@ -105,12 +145,14 @@ export function AboutPage() {
     }
     setUpdateState(UPDATE_STATE.CHECKING);
     try {
-      const { check } = await import("@tauri-apps/plugin-updater");
-      const update = await check();
-      if (update) {
-        setUpdateInfo({ update, version: update.version, body: update.body, date: update.date });
+      const result = await checkForAppUpdate();
+      if (result.kind !== UPDATE_KIND.NONE) {
+        setUpdateInfo(result);
+        setUpdateNotice(result.notice || "");
         setUpdateState(UPDATE_STATE.AVAILABLE);
       } else {
+        setUpdateInfo(null);
+        setUpdateNotice(result.notice || "");
         setUpdateState(UPDATE_STATE.UP_TO_DATE);
       }
     } catch (error) {
@@ -120,13 +162,17 @@ export function AboutPage() {
   }
 
   async function downloadAndInstall() {
-    if (!updateInfo?.update) return;
+    if (!updateInfo) return;
+    if (updateInfo.kind === UPDATE_KIND.MANUAL) {
+      await openManualUpdate(updateInfo);
+      return;
+    }
     setUpdateState(UPDATE_STATE.DOWNLOADING);
     setProgress(0);
     try {
       let downloaded = 0;
       let total = 0;
-      await updateInfo.update.downloadAndInstall((event) => {
+      await installAppUpdate(updateInfo, (event) => {
         if (event.event === "Started") total = event.data?.contentLength ?? 0;
         if (event.event === "Progress") {
           downloaded += event.data?.chunkLength ?? 0;
@@ -143,8 +189,7 @@ export function AboutPage() {
 
   async function relaunch() {
     try {
-      const { relaunch: tauriRelaunch } = await import("@tauri-apps/plugin-process");
-      await tauriRelaunch();
+      await relaunchApp();
     } catch {
       setUpdateState(UPDATE_STATE.ERROR);
       setUpdateError("更新已下载，请手动重启应用完成安装。");
@@ -185,14 +230,15 @@ export function AboutPage() {
         <div className="workspace-panel-heading"><div><span className="eyebrow">应用更新</span><h2>检查新版本</h2></div><SystemUpdateAltRounded color="primary" /></div>
         <div className={`about-update-status is-${updateState}`}><span className="about-status-dot" /><strong>{statusText}</strong></div>
         {updateState === UPDATE_STATE.ERROR && <Alert severity="warning" sx={{ mt: 2 }}>{updateError}</Alert>}
-        {updateState === UPDATE_STATE.AVAILABLE && <div className="about-release-preview"><strong>v{updateInfo.version}</strong><p>{updateInfo.body || "该版本暂未提供更新说明。"}</p><small>{formatDate(updateInfo.date)}</small></div>}
+        {updateNotice && updateState !== UPDATE_STATE.ERROR && <Alert severity={updateInfo?.kind === UPDATE_KIND.MANUAL ? "info" : "success"} sx={{ mt: 2 }}>{updateNotice}</Alert>}
+        {updateState === UPDATE_STATE.AVAILABLE && <div className="about-release-preview"><strong>v{updateInfo.version}</strong><MarkdownNotes value={updateInfo.body} /><small>{formatDate(updateInfo.date)}</small></div>}
         {updateState === UPDATE_STATE.DOWNLOADING && <LinearProgress variant={progress ? "determinate" : "indeterminate"} value={progress} sx={{ mt: 2 }} />}
         {updateState === UPDATE_STATE.READY && <Alert severity="success" sx={{ mt: 2 }}>更新包已准备好，重启应用后生效。</Alert>}
         <div className="about-update-actions">
           <Button variant="contained" startIcon={updateState === UPDATE_STATE.CHECKING ? <CircularProgress size={16} color="inherit" /> : <RefreshRounded />} disabled={updateState === UPDATE_STATE.CHECKING || updateState === UPDATE_STATE.DOWNLOADING} onClick={checkForUpdate}>检查更新</Button>
-          {updateState === UPDATE_STATE.AVAILABLE && <Button variant="outlined" startIcon={<SystemUpdateAltRounded />} onClick={downloadAndInstall}>下载并安装</Button>}
+          {updateState === UPDATE_STATE.AVAILABLE && <Button variant="outlined" startIcon={<SystemUpdateAltRounded />} onClick={downloadAndInstall}>{updateInfo?.kind === UPDATE_KIND.MANUAL ? "下载新版本" : "下载并安装"}</Button>}
           {updateState === UPDATE_STATE.READY && <Button variant="outlined" startIcon={<RestartAltRounded />} onClick={relaunch}>立即重启</Button>}
-          <Button variant="text" endIcon={<OpenInNewRounded />} component="a" href={RELEASE_URL} target="_blank" rel="noreferrer">查看 Release</Button>
+          <Button variant="text" endIcon={<OpenInNewRounded />} component="a" href={RELEASE_URL} target="_blank" rel="noreferrer" onClick={(event) => openReleaseLink(event)}>查看 Release</Button>
         </div>
         <p className="about-update-hint">{buildMode}</p>
       </article>
@@ -210,16 +256,16 @@ export function AboutPage() {
     </section>
 
     <section className="workspace-panel about-notes-panel">
-      <div className="workspace-panel-heading"><div><span className="eyebrow">更新说明</span><h2>最近一次发布内容</h2></div><Button size="small" endIcon={<OpenInNewRounded />} component="a" href={RELEASE_URL} target="_blank" rel="noreferrer">完整说明</Button></div>
+      <div className="workspace-panel-heading"><div><span className="eyebrow">更新说明</span><h2>最近一次发布内容</h2></div><Button size="small" endIcon={<OpenInNewRounded />} component="a" href={RELEASE_URL} target="_blank" rel="noreferrer" onClick={(event) => openReleaseLink(event)}>完整说明</Button></div>
       {notesState === "loading" && <p className="about-muted">正在读取 Release 更新说明…</p>}
       {notesState === "error" && <Alert severity="info">暂时无法读取在线更新说明，可打开 GitHub Release 页面查看。</Alert>}
-      {notesState === "ready" && <div className="about-notes"><div className="about-notes-meta"><strong>{releaseNotes.name || releaseNotes.tag_name || "最新版本"}</strong><span>{formatDate(releaseNotes.published_at)}</span></div><p>{releaseNotes.body || "该版本暂未提供更新说明。"}</p></div>}
+      {notesState === "ready" && <div className="about-notes"><div className="about-notes-meta"><strong>{releaseNotes.name || releaseNotes.tag_name || "最新版本"}</strong><span>{formatDate(releaseNotes.published_at)}</span></div><MarkdownNotes value={releaseNotes.body} /></div>}
     </section>
 
     <section className="about-grid about-secondary-grid">
       <article className="workspace-panel">
         <div className="workspace-panel-heading"><div><span className="eyebrow">项目资源</span><h2>代码与发布渠道</h2></div><GitHub color="primary" /></div>
-        <div className="about-link-list"><a href={PROJECT_URL} target="_blank" rel="noreferrer"><GitHub fontSize="small" />GitHub 源码仓库<OpenInNewRounded fontSize="small" /></a><a href={GITEE_URL} target="_blank" rel="noreferrer"><CodeRounded fontSize="small" />Gitee 镜像仓库<OpenInNewRounded fontSize="small" /></a><a href={RELEASE_URL} target="_blank" rel="noreferrer"><SystemUpdateAltRounded fontSize="small" />版本与安装包<OpenInNewRounded fontSize="small" /></a></div>
+        <div className="about-link-list"><a href={PROJECT_URL} target="_blank" rel="noreferrer" onClick={(event) => openReleaseLink(event, PROJECT_URL)}><GitHub fontSize="small" />GitHub 源码仓库<OpenInNewRounded fontSize="small" /></a><a href={GITEE_URL} target="_blank" rel="noreferrer" onClick={(event) => openReleaseLink(event, GITEE_URL)}><CodeRounded fontSize="small" />Gitee 镜像仓库<OpenInNewRounded fontSize="small" /></a><a href={RELEASE_URL} target="_blank" rel="noreferrer" onClick={(event) => openReleaseLink(event)}><SystemUpdateAltRounded fontSize="small" />版本与安装包<OpenInNewRounded fontSize="small" /></a></div>
       </article>
       <article className="workspace-panel about-principles">
         <div className="workspace-panel-heading"><div><span className="eyebrow">产品定位</span><h2>学习 + 实训</h2></div><SchoolRounded color="primary" /></div>

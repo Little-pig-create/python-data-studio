@@ -41,10 +41,21 @@ $unittestTests = Join-Path $rt "Lib\unittest\test"
 if (Test-Path -LiteralPath $unittestTests) { $stdDirs += $unittestTests }
 Remove-VerifiedTree -Targets $stdDirs -Label "B. stdlib test/idlelib/lib2to3/ensurepip"
 
-# C. Test directories inside site-packages (never imported at runtime).
-$siteTests = Get-ChildItem -LiteralPath (Join-Path $rt "Lib\site-packages") -Recurse -Directory |
-  Where-Object { $_.Name -in @("test", "tests", "testing") }
-Remove-VerifiedTree -Targets $siteTests.FullName -Label "C. site-packages tests"
+# C. Remove only package test suites that are known not to be runtime imports.
+# Do not recursively delete every directory named `testing`: numpy/testing,
+# scipy/testing and pandas/testing are public modules imported by dependencies.
+$sitePackages = Join-Path $rt "Lib\site-packages"
+$testSuitePackages = @("pandas", "matplotlib", "seaborn", "plotly", "openpyxl", "jupyter_server")
+$siteTests = @()
+foreach ($packageName in $testSuitePackages) {
+  $packageRoot = Join-Path $sitePackages $packageName
+  if (-not (Test-Path -LiteralPath $packageRoot)) { continue }
+  foreach ($testName in @("test", "tests", "testing")) {
+    $candidate = Join-Path $packageRoot $testName
+    if (Test-Path -LiteralPath $candidate) { $siteTests += $candidate }
+  }
+}
+Remove-VerifiedTree -Targets $siteTests -Label "C. safe package test suites"
 
 $after = Get-ChildItem -LiteralPath $rt -Recurse -File
 Write-Output "After: $($after.Count) files, $([math]::Round((($after | Measure-Object Length -Sum).Sum) / 1MB, 1)) MB"

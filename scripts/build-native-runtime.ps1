@@ -11,7 +11,9 @@ if (-not $env:PDS_SKIP_INSTALL) {
   & $pythonCommand @pythonArgs
   if ($LASTEXITCODE -ne 0) { throw "Unable to create Python 3.12 runtime. Set PDS_PYTHON to a compatible launcher." }
   $runtimePython = Join-Path $output "Scripts\python.exe"
+  $env:PYTHONNOUSERSITE = "1"
   & $runtimePython -m pip install --upgrade pip
+  if ($LASTEXITCODE -ne 0) { throw "Unable to bootstrap pip in the native runtime." }
   & $runtimePython -m pip install --no-cache-dir --requirement $requirements
   if ($LASTEXITCODE -ne 0) { throw "Native runtime dependency installation failed." }
 
@@ -24,22 +26,48 @@ if (-not $env:PDS_SKIP_INSTALL) {
   Copy-Item -LiteralPath (Join-Path $baseRoot "pythonw.exe") -Destination (Join-Path $output "pythonw.exe") -Force
   Get-ChildItem -LiteralPath $baseRoot -Filter "*.dll" | Copy-Item -Destination $output -Force
   foreach ($directory in @("DLLs", "libs", "tcl")) {
-    Copy-Item -LiteralPath (Join-Path $baseRoot $directory) -Destination $output -Recurse -Force
+    $sourceDirectory = Join-Path $baseRoot $directory
+    if (Test-Path -LiteralPath $sourceDirectory) {
+      Copy-Item -LiteralPath $sourceDirectory -Destination $output -Recurse -Force
+    }
   }
-$baseLib = Join-Path $baseRoot "Lib"
-$runtimeLib = Join-Path $output "Lib"
-Copy-Item -Path (Join-Path $baseLib "*") -Destination $runtimeLib -Recurse -Force
-Remove-Item -LiteralPath (Join-Path $output "pyvenv.cfg") -Force -ErrorAction SilentlyContinue
 
-# Trim __pycache__, standard-library test/demo folders and site-packages test
-# suites so the bundled runtime stays small and packaging stays fast.
-& (Join-Path $PSScriptRoot "trim-native-runtime.ps1")
+  # Conda base distributions keep some runtime C libraries (libffi, OpenSSL,
+  # SQLite, zlib, expat) in Library\bin. Without them _ctypes/ssl/sqlite fail.
+  $condaBin = Join-Path $baseRoot "Library\bin"
+  $requiredRuntimeDlls = @("ffi-7.dll", "ffi-8.dll", "ffi.dll", "libcrypto-3-x64.dll", "libssl-3-x64.dll", "sqlite3.dll", "zlib.dll", "libexpat.dll", "expat.dll")
+  foreach ($dll in $requiredRuntimeDlls) {
+    $candidate = Join-Path $condaBin $dll
+    if (Test-Path -LiteralPath $candidate) { Copy-Item -LiteralPath $candidate -Destination $output -Force }
+  }
+  # A conda venv does not copy the standard library; it references the base
+  # distribution via pyvenv.cfg. Copy the base stdlib into the artifact,
+  # but keep the venv's own site-packages (clean pip + installed deps).
+  $baseLib = Join-Path $baseRoot "Lib"
+  $runtimeLib = Join-Path $output "Lib"
+  Get-ChildItem -LiteralPath $baseLib -Force | Where-Object { $_.Name -ne "site-packages" } | Copy-Item -Destination $runtimeLib -Recurse -Force
+  Remove-Item -LiteralPath (Join-Path $output "pyvenv.cfg") -Force -ErrorAction SilentlyContinue
 
-$runtimePython = Join-Path $output "python.exe"
+  # Trim __pycache__, standard-library test/demo folders and selected package
+  # test suites so the bundled runtime stays small and packaging stays fast.
+  & (Join-Path $PSScriptRoot "trim-native-runtime.ps1")
+
+  # Isolate the embedded interpreter from the build machine's user/system
+  # site-packages. Keeping site-packages as an explicit path still allows the
+  # bundled packages to import without relying on `import site`.
+  @(
+    "python312.zip"
+    "DLLs"
+    "Lib"
+    "Lib\site-packages"
+  ) | Set-Content -LiteralPath (Join-Path $output "python312._pth") -Encoding ascii
+
+  $runtimePython = Join-Path $output "python.exe"
 } else {
   $runtimePython = if (Test-Path -LiteralPath (Join-Path $output "python.exe")) { Join-Path $output "python.exe" } else { Join-Path $output "Scripts\python.exe" }
 }
 
+$env:PYTHONNOUSERSITE = "1"
 $manifest = [ordered]@{
   schemaVersion = 1
   runtimeVersion = "py312-data-2026.08.01"
@@ -51,6 +79,7 @@ $manifest = [ordered]@{
   packages = @()
 }
 $packageJson = (& $runtimePython -m pip list --format=json | Out-String)
+if ($LASTEXITCODE -ne 0) { throw "Unable to inspect packages in the native runtime." }
 $packageRows = ConvertFrom-Json -InputObject $packageJson
 $manifest.packages = @()
 foreach ($package in $packageRows) {
@@ -60,4 +89,5 @@ $manifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $outpu
 $manifestBytes = [System.IO.File]::ReadAllBytes((Join-Path $output "runtime-manifest.json"))
 $manifestHash = [System.BitConverter]::ToString(([System.Security.Cryptography.SHA256]::Create().ComputeHash($manifestBytes))).Replace("-", "")
 Set-Content -LiteralPath (Join-Path $output "checksums.txt") -Value "$manifestHash  runtime-manifest.json" -Encoding ascii
+
 Write-Output "Native runtime built at $output"

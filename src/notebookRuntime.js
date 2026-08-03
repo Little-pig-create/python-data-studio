@@ -44,6 +44,14 @@ const errorMessage = (reason, fallback = "Python 运行时初始化失败") => {
   return fallback;
 };
 
+const withTimeout = (promise, timeoutMs, message) => new Promise((resolve, reject) => {
+  const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+  Promise.resolve(promise).then(
+    (value) => { clearTimeout(timer); resolve(value); },
+    (reason) => { clearTimeout(timer); reject(reason); }
+  );
+});
+
 const normalizeNotebookPath = (notebookPath) => {
   const normalized = String(notebookPath || "course-runtime.ipynb")
     .replace(/^\/+/, "")
@@ -55,7 +63,8 @@ const cloneValue = (value) => {
   try { return JSON.parse(JSON.stringify(value)); } catch { return value; }
 };
 
-const isTauriDesktop = () => Boolean(globalThis.__TAURI_INTERNALS__ || globalThis.__TAURI_METADATA__);
+const isTauriDesktop = () => import.meta.env.VITE_DESKTOP_MODE === "true"
+  || Boolean(globalThis.__TAURI_INTERNALS__ || globalThis.__TAURI_METADATA__);
 
 // ---- 运行时选择 ----
 export function getPreferredRuntimeKind() {
@@ -215,12 +224,14 @@ for _path in _studio_font_candidates:
 }
 
 // ---- Native 运行时创建（动态导入 @jupyterlab/services）----
-async function createNativeRuntime(notebookPath) {
+async function createNativeRuntime(notebookPath, onStatus) {
+  onStatus?.("正在启动本地 Python 服务");
   const info = await tauriInvoke("start_native_runtime");
   if (!info?.serverUrl || !info?.token) throw new Error("本地 Jupyter Server 未返回连接信息");
 
   // 动态导入 jupyterlab 客户端协议（桌面版保留此依赖）
-  const { ServerConnection, SessionManager } = await import("@jupyterlab/services");
+  onStatus?.("正在加载内核通信组件");
+  const { KernelManager, ServerConnection, SessionManager } = await import("@jupyterlab/services");
 
   const settings = ServerConnection.makeSettings({
     baseUrl: `${info.serverUrl}/`,
@@ -228,27 +239,40 @@ async function createNativeRuntime(notebookPath) {
     token: info.token,
     appendToken: true
   });
-  const sessions = new SessionManager({ serverSettings: settings });
+  // @jupyterlab/services 7.x requires an explicit KernelManager. Without it,
+  // SessionManager dereferences `kernelManager.isActive` during construction
+  // and desktop cell execution remains stuck in "正在启动 Python 内核".
+  const kernels = new KernelManager({ serverSettings: settings });
+  const sessions = new SessionManager({ serverSettings: settings, kernelManager: kernels });
   const normalizedPath = String(notebookPath || "course-runtime.ipynb").replace(/^\/+/, "");
   try {
-    const session = await sessions.startNew({
+    onStatus?.("正在创建 Python 内核");
+    const session = await withTimeout(sessions.startNew({
       path: normalizedPath,
       type: "notebook",
       name: normalizedPath.split("/").at(-1) || "course-runtime.ipynb",
       kernel: { name: "python" }
-    });
+    }), 20_000, "Python 内核创建超时，请重试");
     if (!session?.kernel) {
       session?.dispose?.();
       throw new Error("Python 内核不可用");
     }
 
-    await session.kernel.info;
-    await configureNativeMatplotlibFont(session.kernel).catch(() => {});
+    onStatus?.("正在确认 Python 内核状态");
+    await withTimeout(session.kernel.info, 12_000, "Python 内核连接超时，请重试");
+    onStatus?.("Python 内核已就绪");
+    let matplotlibSetupPromise = null;
     return {
       info,
       server: sessions,
       session,
       notebookPath: normalizedPath,
+      ensureMatplotlibConfigured: () => {
+        if (!matplotlibSetupPromise) {
+          matplotlibSetupPromise = configureNativeMatplotlibFont(session.kernel).catch(() => {});
+        }
+        return matplotlibSetupPromise;
+      },
       native: true
     };
   } catch (reason) {
@@ -258,15 +282,15 @@ async function createNativeRuntime(notebookPath) {
 }
 
 // ---- 公共入口与兼容适配器 ----
-async function createNotebookRuntime(notebookPath) {
+async function createNotebookRuntime(notebookPath, options = {}) {
   const kind = getPreferredRuntimeKind();
-  if (kind === "native") return createNativeRuntime(notebookPath);
+  if (kind === "native") return createNativeRuntime(notebookPath, options.onStatus);
   return createJupyterLiteRuntime(notebookPath);
 }
 
 // ---- 公共入口 ----
-export async function createRuntimeAdapter(notebookPath) {
-  const runtime = await createNotebookRuntime(notebookPath);
+export async function createRuntimeAdapter(notebookPath, options = {}) {
+  const runtime = await createNotebookRuntime(notebookPath, options);
   return {
     ...runtime,
     capabilities: runtime.info?.capabilities || (runtime.native
@@ -285,7 +309,12 @@ export async function createRuntimeAdapter(notebookPath) {
 export async function ensureCoursePackages(runtime, source) {
   // Native CPython is distributed with the course dependencies already
   // installed. Only JupyterLite needs package loading at execution time.
-  if (runtime?.native) return;
+  if (runtime?.native) {
+    if (/^\s*(?:from|import)\s+(?:matplotlib|seaborn)\b/m.test(String(source || ""))) {
+      await runtime.ensureMatplotlibConfigured?.();
+    }
+    return;
+  }
   const requestedPackages = requiredCoursePackages(source);
   if (!requestedPackages.length) return;
 

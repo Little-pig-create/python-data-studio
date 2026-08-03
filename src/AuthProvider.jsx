@@ -15,6 +15,7 @@ export const ROLE_LABELS = Object.freeze({
 });
 
 const AUTH_SESSION_KEY = "python-data-studio:demo-session:v1";
+const studentEdition = import.meta.env.VITE_APP_EDITION === "student";
 const apiEnabled = String(import.meta.env.VITE_AUTH_API_ENABLED || "").toLowerCase() === "true";
 const explicitDemoMode = import.meta.env.VITE_AUTH_DEMO_MODE;
 
@@ -26,17 +27,21 @@ export const authConfig = Object.freeze({
     : String(explicitDemoMode).toLowerCase() === "true" && !apiEnabled,
 });
 
-export const demoAccounts = Object.freeze([
+const allDemoAccounts = [
   { identifier: "20260001", password: "student123", role: ROLES.STUDENT, name: "演示学生", userId: "demo-student-20260001" },
   { identifier: "T2026001", password: "teacher123", role: ROLES.TEACHER, name: "演示教师", userId: "demo-teacher-T2026001" },
   { identifier: "admin", password: "admin123", role: ROLES.SCHOOL_ADMIN, name: "演示管理员", userId: "demo-admin" },
-]);
+];
+export const demoAccounts = Object.freeze(studentEdition
+  ? allDemoAccounts.filter((account) => account.role === ROLES.STUDENT)
+  : allDemoAccounts);
 
 const AuthContext = createContext(null);
 
 const normalizeUser = (payload) => {
   const source = payload?.user || payload;
   if (!source || !Object.values(ROLES).includes(source.role)) return null;
+  if (studentEdition && source.role !== ROLES.STUDENT) return null;
   return {
     userId: String(source.userId || source.id || source.identifier || ""),
     identifier: String(source.identifier || source.studentNo || source.employeeNo || source.username || ""),

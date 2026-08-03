@@ -4,6 +4,7 @@
 
 ### 本轮文档设计更新（仅文档）
 
+- 将 `time` 与 `datetime` 基础内容落地到 Python 基础第 11 章末尾：包含时间戳与耗时、`date`/`datetime`、`timedelta`、`strptime()`、`strftime()`、异常日期处理和日志持续时间案例；不新增第 12 章，课程总章节数保持 117。
 - 新增 `FOUNDATION_AND_MODULE_TEACHING_DESIGN.md`，补充前置章节基础知识、方法/函数独立 Cell、结果打印、可视化、错误恢复和全模块统一教学流程；
 - 增加“日期与时间处理”普通章节的规划方案，覆盖 `date`、`time`、`datetime`、`timedelta`、格式解析、时区、Pandas 时间索引、可视化时间轴和机器学习时间切分；
 - 更新模块大作业方案，明确每个模块大作业位于最后一个教学章节之后的独立课程章节，不嵌入最后教学章节 Cell；

@@ -13,19 +13,41 @@ export function BitsTopBar({ children, className = "" }) {
 }
 
 export function CountUp({ value, suffix = "" }) {
+  const ref = useRef(null);
   const [display, setDisplay] = useState(0);
   useEffect(() => {
     const target = Number(value) || 0;
-    const start = performance.now();
-    const frame = (now) => {
-      const progress = Math.min((now - start) / 420, 1);
-      setDisplay(Math.round(target * (1 - Math.pow(1 - progress, 3))));
-      if (progress < 1) requestAnimationFrame(frame);
+    let animationId;
+    let observer;
+    const animate = () => {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        setDisplay(target);
+        return;
+      }
+      const start = performance.now();
+      const frame = (now) => {
+        const progress = Math.min((now - start) / 420, 1);
+        setDisplay(Math.round(target * (1 - Math.pow(1 - progress, 3))));
+        if (progress < 1) animationId = requestAnimationFrame(frame);
+      };
+      animationId = requestAnimationFrame(frame);
     };
-    const id = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(id);
+    if (typeof IntersectionObserver === "undefined" || !ref.current) animate();
+    else {
+      observer = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) {
+          observer.disconnect();
+          animate();
+        }
+      }, { rootMargin: "120px" });
+      observer.observe(ref.current);
+    }
+    return () => {
+      observer?.disconnect();
+      if (animationId) cancelAnimationFrame(animationId);
+    };
   }, [value]);
-  return <>{display}{suffix}</>;
+  return <span ref={ref}>{display}{suffix}</span>;
 }
 
 export function ScrollReveal({ children, className = "", delay = 0 }) {
@@ -67,10 +89,17 @@ export function MouseGlow() {
   useEffect(() => {
     const node = ref.current;
     if (!node || window.matchMedia("(pointer: coarse)").matches) return undefined;
+    let frameId = 0;
+    let latestEvent;
     const move = (event) => {
-      node.style.setProperty("--mouse-x", `${event.clientX}px`);
-      node.style.setProperty("--mouse-y", `${event.clientY}px`);
-      node.classList.add("is-active");
+      latestEvent = event;
+      if (frameId) return;
+      frameId = requestAnimationFrame(() => {
+        frameId = 0;
+        node.style.setProperty("--mouse-x", `${latestEvent.clientX}px`);
+        node.style.setProperty("--mouse-y", `${latestEvent.clientY}px`);
+        node.classList.add("is-active");
+      });
     };
     const leave = () => node.classList.remove("is-active");
     window.addEventListener("pointermove", move, { passive: true });
@@ -78,6 +107,7 @@ export function MouseGlow() {
     return () => {
       window.removeEventListener("pointermove", move);
       document.documentElement.removeEventListener("mouseleave", leave);
+      if (frameId) cancelAnimationFrame(frameId);
     };
   }, []);
   return <div ref={ref} className="bits-mouse-glow" aria-hidden="true" />;
