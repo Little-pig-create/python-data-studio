@@ -165,11 +165,15 @@ updateFile(path.join(root, "src-tauri", "Cargo.toml"), (src, _old, next) =>
 
 // ── Release 产物：本地构建 + 归档 ─────────────────────────────────────────────
 const releaseDir = path.join(root, "release", tag);
+const bundleSource = path.join(root, "src-tauri", "target", "release", "bundle");
 let builtBundles = [];
 if (skipBuild) {
   console.log(`\n📦 跳过本地构建（--skip-build），release 产物目录：${path.relative(root, releaseDir)}`);
 } else {
   console.log("\n🔨 本地构建桌面安装包...");
+  // Tauri 不会自动删除旧版本 bundle；先清空固定的 bundle 目录，避免
+  // 新 Release 的校验清单和下载元数据误收录上一个版本的安装包。
+  fs.rmSync(bundleSource, { recursive: true, force: true });
   try {
     runLocal(["npm", "run", "desktop:build:student:release"], { label: "npm run desktop:build:student:release" });
   } catch (error) {
@@ -179,8 +183,8 @@ if (skipBuild) {
   }
 }
 
-const bundleSource = path.join(root, "src-tauri", "target", "release", "bundle");
 if (fs.existsSync(bundleSource)) {
+  fs.rmSync(releaseDir, { recursive: true, force: true });
   fs.mkdirSync(releaseDir, { recursive: true });
   copyDirectory(bundleSource, releaseDir);
   builtBundles = collectFiles(releaseDir).filter((file) => fs.statSync(file).isFile());
