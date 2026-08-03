@@ -223,7 +223,7 @@ console.log(`📝 已生成 release/${tag}/RELEASE_NOTES.md`);
 
 // ── Git 提交、Tag、推送 ───────────────────────────────────────────────────────
 try {
-  runGit(["add", "package.json", "src-tauri/tauri.conf.json", "src-tauri/Cargo.toml"]);
+  runGit(["add", "package.json", "src-tauri/tauri.conf.json", "src-tauri/Cargo.toml", "src-tauri/Cargo.lock"]);
   runGit(["commit", "-m", `chore: bump version to ${newVersion}`]);
   runGit(["tag", tag]);
   runGit(["push", remote, "HEAD:main"]);
