@@ -41,8 +41,9 @@ function runGit(args) {
 
 function runLocal(args, options = {}) {
   const label = options.label || args.join(" ");
+  const executable = process.platform === "win32" && args[0] === "npm" ? "npm.cmd" : args[0];
   console.log(`  $ ${label}`);
-  const result = spawnSync(args[0], args.slice(1), {
+  const result = spawnSync(executable, args.slice(1), {
     cwd: root,
     stdio: "inherit",
     shell: options.shell || false,
