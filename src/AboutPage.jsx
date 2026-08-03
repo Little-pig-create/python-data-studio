@@ -21,6 +21,7 @@ import {
   GITHUB_RELEASE_URL,
   UPDATE_KIND,
   checkForAppUpdate,
+  fetchLatestReleaseInfo,
   installAppUpdate,
   openManualUpdate,
   openExternalUrl,
@@ -113,13 +114,14 @@ export function AboutPage() {
     let active = true;
     async function loadReleaseNotes() {
       try {
-        const response = await fetch("https://api.github.com/repos/Little-pig-create/python-data-studio/releases/latest", {
-          headers: { Accept: "application/vnd.github+json" },
-        });
-        if (!response.ok) throw new Error(`请求失败（${response.status}）`);
-        const payload = await response.json();
+        const payload = await fetchLatestReleaseInfo();
         if (active) {
-          setReleaseNotes(payload);
+          setReleaseNotes({
+            name: payload.name,
+            tag_name: payload.version ? `v${payload.version}` : "",
+            published_at: payload.date,
+            body: payload.body,
+          });
           setNotesState("ready");
         }
       } catch {

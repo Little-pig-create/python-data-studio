@@ -306,6 +306,48 @@ pub fn open_external_url(url: String) -> Result<(), String> {
     })
   }
 }
+
+#[tauri::command]
+pub async fn fetch_release_info() -> Result<serde_json::Value, String> {
+  const STATIC_RELEASE_INFO: &str = "https://github.com/Little-pig-create/python-data-studio/releases/latest/download/release-info.json";
+  const GITHUB_RELEASE_API: &str = "https://api.github.com/repos/Little-pig-create/python-data-studio/releases/latest";
+
+  let client = reqwest::Client::builder()
+    .tls_backend_native()
+    .user_agent(format!("Python Data Studio/{}", env!("CARGO_PKG_VERSION")))
+    .timeout(Duration::from_secs(20))
+    .build()
+    .map_err(|error| format!("无法创建更新请求：{}", error))?;
+
+  let mut errors = Vec::new();
+  for (label, url) in [("发布元数据", STATIC_RELEASE_INFO), ("GitHub Release", GITHUB_RELEASE_API)] {
+    let response = match client
+      .get(url)
+      .header(reqwest::header::ACCEPT, "application/vnd.github+json, application/json")
+      .send()
+      .await
+    {
+      Ok(response) => response,
+      Err(error) => {
+        errors.push(format!("{}连接失败：{}", label, error));
+        continue;
+      }
+    };
+
+    let status = response.status();
+    if !status.is_success() {
+      errors.push(format!("{}请求失败（{}）", label, status.as_u16()));
+      continue;
+    }
+
+    match response.json::<serde_json::Value>().await {
+      Ok(payload) => return Ok(payload),
+      Err(error) => errors.push(format!("{}格式错误：{}", label, error)),
+    }
+  }
+
+  Err(format!("无法读取版本信息：{}", errors.join("；")))
+}
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -314,7 +356,7 @@ pub fn run() {
     .manage(RuntimeManager { runtime: Mutex::new(None) })
     .plugin(tauri_plugin_process::init())
     .plugin(tauri_plugin_updater::Builder::new().build())
-    .invoke_handler(tauri::generate_handler![commands::start_native_runtime, commands::stop_native_runtime, commands::native_runtime_status, commands::native_runtime_diagnostics, commands::load_user_notebook, commands::save_user_notebook, commands::delete_user_notebook, commands::list_user_notebooks, commands::open_external_url])
+    .invoke_handler(tauri::generate_handler![commands::start_native_runtime, commands::stop_native_runtime, commands::native_runtime_status, commands::native_runtime_diagnostics, commands::load_user_notebook, commands::save_user_notebook, commands::delete_user_notebook, commands::list_user_notebooks, commands::open_external_url, commands::fetch_release_info])
     .setup(|_app| {
       #[cfg(feature = "desktop-debug")]
       {
@@ -338,4 +380,15 @@ pub fn run() {
     })
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+  #[test]
+  #[ignore = "需要访问 GitHub，仅用于发版前在线更新诊断"]
+  fn release_info_endpoint_is_reachable() {
+    let payload = tauri::async_runtime::block_on(super::commands::fetch_release_info())
+      .expect("桌面后端应能读取最新 Release");
+    assert!(payload.get("version").is_some() || payload.get("tag_name").is_some());
+  }
 }

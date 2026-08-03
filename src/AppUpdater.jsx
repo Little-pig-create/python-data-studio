@@ -173,7 +173,7 @@ export function AppUpdater({ checkOnMount = true, checkIntervalMs = 4 * 60 * 60 
       </DialogTitle>
       <DialogContent dividers>
         {updateInfo?.date && <Typography variant="caption" color="text.secondary" display="block" mb={1}>发布时间：{new Date(updateInfo.date).toLocaleString("zh-CN")}</Typography>}
-        {isManual && <Alert severity="info" sx={{ mb: 2 }}>检测到新版本，但该 Release 尚未提供 Tauri 签名更新清单。点击按钮后将下载安装包进行更新。</Alert>}
+        {isManual && <Alert severity="info" sx={{ mb: 2 }}>检测到新版本。点击按钮下载安装包，关闭当前应用后运行安装即可更新。</Alert>}
         {updateInfo?.downloadName && <Typography variant="body2" color="text.secondary" mb={1}>安装包：{updateInfo.downloadName}{updateInfo.downloadSize ? ` · ${formatSize(updateInfo.downloadSize)}` : ""}</Typography>}
         <Typography variant="body2" component="pre" sx={{ whiteSpace: "pre-wrap", fontFamily: "inherit", m: 0, maxHeight: 260, overflow: "auto" }}>{updateInfo?.body || "该版本暂未提供更新说明。"}</Typography>
         {state === STATE.DOWNLOADING && <div style={{ marginTop: 20 }}><LinearProgress variant={progress > 0 ? "determinate" : "indeterminate"} value={progress} /><Typography variant="caption" color="text.secondary" display="block" mt={1}>正在下载并安装… {progress > 0 ? `${progress}%` : ""}</Typography></div>}

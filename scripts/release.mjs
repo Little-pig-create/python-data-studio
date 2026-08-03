@@ -221,6 +221,26 @@ if (checksumLines.length) {
 }
 console.log(`📝 已生成 release/${tag}/RELEASE_NOTES.md`);
 
+const windowsInstaller = builtBundles.find((file) => /\.exe$/i.test(file) && /x64.*setup|setup.*x64/i.test(path.basename(file)))
+  || builtBundles.find((file) => /\.exe$/i.test(file));
+const githubAssetName = windowsInstaller ? path.basename(windowsInstaller).replace(/\s+/g, ".") : "";
+const releaseInfo = {
+  version: newVersion,
+  name: `Python Data Studio ${tag}`,
+  notes: notesLines.join("\n"),
+  pub_date: new Date().toISOString(),
+  release_url: `https://github.com/Little-pig-create/python-data-studio/releases/tag/${tag}`,
+  platforms: windowsInstaller ? {
+    "windows-x86_64": {
+      url: `https://github.com/Little-pig-create/python-data-studio/releases/download/${tag}/${encodeURIComponent(githubAssetName)}`,
+      name: path.basename(windowsInstaller),
+      size: fs.statSync(windowsInstaller).size,
+    },
+  } : {},
+};
+fs.writeFileSync(path.join(releaseDir, "release-info.json"), JSON.stringify(releaseInfo, null, 2) + "\n", "utf8");
+console.log(`🧭 已生成 release/${tag}/release-info.json`);
+
 // ── Git 提交、Tag、推送 ───────────────────────────────────────────────────────
 try {
   runGit(["add", "package.json", "src-tauri/tauri.conf.json", "src-tauri/Cargo.toml", "src-tauri/Cargo.lock"]);
