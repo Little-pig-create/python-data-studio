@@ -21,6 +21,6 @@
     ]
   },
   "bundle": {
-    "targets": ["nsis", "msi"]
+    "targets": ["nsis"]
   }
 }

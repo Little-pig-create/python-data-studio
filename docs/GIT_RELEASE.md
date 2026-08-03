@@ -9,7 +9,7 @@ npm run release -- 0.1.3
 脚本会依次完成：
 
 1. 同步更新应用版本号（`package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml`）；
-2. 本地构建学生端正式桌面安装包（`npm run desktop:build:student:release`）；
+2. 本地构建学生端正式 NSIS 桌面安装包（`npm run desktop:build:student:release`）；
 3. 归档安装包到 `release/v0.1.3/`，并生成 `RELEASE_NOTES.md` 和 `SHA256SUMS.txt`；
 4. 创建版本提交和 `v0.1.3` Tag；
 5. 执行：

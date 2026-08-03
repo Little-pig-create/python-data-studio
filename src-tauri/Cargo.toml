@@ -1,6 +1,6 @@
 [package]
 name = "python-data-studio"
-version = "0.1.2"
+version = "0.1.3"
 description = "Desktop shell for Python Data Studio"
 authors = ["Python Data Studio"]
 license = ""
