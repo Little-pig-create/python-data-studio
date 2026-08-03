@@ -41,15 +41,26 @@ function runGit(args) {
 
 function runLocal(args, options = {}) {
   const label = options.label || args.join(" ");
-  const executable = process.platform === "win32" && args[0] === "npm" ? "npm.cmd" : args[0];
+  let executable = args[0];
+  let commandArgs = args.slice(1);
+  if (process.platform === "win32" && executable === "npm") {
+    const npmCli = process.env.npm_execpath
+      || path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
+    if (!fs.existsSync(npmCli)) throw new Error(`找不到 npm CLI：${npmCli}`);
+    executable = process.execPath;
+    commandArgs = [npmCli, ...commandArgs];
+  }
   console.log(`  $ ${label}`);
-  const result = spawnSync(executable, args.slice(1), {
+  const result = spawnSync(executable, commandArgs, {
     cwd: root,
     stdio: "inherit",
     shell: options.shell || false,
     env: process.env,
   });
-  if (result.error) throw result.error;
+  if (result.error) {
+    console.error(`命令无法启动：${result.error.message}`);
+    throw result.error;
+  }
   if (result.status !== 0) {
     throw new Error(`命令失败（exit ${result.status}）：${label}`);
   }
