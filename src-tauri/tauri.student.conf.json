@@ -1,14 +1,14 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Python Data Studio 学生端",
-  "identifier": "com.python.datastudio.student",
+  "productName": "Python Data Studio",
+  "identifier": "com.python.datastudio",
   "build": {
     "beforeBuildCommand": "npm run build:desktop-web:student"
   },
   "app": {
     "windows": [
       {
-        "title": "Python Data Studio 学生端",
+        "title": "Python Data Studio",
         "width": 1440,
         "height": 900,
         "resizable": true,
