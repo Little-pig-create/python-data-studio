@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 纯 Git 发版脚本
- * 用法: node scripts/release.mjs <新版本号> [--skip-build]
+ * 用法: node scripts/release.mjs <新版本号>
  * 例如: node scripts/release.mjs 0.1.3
  *
  * 自动完成:
@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const remote = process.env.RELEASE_REMOTE || "origin";
-const skipBuild = process.argv.includes("--skip-build");
+const preflightOnly = process.argv.includes("--preflight");
 
 function git(args, options = {}) {
   return execFileSync("git", args, {
@@ -98,6 +98,27 @@ function sha256(filePath) {
   return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
 
+function assertWindowsGuiExecutable(filePath) {
+  if (process.platform !== "win32") return;
+  const handle = fs.openSync(filePath, "r");
+  try {
+    const offsetBuffer = Buffer.alloc(4);
+    fs.readSync(handle, offsetBuffer, 0, 4, 0x3c);
+    const peOffset = offsetBuffer.readUInt32LE(0);
+    const subsystemBuffer = Buffer.alloc(2);
+    fs.readSync(handle, subsystemBuffer, 0, 2, peOffset + 4 + 20 + 68);
+    const subsystem = subsystemBuffer.readUInt16LE(0);
+    if (subsystem !== 2) throw new Error(`正式 EXE 不是 Windows GUI 子系统（Subsystem=${subsystem}），可能弹出 CMD 窗口。`);
+  } finally {
+    fs.closeSync(handle);
+  }
+}
+
+function githubWebUrl(remoteUrl) {
+  const match = String(remoteUrl).trim().match(/github\.com(?::|\/)([^/]+)\/([^/]+?)(?:\.git)?$/i);
+  return match ? `https://github.com/${match[1]}/${match[2].replace(/\.git$/i, "")}` : null;
+}
+
 function collectFiles(directory, base = directory, result = []) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const target = path.join(directory, entry.name);
@@ -109,7 +130,7 @@ function collectFiles(directory, base = directory, result = []) {
 
 const newVersion = process.argv[2];
 if (!newVersion || !/^\d+\.\d+\.\d+$/.test(newVersion)) {
-  fail("用法: node scripts/release.mjs <版本号> [--skip-build]，版本号必须是 x.y.z，例如 0.1.3");
+  fail("用法: node scripts/release.mjs <版本号>，版本号必须是 x.y.z，例如 0.1.6");
 }
 
 const pkgPath = path.join(root, "package.json");
@@ -126,15 +147,40 @@ if (status) {
   fail("工作区不是干净状态，请先提交或暂存现有修改后再发版。\n" + status);
 }
 
+let remoteUrl;
 try {
-  git(["remote", "get-url", remote]);
+  remoteUrl = git(["remote", "get-url", remote]);
 } catch {
   fail(`找不到远程仓库 ${remote}。可通过 RELEASE_REMOTE 环境变量指定远程名称。`);
+}
+
+const branch = git(["branch", "--show-current"]);
+if (branch !== "main") fail(`正式发布必须在 main 分支执行，当前分支为 ${branch || "未知"}。`);
+
+try {
+  runGit(["fetch", remote, "main", "--tags"]);
+} catch {
+  fail(`无法同步 ${remote}/main，请先检查网络和 Git 凭据。`);
+}
+const headCommit = git(["rev-parse", "HEAD"]);
+const remoteMainCommit = git(["rev-parse", `${remote}/main`]);
+if (headCommit !== remoteMainCommit) {
+  fail(`本地 main 与 ${remote}/main 不一致，请先完成同步后再发布。`);
 }
 
 const tag = `v${newVersion}`;
 if (git(["tag", "--list", tag])) {
   fail(`Tag ${tag} 已存在，请使用新的版本号。`);
+}
+if (git(["ls-remote", "--tags", remote, `refs/tags/${tag}`])) {
+  fail(`远程 Tag ${tag} 已存在，请使用新的版本号。`);
+}
+
+if (preflightOnly) {
+  console.log(`\n✅ Git 发版预检通过：${oldVersion} → ${newVersion}`);
+  console.log(`   分支：main（已与 ${remote}/main 同步）`);
+  console.log(`   Tag：${tag} 可用`);
+  process.exit(0);
 }
 
 console.log(`\n🚀 发版: ${oldVersion} → ${newVersion}`);
@@ -148,6 +194,24 @@ function updateFile(filePath, transformer) {
   fs.writeFileSync(filePath, updated, "utf8");
   console.log(`  ✅ ${path.relative(root, filePath)}`);
 }
+
+const versionFilePaths = [
+  pkgPath,
+  path.join(root, "src-tauri", "tauri.conf.json"),
+  path.join(root, "src-tauri", "Cargo.toml"),
+  path.join(root, "src-tauri", "Cargo.lock"),
+];
+const originalVersionFiles = new Map(versionFilePaths.map((filePath) => [filePath, fs.readFileSync(filePath, "utf8")]));
+
+function restoreVersionFiles() {
+  for (const [filePath, content] of originalVersionFiles) fs.writeFileSync(filePath, content, "utf8");
+  restoreVersionFilesOnFailure = false;
+}
+
+let restoreVersionFilesOnFailure = true;
+process.on("exit", (code) => {
+  if (code !== 0 && restoreVersionFilesOnFailure) restoreVersionFiles();
+});
 
 updateFile(pkgPath, (src, _old, next) => {
   const data = JSON.parse(src);
@@ -167,28 +231,45 @@ updateFile(path.join(root, "src-tauri", "Cargo.toml"), (src, _old, next) =>
 const releaseDir = path.join(root, "release", tag);
 const bundleSource = path.join(root, "src-tauri", "target", "release", "bundle");
 let builtBundles = [];
-if (skipBuild) {
-  console.log(`\n📦 跳过本地构建（--skip-build），release 产物目录：${path.relative(root, releaseDir)}`);
-} else {
-  console.log("\n🔨 本地构建桌面安装包...");
-  // Tauri 不会自动删除旧版本 bundle；先清空固定的 bundle 目录，避免
-  // 新 Release 的校验清单和下载元数据误收录上一个版本的安装包。
-  fs.rmSync(bundleSource, { recursive: true, force: true });
-  try {
-    runLocal(["npm", "run", "desktop:build:student:release"], { label: "npm run desktop:build:student:release" });
-  } catch (error) {
-    console.error("\n❌ 桌面构建失败，版本号文件已被修改但未提交。");
-    console.error("   可修复后重试；如确认无需构建，请使用 --skip-build 跳过。\n");
-    process.exit(error.status || 1);
-  }
+console.log("\n🔨 本地构建桌面安装包...");
+// Tauri 不会自动删除旧版本 bundle；先清空固定的 bundle 目录，避免
+// 新 Release 的校验清单和下载元数据误收录上一个版本的安装包。
+fs.rmSync(bundleSource, { recursive: true, force: true });
+try {
+  runLocal(["npm", "run", "desktop:build:student:release"], { label: "npm run desktop:build:student:release" });
+} catch (error) {
+  restoreVersionFiles();
+  console.error("\n❌ 桌面构建失败，版本号文件已自动恢复，未创建提交或 Tag。\n");
+  process.exit(error.status || 1);
 }
 
-if (fs.existsSync(bundleSource)) {
-  fs.rmSync(releaseDir, { recursive: true, force: true });
-  fs.mkdirSync(releaseDir, { recursive: true });
-  copyDirectory(bundleSource, releaseDir);
-  builtBundles = collectFiles(releaseDir).filter((file) => fs.statSync(file).isFile());
-  console.log(`\n📁 安装包已归档到 release/${tag}/`);
+if (!fs.existsSync(bundleSource)) {
+  restoreVersionFiles();
+  fail("Tauri 构建已结束，但没有生成 bundle 目录；版本号文件已自动恢复。");
+}
+fs.rmSync(releaseDir, { recursive: true, force: true });
+fs.mkdirSync(releaseDir, { recursive: true });
+copyDirectory(bundleSource, releaseDir);
+builtBundles = collectFiles(releaseDir).filter((file) => fs.statSync(file).isFile());
+console.log(`\n📁 安装包已归档到 release/${tag}/`);
+
+const installerPattern = new RegExp(`_${newVersion.replace(/\./g, "\\.")}_.*setup\\.exe$`, "i");
+const windowsInstallers = builtBundles.filter((file) => installerPattern.test(path.basename(file)));
+if (windowsInstallers.length !== 1) {
+  restoreVersionFiles();
+  fail(`预期恰好生成 1 个 ${newVersion} Windows 安装包，实际为 ${windowsInstallers.length} 个。`);
+}
+const windowsInstaller = windowsInstallers[0];
+const minimumInstallerBytes = Number(process.env.RELEASE_MIN_INSTALLER_MB || 100) * 1024 * 1024;
+if (fs.statSync(windowsInstaller).size < minimumInstallerBytes) {
+  restoreVersionFiles();
+  fail(`安装包小于 ${process.env.RELEASE_MIN_INSTALLER_MB || 100} MB，可能缺少 Python 运行时或数据集。`);
+}
+try {
+  assertWindowsGuiExecutable(path.join(root, "src-tauri", "target", "release", "python-data-studio.exe"));
+} catch (error) {
+  restoreVersionFiles();
+  fail(error.message);
 }
 
 const platformLabel = process.platform === "win32" ? "Windows" : process.platform === "darwin" ? "macOS" : "Linux";
@@ -202,7 +283,7 @@ const notesLines = [
   `- 版本：${newVersion}`,
   `- 日期：${releaseDate}`,
   `- 构建平台：${platformLabel}`,
-  `- 发布方式：纯 Git（commit + tag + push）`,
+  `- 发布方式：Git push + GitHub Release`,
   "",
   "## 产物",
   "",
@@ -225,18 +306,17 @@ if (checksumLines.length) {
 }
 console.log(`📝 已生成 release/${tag}/RELEASE_NOTES.md`);
 
-const windowsInstaller = builtBundles.find((file) => /\.exe$/i.test(file) && /x64.*setup|setup.*x64/i.test(path.basename(file)))
-  || builtBundles.find((file) => /\.exe$/i.test(file));
 const githubAssetName = windowsInstaller ? path.basename(windowsInstaller).replace(/\s+/g, ".") : "";
+const repositoryUrl = githubWebUrl(remoteUrl) || "https://github.com/Little-pig-create/python-data-studio";
 const releaseInfo = {
   version: newVersion,
   name: `Python Data Studio ${tag}`,
   notes: notesLines.join("\n"),
   pub_date: new Date().toISOString(),
-  release_url: `https://github.com/Little-pig-create/python-data-studio/releases/tag/${tag}`,
+  release_url: `${repositoryUrl}/releases/tag/${tag}`,
   platforms: windowsInstaller ? {
     "windows-x86_64": {
-      url: `https://github.com/Little-pig-create/python-data-studio/releases/download/${tag}/${encodeURIComponent(githubAssetName)}`,
+      url: `${repositoryUrl}/releases/download/${tag}/${encodeURIComponent(githubAssetName)}`,
       name: path.basename(windowsInstaller),
       size: fs.statSync(windowsInstaller).size,
     },
@@ -249,6 +329,7 @@ console.log(`🧭 已生成 release/${tag}/release-info.json`);
 try {
   runGit(["add", "package.json", "src-tauri/tauri.conf.json", "src-tauri/Cargo.toml", "src-tauri/Cargo.lock"]);
   runGit(["commit", "-m", `chore: bump version to ${newVersion}`]);
+  restoreVersionFilesOnFailure = false;
   runGit(["tag", tag]);
   runGit(["push", remote, "HEAD:main"]);
   runGit(["push", remote, tag]);

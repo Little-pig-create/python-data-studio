@@ -28,6 +28,7 @@ const remote = process.env.RELEASE_REMOTE || "origin";
 const args = process.argv.slice(2);
 const uploadOnly = args.includes("--upload-only");
 const verifyOnly = args.includes("--verify-only");
+const preflightOnly = args.includes("--preflight");
 const showHelp = args.includes("--help") || args.includes("-h");
 const version = args.find((value) => /^\d+\.\d+\.\d+$/.test(value));
 
@@ -154,26 +155,45 @@ async function findRelease(apiBase, tag, token) {
   return response ? response.json() : null;
 }
 
-async function uploadAsset(uploadUrl, filePath, name, token) {
+async function uploadAsset(apiBase, releaseId, uploadUrl, filePath, name, token) {
   const size = fs.statSync(filePath).size;
+  const temporaryName = `${name}.uploading`;
   let lastError;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      const stream = Readable.toWeb(fs.createReadStream(filePath));
-      const response = await request(`${uploadUrl}?name=${encodeURIComponent(name)}`, {
-        method: "POST",
-        duplex: "half",
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${token}`,
-          "Content-Type": contentType(filePath),
-          "Content-Length": String(size),
-          "User-Agent": "Python-Data-Studio-Release",
-          "X-GitHub-Api-Version": "2022-11-28",
-        },
-        body: stream,
-      }, 1);
-      return response.json();
+      const currentRelease = await jsonRequest(`${apiBase}/releases/${releaseId}`, token);
+      let staged = currentRelease.assets?.find((asset) => asset.name === temporaryName);
+      if (staged && staged.size !== size) {
+        await jsonRequest(`${apiBase}/releases/assets/${staged.id}`, token, { method: "DELETE" });
+        staged = null;
+      }
+      if (!staged) {
+        const stream = Readable.toWeb(fs.createReadStream(filePath));
+        const response = await request(`${uploadUrl}?name=${encodeURIComponent(temporaryName)}`, {
+          method: "POST",
+          duplex: "half",
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${token}`,
+            "Content-Type": contentType(filePath),
+            "Content-Length": String(size),
+            "User-Agent": "Python-Data-Studio-Release",
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+          body: stream,
+        }, 1);
+        staged = await response.json();
+      }
+
+      const refreshed = await jsonRequest(`${apiBase}/releases/${releaseId}`, token);
+      const existing = refreshed.assets?.find((asset) => asset.name === name);
+      if (existing) await jsonRequest(`${apiBase}/releases/assets/${existing.id}`, token, { method: "DELETE" });
+
+      return jsonRequest(`${apiBase}/releases/assets/${staged.id}`, token, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify({ name }),
+      });
     } catch (error) {
       lastError = error;
       if (attempt < 3) await wait(attempt * 2000);
@@ -197,6 +217,10 @@ Python Data Studio 更新与发布
       只读校验线上 Release、资产大小和 release-info.json，
       不打包、不上传、不修改 Git。
 
+  npm run release:publish -- <新版本号> --preflight
+      检查工作区、main 同步状态、远程 Tag 和 GitHub 发布权限，
+      不修改版本、不打包、不提交。
+
 环境变量：
   GITHUB_TOKEN   可选；不设置时读取 git credential
   RELEASE_REMOTE 可选；默认 origin
@@ -206,18 +230,34 @@ Python Data Studio 更新与发布
 
 if (!version) fail("请提供 x.y.z 格式的版本号，例如：npm run release:publish -- 0.1.6");
 if (typeof fetch !== "function") fail("当前 Node.js 不支持 fetch，请使用 Node.js 20 或更高版本。");
-if (uploadOnly && verifyOnly) fail("--upload-only 和 --verify-only 不能同时使用。");
+if ([uploadOnly, verifyOnly, preflightOnly].filter(Boolean).length > 1) {
+  fail("--upload-only、--verify-only 和 --preflight 不能同时使用。");
+}
 
 const tag = `v${version}`;
 const remoteUrl = git(["remote", "get-url", remote]);
 const { owner, repo } = parseGithubRepository(remoteUrl);
 const token = githubToken(); // 在耗时打包前确认发布权限凭据存在。
+const apiBase = `https://api.github.com/repos/${owner}/${repo}`;
+const repository = await jsonRequest(apiBase, token);
+if (repository.permissions && repository.permissions.push === false) {
+  fail(`当前 GitHub 凭据没有 ${owner}/${repo} 的发布权限。`);
+}
+
+if (preflightOnly) {
+  runNode(path.join(root, "scripts", "release.mjs"), [version, "--preflight"]);
+  console.log(`   GitHub：${owner}/${repo} 发布权限可用`);
+  process.exit(0);
+}
 
 if (!uploadOnly && !verifyOnly) {
   const status = git(["status", "--porcelain"]);
   if (status) fail(`工作区不是干净状态，请先提交当前修改：\n${status}`);
   runNode(path.join(root, "scripts", "release.mjs"), [version]);
 }
+
+const remoteTag = git(["ls-remote", "--tags", remote, `refs/tags/${tag}`]);
+if (!remoteTag) fail(`远程 Tag 不存在：${tag}`);
 
 const releaseDir = path.join(root, "release", tag);
 if (!fs.existsSync(releaseDir) || !fs.statSync(releaseDir).isDirectory()) {
@@ -230,7 +270,9 @@ const checksums = path.join(releaseDir, "SHA256SUMS.txt");
 const releaseInfoPath = path.join(releaseDir, "release-info.json");
 const notesPath = path.join(releaseDir, "RELEASE_NOTES.md");
 for (const [label, filePath] of [["当前版本安装包", installer], ["SHA256SUMS.txt", checksums], ["release-info.json", releaseInfoPath], ["RELEASE_NOTES.md", notesPath]]) {
-  if (!filePath || !fs.isFileSync(filePath)) fail(`发布产物缺失：${label}`);
+  if (!filePath || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+    fail(`发布产物缺失：${label}`);
+  }
 }
 
 const releaseInfo = JSON.parse(fs.readFileSync(releaseInfoPath, "utf8"));
@@ -241,7 +283,6 @@ if (!metadataUrl.endsWith(`/${expectedInstallerName}`)) {
   fail(`release-info.json 下载地址与安装包不一致：${metadataUrl}`);
 }
 
-const apiBase = `https://api.github.com/repos/${owner}/${repo}`;
 const notes = fs.readFileSync(notesPath, "utf8");
 const uploads = [installer, checksums, releaseInfoPath];
 const expectedAssets = uploads.map((filePath) => ({
@@ -254,21 +295,46 @@ function verifyAssets(release) {
     const actual = release.assets?.find((asset) => asset.name === expected.name);
     if (!actual || actual.size !== expected.size) fail(`Release 资产校验失败：${expected.name}`);
   }
+  const unexpectedInstallers = release.assets?.filter((asset) => /\.exe$/i.test(asset.name) && asset.name !== expectedInstallerName) || [];
+  if (unexpectedInstallers.length) {
+    fail(`Release 中存在非当前版本安装包：${unexpectedInstallers.map((asset) => asset.name).join(", ")}`);
+  }
 }
 
 async function verifyOnlineInfo() {
-  const response = await request(`https://github.com/${owner}/${repo}/releases/latest/download/release-info.json`, {
-    headers: { Accept: "application/json", "User-Agent": "Python-Data-Studio-Release-Verify" },
-  });
-  const info = await response.json();
-  if (info.version !== version) fail(`线上 release-info.json 版本为 ${info.version}，预期为 ${version}`);
-  return info;
+  let lastVersion = "不可用";
+  for (let attempt = 1; attempt <= 12; attempt += 1) {
+    try {
+      const response = await request(`https://github.com/${owner}/${repo}/releases/latest/download/release-info.json?verify=${Date.now()}`, {
+        headers: {
+          Accept: "application/json",
+          "Cache-Control": "no-cache",
+          "User-Agent": "Python-Data-Studio-Release-Verify",
+        },
+      }, 1);
+      const info = await response.json();
+      lastVersion = info.version || "缺失";
+      if (info.version === version) return info;
+    } catch (error) {
+      lastVersion = error.message;
+    }
+    if (attempt < 12) await wait(5000);
+  }
+  fail(`线上 release-info.json 未切换到 ${version}，最后结果：${lastVersion}`);
+}
+
+async function verifyLatestRelease() {
+  const latest = await jsonRequest(`${apiBase}/releases/latest`, token);
+  if (latest.tag_name !== tag) fail(`GitHub latest 当前为 ${latest.tag_name}，预期为 ${tag}`);
+  if (latest.draft || latest.prerelease) fail(`Release ${tag} 不能是草稿或预发布版本。`);
+  return latest;
 }
 
 if (verifyOnly) {
   const verified = await findRelease(apiBase, tag, token);
   if (!verified) fail(`GitHub Release 不存在：${tag}`);
   verifyAssets(verified);
+  await verifyLatestRelease();
   const onlineInfo = await verifyOnlineInfo();
   console.log(`\n✅ 发布校验通过：Python Data Studio ${tag}`);
   console.log(`   Release：${verified.html_url}`);
@@ -278,45 +344,61 @@ if (verifyOnly) {
 }
 
 let release = await findRelease(apiBase, tag, token);
-const releasePayload = {
+const stagingPayload = {
   tag_name: tag,
   target_commitish: "main",
   name: `Python Data Studio ${tag}`,
   body: notes,
-  draft: false,
+  draft: true,
   prerelease: false,
-  make_latest: "true",
+  make_latest: "false",
 };
 
 if (release) {
   release = await jsonRequest(`${apiBase}/releases/${release.id}`, token, {
     method: "PATCH",
     headers: { "Content-Type": "application/json; charset=utf-8" },
-    body: JSON.stringify(releasePayload),
+    body: JSON.stringify(stagingPayload),
   });
-  console.log(`\n📝 已更新 GitHub Release：${tag}`);
+  console.log(`\n📝 Release 已转为暂存状态：${tag}`);
 } else {
   release = await jsonRequest(`${apiBase}/releases`, token, {
     method: "POST",
     headers: { "Content-Type": "application/json; charset=utf-8" },
-    body: JSON.stringify(releasePayload),
+    body: JSON.stringify(stagingPayload),
   });
-  console.log(`\n🆕 已创建 GitHub Release：${tag}`);
+  console.log(`\n🆕 已创建草稿 Release：${tag}`);
 }
 
 for (const filePath of uploads) {
   const name = assetName(filePath);
-  const existing = release.assets?.find((asset) => asset.name === name);
-  if (existing) {
-    await jsonRequest(`${apiBase}/releases/assets/${existing.id}`, token, { method: "DELETE" });
-  }
   process.stdout.write(`  ⬆️  上传 ${name} ... `);
-  const uploaded = await uploadAsset(`https://uploads.github.com/repos/${owner}/${repo}/releases/${release.id}/assets`, filePath, name, token);
+  const uploaded = await uploadAsset(apiBase, release.id, `https://uploads.github.com/repos/${owner}/${repo}/releases/${release.id}/assets`, filePath, name, token);
   console.log(`${(uploaded.size / 1024 / 1024).toFixed(2)} MB`);
 }
 
-const verified = await jsonRequest(`${apiBase}/releases/tags/${tag}`, token);
+let verified = await jsonRequest(`${apiBase}/releases/tags/${tag}`, token);
+for (const asset of verified.assets || []) {
+  const isStaleInstaller = /\.exe$/i.test(asset.name) && asset.name !== expectedInstallerName;
+  const isTemporaryUpload = asset.name.endsWith(".uploading");
+  if (isStaleInstaller || isTemporaryUpload) {
+    await jsonRequest(`${apiBase}/releases/assets/${asset.id}`, token, { method: "DELETE" });
+  }
+}
+verified = await jsonRequest(`${apiBase}/releases/tags/${tag}`, token);
 verifyAssets(verified);
+verified = await jsonRequest(`${apiBase}/releases/${release.id}`, token, {
+  method: "PATCH",
+  headers: { "Content-Type": "application/json; charset=utf-8" },
+  body: JSON.stringify({
+    name: `Python Data Studio ${tag}`,
+    body: notes,
+    draft: false,
+    prerelease: false,
+    make_latest: "true",
+  }),
+});
+await verifyLatestRelease();
 const onlineInfo = await verifyOnlineInfo();
 
 console.log(`\n✅ 发布完成：Python Data Studio ${tag}`);
