@@ -23,6 +23,17 @@ runtime/native/dist/python-runtime/*
 !runtime/native/dist/python-runtime/.gitkeep
 runtime/native/dist/*.log
 
+# Generated JupyterLite site (rebuilt by npm run build:runtime)
+public/runtime/
+!public/runtime/.gitkeep
+
+# JupyterLite runtime packaging input (synced from public/course by build:runtime)
+notebooks/course/*
+!notebooks/course/.gitkeep
+
+# Auth server persistent data (server/)
+server-data/
+
 # Python / notebook caches
 __pycache__/
 *.py[cod]
@@ -42,3 +53,18 @@ dev-server*.log
 *.lnk
 # Generated release artifacts
 release/
+
+# Session scratch / agent logs / audit outputs (keep local only)
+.agent-teams/
+.dsh-work/
+.backup-course-prefix/
+.pep8-viz2/
+.tmp/
+logs/
+python/
+.tmp*
+_*.txt
+_*.cjs
+verify_ch*.py
+scripts/*.bak*
+

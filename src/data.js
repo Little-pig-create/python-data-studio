@@ -1,16 +1,16 @@
 export const modules = [
-  { id: "python", label: "Python 基础", range: "第 1–11 章", color: "#2563EB" },
-  { id: "numpy", label: "NumPy", range: "第 12–16 章", color: "#0E7490" },
-  { id: "pandas", label: "Pandas", range: "第 17–25 章", color: "#16865C" },
-  { id: "matplotlib", label: "Matplotlib", range: "第 26–36 章", color: "#C77908" },
-  { id: "seaborn", label: "Seaborn", range: "第 37–55 章", color: "#D15B35" },
-  { id: "plotly", label: "Plotly", range: "第 56–72 章", color: "#B4236B" },
-  { id: "projects", label: "综合项目", range: "第 73–76 章", color: "#7C3AED" },
-  { id: "machine-learning", label: "机器学习", range: "第 77–109 章", color: "#0F766E" }
+  { id: "python", label: "Python 基础", range: "第 1–12 章", color: "#2563EB" },
+  { id: "numpy", label: "NumPy", range: "第 13–17 章", color: "#0E7490" },
+  { id: "pandas", label: "Pandas", range: "第 18–26 章", color: "#16865C" },
+  { id: "matplotlib", label: "Matplotlib", range: "第 27–37 章", color: "#C77908" },
+  { id: "seaborn", label: "Seaborn", range: "第 38–56 章", color: "#D15B35" },
+  { id: "plotly", label: "Plotly", range: "第 57–73 章", color: "#B4236B" },
+  { id: "projects", label: "综合项目", range: "第 74–77 章", color: "#7C3AED" },
+  { id: "machine-learning", label: "机器学习", range: "第 78–110 章", color: "#0F766E" }
 ];
 
-const chapterRows = [
-  [1, "Python与Notebook入门"], [2, "变量、数据类型与运算符"], [3, "字符串操作（str）"], [4, "列表与元组（list / tuple）"], [5, "字典与集合（dict / set）"], [6, "条件判断（if）"], [7, "循环与迭代（for / while）"], [8, "函数（def / lambda）"],
+const baseChapterRows = [
+  [1, "Python与Notebook入门"], [2, "变量、数据类型与运算符"], [3, "字符串操作（str）"], [4, "列表（list）"], [5, "字典与集合（dict / set）"], [6, "条件判断（if）"], [7, "循环与迭代（for / while）"], [8, "函数（def / lambda）"],
   [9, "文件与路径（open / pathlib）"], [10, "文件操作专题：读取、写入与目录管理"], [11, "异常处理（try / except）"], [12, "数组基础（ndarray）"], [13, "索引、切片与筛选"], [14, "形状、合并与拆分"], [15, "向量化与广播"], [16, "统计计算与随机抽样"],
   [17, "Series与DataFrame"], [18, "选择、筛选与排序"], [19, "行列操作与类型转换"], [20, "数据质量检查与清洗"], [21, "文本、日期与特征处理"], [22, "数据读取与保存"], [23, "分组、聚合与数据透视"], [24, "数据合并与结构转换"],
   [25, "窗口计算与探索性分析"], [26, "绘图结构（Figure / Axes）"], [27, "折线图（plot）"], [28, "柱状图（bar / barh）"], [29, "散点与气泡图（scatter）"], [30, "直方图（hist）"], [31, "箱线图（boxplot）"], [32, "面积图（fill_between / stackplot）"],
@@ -26,19 +26,25 @@ const chapterRows = [
   [105, "模型保存与批量推理"], [106, "用户消费价值预测项目"], [107, "物流延期风险预测项目"], [108, "共享单车需求预测项目"], [109, "银行营销响应预测项目"],
 ];
 
-const moduleForChapter = (chapter) => chapter <= 11
+const chapterRows = [
+  ...baseChapterRows.slice(0, 4),
+  [5, "元组（tuple）"],
+  ...baseChapterRows.slice(4).map(([chapter, title]) => [chapter + 1, title])
+];
+
+const moduleForChapter = (chapter) => chapter <= 12
   ? "python"
-  : chapter <= 16
+  : chapter <= 17
     ? "numpy"
-    : chapter <= 25
+    : chapter <= 26
       ? "pandas"
-      : chapter <= 36
+      : chapter <= 37
         ? "matplotlib"
-        : chapter <= 55
+        : chapter <= 56
           ? "seaborn"
-          : chapter <= 72
+          : chapter <= 73
             ? "plotly"
-            : chapter <= 76
+            : chapter <= 77
               ? "projects"
               : "machine-learning";
 const moduleFileLabels = {
@@ -62,10 +68,10 @@ export const chapters = chapterRows.map(([chapter, title]) => ({
   label: "第" + chapter + "章 " + title,
   module: moduleForChapter(chapter),
   path: "/course/" + fileName(chapter),  // 统一使用 /course/ 路径
-  kind: (chapter >= 72 && chapter <= 75) || chapter >= 105 ? "project" : "lesson",
-  estimatedMinutes: (chapter >= 72 && chapter <= 75) || chapter >= 105 ? 120 : chapter >= 76 ? 55 : chapter === 1 ? 25 : 35 + (chapter % 3) * 5,
+  kind: (chapter >= 74 && chapter <= 77) || chapter >= 107 ? "project" : "lesson",
+  estimatedMinutes: (chapter >= 74 && chapter <= 77) || chapter >= 107 ? 120 : chapter >= 78 ? 55 : chapter === 1 ? 25 : 35 + (chapter % 3) * 5,
   hasCode: true,
-  tags: chapter <= 11 ? ["语法", "基础"] : chapter <= 25 ? ["数据处理"] : chapter <= 72 ? ["可视化", "实践"] : chapter <= 76 || chapter >= 106 ? ["项目", "机器学习"] : ["机器学习", "sklearn"]
+  tags: chapter <= 12 ? ["语法", "基础"] : chapter <= 26 ? ["数据处理"] : chapter <= 73 ? ["可视化", "实践"] : chapter <= 77 || chapter >= 107 ? ["项目", "机器学习"] : ["机器学习", "sklearn"]
 }));
 
 export const extras = [

@@ -3,8 +3,10 @@ import { Button, InputAdornment, Pagination, TextField } from "@mui/material";
 import ArrowBackRounded from "@mui/icons-material/ArrowBackRounded";
 import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
 import SearchRounded from "@mui/icons-material/SearchRounded";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAppStore } from "./store";
+import { PortalHeader } from "./PortalHeader";
+import { StudentWorkspaceNav } from "./components/StudentWorkspaceNav";
 
 const PAGE_SIZE = 12;
 
@@ -51,17 +53,9 @@ export function PracticeCenter({ catalog }) {
   };
 
   return (
-    <main className="tool-page">
-      <div className="tool-page-header">
-        <div>
-          <div className="dashboard-kicker">练习中心</div>
-          <h1>按目标选择下一次练习</h1>
-          <p>从课程中的可运行 Notebook 开始练习，完成状态会自动回写到学习记录。</p>
-        </div>
-        <Button variant="outlined" startIcon={<ArrowBackRounded />} onClick={() => navigate("/progress")}>
-          返回学习记录
-        </Button>
-      </div>
+    <main className="student-workspace-page practice-page">
+      <PortalHeader title="练习中心" subtitle="从课程中的可运行 Notebook 开始练习，完成状态会自动回写到学习记录。" actions={<Button component={Link} to="/course/chapter-1" variant="outlined" startIcon={<ArrowBackRounded />}>返回课程</Button>} />
+      <StudentWorkspaceNav active="/practice" />
 
       <div className="practice-filters">
         <TextField

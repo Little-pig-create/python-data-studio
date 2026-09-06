@@ -3,6 +3,67 @@ const profile = (value) => value;
 
 export const machineLearningProjectProfiles = {
   105: profile({
+    summary: "用一份小型、可复现的客户特征数据，完成模型训练、评估、保存、加载和批量推理，建立从实验到上线输入的完整闭环。",
+    objectives: ["明确训练数据、目标变量和特征列表", "用基线指标判断模型是否真的有用", "理解模型对象与特征顺序必须一起保存", "使用内存序列化模拟模型保存与加载", "批量生成预测结果并检查输入结构", "区分预测结果、模型版本和业务限制"],
+    background: "模型训练完成并不代表任务结束。实际使用时还需要保存模型、记录特征顺序、加载模型并处理一批新数据。本章先用小数据讲清楚闭环，再迁移到真实生产系统的模型注册和批量推理。",
+    dataDictionary: [["visits", "近30天访问次数", "数值特征"], ["cart_rate", "加购率", "0到1之间的比例特征"], ["avg_order", "历史平均订单金额", "数值特征"], ["future_value", "未来消费金额", "回归目标"]],
+    qualityChecks: ["训练和推理使用相同特征列表", "特征顺序没有被输入表改变", "模型版本和训练日期有记录", "预测输出行数与输入一致", "异常输入不会被静默接受", "结果解释不超出训练数据范围"],
+    tasks: ["构造一份可复现的训练数据", "划分训练集和测试集", "比较均值基线与Ridge模型", "计算MAE和R²", "保存模型、特征列表和版本信息", "加载保存对象并复现预测", "对新客户批量推理", "设计输入结构检查", "写出上线前的风险和限制"],
+    codeCells: [
+      { title: "1. 构造训练数据并明确字段", explanation: "先把一行代表什么、哪些列是特征、哪一列是目标说清楚，再开始训练模型。", code: lines(
+        "import numpy as np", "import pandas as pd", "from sklearn.model_selection import train_test_split", "from sklearn.linear_model import Ridge", "from sklearn.pipeline import make_pipeline", "from sklearn.preprocessing import StandardScaler",
+        "rng=np.random.default_rng(105)",
+        "X=pd.DataFrame({'visits':[2,4,5,7,8,10,12,14,16,18,20,23],'cart_rate':[.05,.08,.12,.10,.16,.18,.22,.25,.24,.31,.35,.38],'avg_order':[80,90,120,110,150,160,180,210,190,240,260,300]})",
+        "y=pd.Series(120+X.visits*18+X.cart_rate*260+X.avg_order*.55+rng.normal(0,12,len(X)),name='future_value')",
+        "feature_names=['visits','cart_rate','avg_order']; print('样本:',X.shape,'特征:',feature_names,'目标:',y.name); display(pd.concat([X,y],axis=1).head())"
+      )},
+      { title: "2. 划分数据并建立基线", explanation: "先用训练集平均值作为最低基线，后续模型必须证明自己超过这个简单方法。", code: lines(
+        "X_train,X_test,y_train,y_test=train_test_split(X,y,test_size=.25,random_state=105)",
+        "baseline=np.repeat(y_train.mean(),len(y_test))",
+        "model=make_pipeline(StandardScaler(),Ridge(alpha=1.0)).fit(X_train[feature_names],y_train)",
+        "prediction=model.predict(X_test[feature_names])",
+        "print('训练/测试:',len(X_train),len(X_test)); print('基线预测:',round(y_train.mean(),2)); print('模型预测前3:',np.round(prediction[:3],2))"
+      )},
+      { title: "3. 评价模型是否超过基线", explanation: "同时报告误差和解释度，避免只看一个漂亮的指标就宣布模型成功。", code: lines(
+        "from sklearn.metrics import mean_absolute_error,r2_score",
+        "report=pd.Series({'基线_MAE':mean_absolute_error(y_test,baseline),'模型_MAE':mean_absolute_error(y_test,prediction),'模型_R2':r2_score(y_test,prediction)})",
+        "print(report.round(3).to_string()); print('是否优于基线:',report['模型_MAE']<report['基线_MAE'])"
+      )},
+      { title: "4. 准备可保存的模型对象", explanation: "保存模型时不要只保存算法本身，还要保存特征列表、版本和训练说明，否则加载后很容易喂错数据。", code: lines(
+        "from datetime import date",
+        "model_bundle={'model':model,'feature_names':feature_names,'model_version':'demo-105-v1','trained_on':str(date.today()),'target':'future_value'}",
+        "print('保存字段:',list(model_bundle)); print('特征顺序:',model_bundle['feature_names']); print('版本:',model_bundle['model_version'])"
+      )},
+      { title: "5. 序列化、加载并复现预测", explanation: "这里用pickle的内存字节模拟保存文件；真实项目可替换为模型仓库或受控对象存储。", code: lines(
+        "import pickle",
+        "payload=pickle.dumps(model_bundle)",
+        "loaded=pickle.loads(payload)",
+        "restored_prediction=loaded['model'].predict(X_test[loaded['feature_names']])",
+        "print('序列化字节数:',len(payload)); print('加载后版本:',loaded['model_version']); print('预测是否一致:',bool(np.allclose(prediction,restored_prediction)))"
+      )},
+      { title: "6. 对新客户批量推理", explanation: "批量推理的关键是先按保存的特征列表取列，再把预测结果和输入主键合并。", code: lines(
+        "new_customers=pd.DataFrame({'customer_id':['C001','C002','C003'],'avg_order':[130,280,200],'visits':[6,19,11],'cart_rate':[.10,.34,.21]})",
+        "batch_prediction=loaded['model'].predict(new_customers[loaded['feature_names']])",
+        "result=new_customers[['customer_id']].copy(); result['predicted_future_value']=batch_prediction.round(2)",
+        "print('输入行数:',len(new_customers),'输出行数:',len(result)); display(result)"
+      )},
+      { title: "7. 在推理前检查输入结构", explanation: "缺列和多列都应显式提示；不能因为列顺序不同或字段拼写错误而静默生成错误预测。", code: lines(
+        "required=set(loaded['feature_names']); available=set(new_customers.columns)",
+        "missing=required-available; extra=available-required",
+        "if missing: print('缺少特征:',sorted(missing))",
+        "else: print('必需特征齐全，推理顺序:',loaded['feature_names'])",
+        "print('额外字段不会直接进入模型:',sorted(extra))"
+      )},
+      { title: "8. 总结上线边界", explanation: "把技术结果翻译成上线前检查项：模型可复现只是起点，还要持续监控输入和结果。", code: lines(
+        "checks={'模型版本已记录':bool(loaded['model_version']),'特征顺序已保存':loaded['feature_names']==feature_names,'输出行数一致':len(result)==len(new_customers),'预测非负':bool((result.predicted_future_value>=0).all())}",
+        "print(pd.Series(checks).to_string()); print('限制：示例数据很小，不能代表真实客户；上线前还需时间切分、漂移监控、权限控制和人工复核。')"
+      )}
+    ],
+    conclusions: ["模型保存必须包含模型、特征列表和版本信息", "批量推理前先检查输入结构", "指标超过基线不等于模型可以直接上线", "上线系统还需要数据漂移和结果监控"],
+    acceptance: ["完成训练/测试划分和基线比较", "报告MAE与R²", "保存并加载模型对象", "复现加载前后的预测", "完成批量推理和输入检查", "写出模型上线限制"]
+  }),
+
+  106: profile({
     summary: "使用 UCI Online Retail 公开交易数据，按照“问题定义—数据准备—模型训练—模型评价—模型理解”的教学路径，预测客户未来消费金额。",
     objectives: ["理解客户价值预测的样本粒度与时间窗口", "审计并清洗真实交易数据", "构造无时间穿越的客户特征与目标", "比较回归基线、线性模型和树模型", "使用金额误差、Top-K与错误切片理解模型"],
     background: "在统一观察日，根据客户此前的交易行为预测未来窗口内的消费金额。本章关注规范的回归建模过程，不把预测相关性解释为营销措施的因果效果。",
@@ -82,7 +143,7 @@ export const machineLearningProjectProfiles = {
     acceptance: ["完成原始审计与清洗报告", "观察和目标窗口无重叠", "比较Dummy与两个候选模型", "报告MAE、RMSE、R²和Top-K", "完成错误切片与置换重要性解释"]
   }),
 
-  106: profile({
+  107: profile({
     summary: "使用 Olist 巴西电商公开数据，以物流延期分类为主线，学习多表建模、预测时点、数据泄漏、类别不平衡和业务阈值。",
     objectives: ["理解订单、明细、客户和卖家表的粒度", "构造订单级延期标签并排除事后字段", "使用时间顺序划分模拟未来预测", "比较概率基线、逻辑回归和随机森林", "使用PR-AUC、Top-K、错误切片与特征重要性评价模型"],
     background: "目标是在订单创建后预测是否会晚于预计日期签收。实际发货、实际签收和最终订单状态只能用于构造样本或标签，不能作为预测特征。",
@@ -164,7 +225,7 @@ export const machineLearningProjectProfiles = {
     acceptance: ["完成四表粒度与连接审计", "订单主键唯一且记录清洗口径", "排除实际发货、签收和最终状态字段", "比较Dummy和两个候选模型", "完成阈值、错误切片和置换重要性分析"]
   }),
 
-  107: profile({
+  108: profile({
     summary: "使用 UCI Bike Sharing 小时数据，按照时间序列回归的教学流程预测共享单车小时需求。",
     objectives: ["审计时间索引和目标构成", "识别目标组成字段造成的直接泄漏", "构造周期时间特征", "使用时间顺序划分和季节基线", "比较随机森林与梯度提升", "通过残差切片和特征重要性理解模型"],
     background: "根据日历与天气信息预测全网下一时段的租赁需求。本章关注时间回归建模，不使用站点库存和OD信息，也不把相关性解释为天气的因果效应。",
@@ -236,7 +297,7 @@ export const machineLearningProjectProfiles = {
     acceptance: ["完成时间索引和目标构成审计", "排除casual与registered", "使用严格时间三段划分", "比较季节基线和两个模型", "报告回归指标、峰值指标和误差切片", "完成高误差案例与置换重要性分析"]
   }),
 
-  108: profile({
+  109: profile({
     summary: "使用 UCI Bank Marketing 公开数据，按照二分类教学流程建立客户响应预测模型，重点学习事后泄漏、类别不平衡和阈值评价。",
     objectives: ["审计重复、unknown和正类比例", "识别并排除duration事后泄漏", "使用分层训练验证测试划分", "建立混合类型预处理Pipeline", "比较Dummy、逻辑回归和随机森林", "使用PR-AUC、Top-K、错误切片和特征重要性理解模型"],
     background: "目标是在通话开始前预测客户是否可能认购定期存款。模型学习历史响应关系，不回答一次电话是否会对特定客户产生因果增量。",

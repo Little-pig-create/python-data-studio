@@ -9,9 +9,11 @@ import ScheduleRounded from "@mui/icons-material/ScheduleRounded";
 import SyncRounded from "@mui/icons-material/SyncRounded";
 import TaskAltRounded from "@mui/icons-material/TaskAltRounded";
 import ViewModuleRounded from "@mui/icons-material/ViewModuleRounded";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAppStore } from "./store";
 import { studentPlatformConfig } from "./studentPlatform";
+import { PortalHeader } from "./PortalHeader";
+import { StudentWorkspaceNav } from "./components/StudentWorkspaceNav";
 
 const assignmentSteps = [
   { title: "选择实训", description: "从模块大作业或综合项目中选择一个真实任务。", icon: AssignmentRounded },
@@ -67,15 +69,9 @@ export function StudentTrainingCenter({ catalog }) {
   };
 
   return (
-    <main className="tool-page student-training-page">
-      <div className="tool-page-header student-training-header">
-        <div>
-          <div className="dashboard-kicker">学生实训</div>
-          <h1>我的实训</h1>
-          <p>集中完成各模块大作业与综合项目，把课程知识转化为可运行、可复盘的数据分析作品。</p>
-        </div>
-        <Button variant="outlined" startIcon={<ArrowBackRounded />} onClick={() => navigate("/progress")}>返回学习记录</Button>
-      </div>
+    <main className="student-workspace-page student-training-page">
+      <PortalHeader title="我的实训" subtitle="集中完成各模块大作业与综合项目，把课程知识转化为可运行、可复盘的数据分析作品。" actions={<Button component={Link} to="/course/chapter-1" variant="outlined" startIcon={<ArrowBackRounded />}>返回课程</Button>} />
+      <StudentWorkspaceNav active="/training" />
 
       <section className="student-training-hero">
         <div className="student-training-hero-copy">

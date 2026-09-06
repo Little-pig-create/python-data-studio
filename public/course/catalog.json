@@ -1,52 +1,52 @@
 {
-  "version": 25,
+  "version": 67,
   "modules": [
     {
       "id": "python",
       "label": "Python 基础",
-      "range": "第1–12章",
+      "range": "第1–15章",
       "color": "#2563EB"
     },
     {
       "id": "numpy",
       "label": "NumPy",
-      "range": "第12–16章",
+      "range": "第16–21章",
       "color": "#0E7490"
     },
     {
       "id": "pandas",
       "label": "Pandas",
-      "range": "第17–25章",
+      "range": "第22–31章",
       "color": "#16865C"
     },
     {
       "id": "matplotlib",
       "label": "Matplotlib",
-      "range": "第26–36章",
+      "range": "第32–43章",
       "color": "#C77908"
     },
     {
       "id": "seaborn",
       "label": "Seaborn",
-      "range": "第37–55章",
+      "range": "第44–63章",
       "color": "#D15B35"
     },
     {
       "id": "plotly",
       "label": "Plotly",
-      "range": "第56–72章",
+      "range": "第64–81章",
       "color": "#B4236B"
     },
     {
       "id": "projects",
       "label": "综合项目",
-      "range": "第73–76章",
+      "range": "第82–85章",
       "color": "#7C3AED"
     },
     {
       "id": "machine-learning",
       "label": "机器学习",
-      "range": "第77–109章",
+      "range": "第86–119章",
       "color": "#0F766E"
     }
   ],
@@ -55,16 +55,18 @@
       "id": "chapter-1",
       "chapter": 1,
       "sortOrder": 1,
-      "title": "Python与Notebook入门",
-      "label": "第1章 Python与Notebook入门",
+      "title": "Python 与 Notebook 入门",
+      "label": "第1章 Python 与 Notebook 入门",
       "module": "python",
       "path": "/course/course-chapter-1.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 25,
+      "estimatedMinutes": 90,
       "hasCode": true,
       "tags": [
-        "语法",
-        "基础"
+        "Python基础",
+        "渐进课程",
+        "个人记账助手",
+        "实训平台"
       ]
     },
     {
@@ -76,1867 +78,1933 @@
       "module": "python",
       "path": "/course/course-chapter-2.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 90,
       "hasCode": true,
       "tags": [
-        "语法",
-        "基础"
+        "Python基础",
+        "渐进课程",
+        "个人记账助手",
+        "实训平台"
       ]
     },
     {
       "id": "chapter-3",
       "chapter": 3,
       "sortOrder": 3,
-      "title": "字符串操作（str）",
-      "label": "第3章 字符串操作（str）",
+      "title": "字符串：从文本到字段",
+      "label": "第3章 字符串：从文本到字段",
       "module": "python",
       "path": "/course/course-chapter-3.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 90,
       "hasCode": true,
       "tags": [
-        "语法",
-        "基础"
+        "Python基础",
+        "渐进课程",
+        "个人记账助手",
+        "实训平台"
       ]
     },
     {
       "id": "chapter-4",
       "chapter": 4,
       "sortOrder": 4,
-      "title": "列表与元组（list / tuple）",
-      "label": "第4章 列表与元组（list / tuple）",
+      "title": "列表：管理多条记录",
+      "label": "第4章 列表：管理多条记录",
       "module": "python",
       "path": "/course/course-chapter-4.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 90,
       "hasCode": true,
       "tags": [
-        "语法",
-        "基础"
+        "Python基础",
+        "渐进课程",
+        "个人记账助手",
+        "实训平台"
       ]
     },
     {
       "id": "chapter-5",
       "chapter": 5,
       "sortOrder": 5,
-      "title": "字典与集合（dict / set）",
-      "label": "第5章 字典与集合（dict / set）",
+      "title": "元组：固定字段与解包",
+      "label": "第5章 元组：固定字段与解包",
       "module": "python",
       "path": "/course/course-chapter-5.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 90,
       "hasCode": true,
       "tags": [
-        "语法",
-        "基础"
+        "Python基础",
+        "渐进课程",
+        "个人记账助手",
+        "实训平台"
       ]
     },
     {
       "id": "chapter-6",
       "chapter": 6,
       "sortOrder": 6,
-      "title": "条件判断（if）",
-      "label": "第6章 条件判断（if）",
+      "title": "字典：命名记录与聚合",
+      "label": "第6章 字典：命名记录与聚合",
       "module": "python",
       "path": "/course/course-chapter-6.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 90,
       "hasCode": true,
       "tags": [
-        "语法",
-        "基础"
+        "Python基础",
+        "渐进课程",
+        "个人记账助手",
+        "实训平台"
       ]
     },
     {
       "id": "chapter-7",
       "chapter": 7,
       "sortOrder": 7,
-      "title": "循环与迭代（for / while）",
-      "label": "第7章 循环与迭代（for / while）",
+      "title": "集合：去重与关系",
+      "label": "第7章 集合：去重与关系",
       "module": "python",
       "path": "/course/course-chapter-7.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 90,
       "hasCode": true,
       "tags": [
-        "语法",
-        "基础"
+        "Python基础",
+        "渐进课程",
+        "个人记账助手",
+        "实训平台"
       ]
     },
     {
       "id": "chapter-8",
       "chapter": 8,
       "sortOrder": 8,
-      "title": "函数（def / lambda）",
-      "label": "第8章 函数（def / lambda）",
+      "title": "条件判断：把规则写清楚",
+      "label": "第8章 条件判断：把规则写清楚",
       "module": "python",
       "path": "/course/course-chapter-8.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 90,
       "hasCode": true,
       "tags": [
-        "语法",
-        "基础"
+        "Python基础",
+        "渐进课程",
+        "个人记账助手",
+        "实训平台"
       ]
     },
     {
       "id": "chapter-9",
       "chapter": 9,
       "sortOrder": 9,
-      "title": "文件与路径（os / open）",
-      "label": "第9章 文件与路径（os / open）",
+      "title": "循环与迭代：批量处理账目",
+      "label": "第9章 循环与迭代：批量处理账目",
       "module": "python",
       "path": "/course/course-chapter-9.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 90,
       "hasCode": true,
       "tags": [
-        "文件操作",
-        "os",
-        "open"
+        "Python基础",
+        "渐进课程",
+        "个人记账助手",
+        "实训平台"
       ]
     },
     {
       "id": "chapter-10",
       "chapter": 10,
       "sortOrder": 10,
-      "title": "文件操作专题：读取、写入与目录管理",
-      "label": "第10章 文件操作专题：读取、写入与目录管理",
+      "title": "函数基础：参数、返回值与职责",
+      "label": "第10章 函数基础：参数、返回值与职责",
       "module": "python",
       "path": "/course/course-chapter-10.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 60,
+      "estimatedMinutes": 90,
       "hasCode": true,
       "tags": [
-        "文件操作",
-        "os",
-        "csv",
-        "json"
+        "Python基础",
+        "渐进课程",
+        "个人记账助手",
+        "实训平台"
       ]
     },
     {
       "id": "chapter-11",
       "chapter": 11,
       "sortOrder": 11,
-      "title": "异常处理（try / except）",
-      "label": "第11章 异常处理（try / except）",
+      "title": "函数进阶：内置函数、lambda 与组合",
+      "label": "第11章 函数进阶：内置函数、lambda 与组合",
       "module": "python",
       "path": "/course/course-chapter-11.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
-      "hasCode": true,
-      "tags": [
-        "语法",
-        "基础"
-      ]
-    },
-    {
-      "id": "chapter-time",
-      "chapter": 12,
-      "sortOrder": 12,
-      "title": "时间与日期（time / datetime）",
-      "label": "第12章 时间与日期（time / datetime）",
-      "module": "python",
-      "path": "/course/course-chapter-time.ipynb",
-      "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 90,
       "hasCode": true,
       "tags": [
         "Python基础",
-        "时间处理",
-        "time",
-        "datetime"
+        "渐进课程",
+        "个人记账助手",
+        "实训平台"
       ]
     },
     {
       "id": "chapter-12",
       "chapter": 12,
       "sortOrder": 12,
-      "title": "数组基础（ndarray）",
-      "label": "第12章 数组基础（ndarray）",
-      "module": "numpy",
+      "title": "文件、路径与 JSON 持久化",
+      "label": "第12章 文件、路径与 JSON 持久化",
+      "module": "python",
       "path": "/course/course-chapter-12.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 90,
       "hasCode": true,
       "tags": [
-        "数据处理"
-      ]
-    },
-    {
-      "id": "capstone-python",
-      "chapter": 12,
-      "sortOrder": 12.5,
-      "title": "极客联赛·成绩数据救援",
-      "label": "模块大作业：极客联赛·成绩数据救援",
-      "module": "python",
-      "path": "/course/module-capstones/module-capstone-python.ipynb",
-      "kind": "capstone",
-      "estimatedMinutes": 120,
-      "hasCode": true,
-      "tags": [
-        "os 文件操作",
-        "字典与函数",
-        "字符串与列表",
-        "数据清洗"
+        "Python基础",
+        "渐进课程",
+        "个人记账助手",
+        "实训平台"
       ]
     },
     {
       "id": "chapter-13",
       "chapter": 13,
       "sortOrder": 13,
-      "title": "索引、切片与筛选",
-      "label": "第13章 索引、切片与筛选",
-      "module": "numpy",
+      "title": "异常处理、调试与基础测试",
+      "label": "第13章 异常处理、调试与基础测试",
+      "module": "python",
       "path": "/course/course-chapter-13.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 90,
       "hasCode": true,
       "tags": [
-        "数据处理"
+        "Python基础",
+        "渐进课程",
+        "个人记账助手",
+        "实训平台"
       ]
     },
     {
       "id": "chapter-14",
       "chapter": 14,
       "sortOrder": 14,
-      "title": "形状、合并与拆分",
-      "label": "第14章 形状、合并与拆分",
-      "module": "numpy",
-      "path": "/course/course-chapter-14.ipynb",
+      "title": "常见 Python 模块",
+      "label": "第14章 常见 Python 模块",
+      "module": "python",
+      "path": "/course/course-chapter-common-modules.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 45,
       "hasCode": true,
-      "tags": [
-        "数据处理"
-      ]
+      "tags": []
     },
     {
       "id": "chapter-15",
       "chapter": 15,
       "sortOrder": 15,
-      "title": "向量化与广播",
-      "label": "第15章 向量化与广播",
-      "module": "numpy",
-      "path": "/course/course-chapter-15.ipynb",
+      "title": "模块、类与项目组织",
+      "label": "第15章 模块、类与项目组织",
+      "module": "python",
+      "path": "/course/course-chapter-time.ipynb",
       "kind": "lesson",
+      "estimatedMinutes": 90,
+      "hasCode": true,
+      "tags": [
+        "Python基础",
+        "渐进课程",
+        "个人记账助手",
+        "实训平台"
+      ]
+    },
+    {
+      "id": "capstone-python",
+      "chapter": 15,
+      "sortOrder": 15.5,
+      "title": "个人日常记账助手 1.0",
+      "label": "个人日常记账助手 1.0",
+      "module": "python",
+      "path": "/course/module-capstones/module-capstone-python.ipynb",
+      "kind": "capstone",
+      "estimatedMinutes": 180,
+      "hasCode": true,
+      "tags": [
+        "Python",
+        "记账助手",
+        "程序设计",
+        "文件与异常"
+      ]
+    },
+    {
+      "id": "intro-numpy",
+      "chapter": 16,
+      "sortOrder": 15.75,
+      "title": "NumPy 模块入门",
+      "label": "第16章 NumPy 模块入门",
+      "module": "numpy",
+      "path": "/course/module-intro-numpy.ipynb",
+      "kind": "intro",
       "estimatedMinutes": 45,
       "hasCode": true,
-      "tags": [
-        "数据处理"
-      ]
-    },
-    {
-      "id": "chapter-16",
-      "chapter": 16,
-      "sortOrder": 16,
-      "title": "统计计算与随机抽样",
-      "label": "第16章 统计计算与随机抽样",
-      "module": "numpy",
-      "path": "/course/course-chapter-16.ipynb",
-      "kind": "lesson",
-      "estimatedMinutes": 35,
-      "hasCode": true,
-      "tags": [
-        "数据处理"
-      ]
-    },
-    {
-      "id": "capstone-numpy",
-      "chapter": 16,
-      "sortOrder": 16.5,
-      "title": "传感器数据清洗与异常检测",
-      "label": "传感器数据清洗与异常检测",
-      "module": "numpy",
-      "path": "/course/module-capstones/module-capstone-numpy.ipynb",
-      "kind": "capstone",
-      "estimatedMinutes": 120,
-      "hasCode": true,
-      "tags": [
-        "数组运算",
-        "切片与掩码",
-        "广播"
-      ]
+      "tags": []
     },
     {
       "id": "chapter-17",
       "chapter": 17,
       "sortOrder": 17,
-      "title": "Series与DataFrame",
-      "label": "第17章 Series与DataFrame",
-      "module": "pandas",
-      "path": "/course/course-chapter-17.ipynb",
+      "title": "数组基础（ndarray）",
+      "label": "第17章 数组基础（ndarray）",
+      "module": "numpy",
+      "path": "/course/course-chapter-14.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "数据处理"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-18",
       "chapter": 18,
       "sortOrder": 18,
-      "title": "选择、筛选与排序",
-      "label": "第18章 选择、筛选与排序",
-      "module": "pandas",
-      "path": "/course/course-chapter-18.ipynb",
+      "title": "索引、切片与筛选",
+      "label": "第18章 索引、切片与筛选",
+      "module": "numpy",
+      "path": "/course/course-chapter-15.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "数据处理"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-19",
       "chapter": 19,
       "sortOrder": 19,
-      "title": "行列操作与类型转换",
-      "label": "第19章 行列操作与类型转换",
-      "module": "pandas",
-      "path": "/course/course-chapter-19.ipynb",
+      "title": "形状、合并与拆分",
+      "label": "第19章 形状、合并与拆分",
+      "module": "numpy",
+      "path": "/course/course-chapter-16.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "数据处理"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-20",
       "chapter": 20,
       "sortOrder": 20,
-      "title": "数据质量检查与清洗",
-      "label": "第20章 数据质量检查与清洗",
-      "module": "pandas",
-      "path": "/course/course-chapter-20.ipynb",
+      "title": "向量化与广播",
+      "label": "第20章 向量化与广播",
+      "module": "numpy",
+      "path": "/course/course-chapter-17.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "数据处理"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-21",
       "chapter": 21,
       "sortOrder": 21,
-      "title": "文本、日期与特征处理",
-      "label": "第21章 文本、日期与特征处理",
-      "module": "pandas",
-      "path": "/course/course-chapter-21.ipynb",
-      "kind": "lesson",
-      "estimatedMinutes": 45,
-      "hasCode": true,
-      "tags": [
-        "数据处理"
-      ]
-    },
-    {
-      "id": "chapter-22",
-      "chapter": 22,
-      "sortOrder": 22,
-      "title": "数据读取与保存",
-      "label": "第22章 数据读取与保存",
-      "module": "pandas",
-      "path": "/course/course-chapter-22.ipynb",
+      "title": "统计计算与随机抽样",
+      "label": "第21章 统计计算与随机抽样",
+      "module": "numpy",
+      "path": "/course/course-chapter-18.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "数据处理"
+        "实训平台"
       ]
+    },
+    {
+      "id": "capstone-numpy",
+      "chapter": 21,
+      "sortOrder": 21.5,
+      "title": "连锁门店补货预警矩阵",
+      "label": "连锁门店补货预警矩阵",
+      "module": "numpy",
+      "path": "/course/module-capstones/module-capstone-numpy.ipynb",
+      "kind": "capstone",
+      "estimatedMinutes": 120,
+      "hasCode": true,
+      "tags": [
+        "NumPy",
+        "库存预警",
+        "广播",
+        "统计抽样"
+      ]
+    },
+    {
+      "id": "intro-pandas",
+      "chapter": 22,
+      "sortOrder": 21.75,
+      "title": "Pandas 模块入门",
+      "label": "第22章 Pandas 模块入门",
+      "module": "pandas",
+      "path": "/course/module-intro-pandas.ipynb",
+      "kind": "intro",
+      "estimatedMinutes": 45,
+      "hasCode": true,
+      "tags": []
     },
     {
       "id": "chapter-23",
       "chapter": 23,
       "sortOrder": 23,
-      "title": "分组、聚合与数据透视",
-      "label": "第23章 分组、聚合与数据透视",
+      "title": "Series与DataFrame",
+      "label": "第23章 Series与DataFrame",
       "module": "pandas",
-      "path": "/course/course-chapter-23.ipynb",
+      "path": "/course/course-chapter-19.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "数据处理"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-24",
       "chapter": 24,
       "sortOrder": 24,
-      "title": "数据合并与结构转换",
-      "label": "第24章 数据合并与结构转换",
+      "title": "选择、筛选与排序",
+      "label": "第24章 选择、筛选与排序",
       "module": "pandas",
-      "path": "/course/course-chapter-24.ipynb",
+      "path": "/course/course-chapter-20.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "数据处理"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-25",
       "chapter": 25,
       "sortOrder": 25,
-      "title": "窗口计算与探索性分析",
-      "label": "第25章 窗口计算与探索性分析",
+      "title": "行列操作与类型转换",
+      "label": "第25章 行列操作与类型转换",
       "module": "pandas",
-      "path": "/course/course-chapter-25.ipynb",
+      "path": "/course/course-chapter-21.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "数据处理"
-      ]
-    },
-    {
-      "id": "capstone-pandas",
-      "chapter": 25,
-      "sortOrder": 25.5,
-      "title": "电商订单整理与客户统计",
-      "label": "电商订单整理与客户统计",
-      "module": "pandas",
-      "path": "/course/module-capstones/module-capstone-pandas.ipynb",
-      "kind": "capstone",
-      "estimatedMinutes": 150,
-      "hasCode": true,
-      "tags": [
-        "多表合并",
-        "分组聚合",
-        "透视分析"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-26",
       "chapter": 26,
       "sortOrder": 26,
-      "title": "绘图结构（Figure / Axes）",
-      "label": "第26章 绘图结构（Figure / Axes）",
-      "module": "matplotlib",
-      "path": "/course/course-chapter-26.ipynb",
+      "title": "数据质量检查与清洗",
+      "label": "第26章 数据质量检查与清洗",
+      "module": "pandas",
+      "path": "/course/course-chapter-22.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-27",
       "chapter": 27,
       "sortOrder": 27,
-      "title": "折线图（plot）",
-      "label": "第27章 折线图（plot）",
-      "module": "matplotlib",
-      "path": "/course/course-chapter-27.ipynb",
+      "title": "文本、日期与特征处理",
+      "label": "第27章 文本、日期与特征处理",
+      "module": "pandas",
+      "path": "/course/course-chapter-23.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-28",
       "chapter": 28,
       "sortOrder": 28,
-      "title": "柱状图（bar / barh）",
-      "label": "第28章 柱状图（bar / barh）",
-      "module": "matplotlib",
-      "path": "/course/course-chapter-28.ipynb",
+      "title": "数据读取与保存",
+      "label": "第28章 数据读取与保存",
+      "module": "pandas",
+      "path": "/course/course-chapter-24.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-29",
       "chapter": 29,
       "sortOrder": 29,
-      "title": "散点与气泡图（scatter）",
-      "label": "第29章 散点与气泡图（scatter）",
-      "module": "matplotlib",
-      "path": "/course/course-chapter-29.ipynb",
+      "title": "分组、聚合与数据透视",
+      "label": "第29章 分组、聚合与数据透视",
+      "module": "pandas",
+      "path": "/course/course-chapter-25.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-30",
       "chapter": 30,
       "sortOrder": 30,
-      "title": "直方图（hist）",
-      "label": "第30章 直方图（hist）",
-      "module": "matplotlib",
-      "path": "/course/course-chapter-30.ipynb",
+      "title": "数据合并与结构转换",
+      "label": "第30章 数据合并与结构转换",
+      "module": "pandas",
+      "path": "/course/course-chapter-26.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-31",
       "chapter": 31,
       "sortOrder": 31,
-      "title": "箱线图（boxplot）",
-      "label": "第31章 箱线图（boxplot）",
-      "module": "matplotlib",
-      "path": "/course/course-chapter-31.ipynb",
+      "title": "窗口计算与探索性分析",
+      "label": "第31章 窗口计算与探索性分析",
+      "module": "pandas",
+      "path": "/course/course-chapter-27.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
-      "id": "chapter-32",
-      "chapter": 32,
-      "sortOrder": 32,
-      "title": "面积图（fill_between / stackplot）",
-      "label": "第32章 面积图（fill_between / stackplot）",
-      "module": "matplotlib",
-      "path": "/course/course-chapter-32.ipynb",
-      "kind": "lesson",
-      "estimatedMinutes": 40,
+      "id": "capstone-pandas",
+      "chapter": 31,
+      "sortOrder": 31.5,
+      "title": "电商履约异常追踪台",
+      "label": "电商履约异常追踪台",
+      "module": "pandas",
+      "path": "/course/module-capstones/module-capstone-pandas.ipynb",
+      "kind": "capstone",
+      "estimatedMinutes": 150,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "Pandas",
+        "履约追踪",
+        "多表合并",
+        "窗口计算"
       ]
+    },
+    {
+      "id": "intro-matplotlib",
+      "chapter": 32,
+      "sortOrder": 31.75,
+      "title": "Matplotlib 模块入门",
+      "label": "第32章 Matplotlib 模块入门",
+      "module": "matplotlib",
+      "path": "/course/module-intro-matplotlib.ipynb",
+      "kind": "intro",
+      "estimatedMinutes": 45,
+      "hasCode": true,
+      "tags": []
     },
     {
       "id": "chapter-33",
       "chapter": 33,
       "sortOrder": 33,
-      "title": "饼图与环形图（pie）",
-      "label": "第33章 饼图与环形图（pie）",
+      "title": "绘图结构（Figure / Axes）",
+      "label": "第33章 绘图结构（Figure / Axes）",
       "module": "matplotlib",
-      "path": "/course/course-chapter-33.ipynb",
+      "path": "/course/course-chapter-28.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-34",
       "chapter": 34,
       "sortOrder": 34,
-      "title": "误差线与区间图（errorbar）",
-      "label": "第34章 误差线与区间图（errorbar）",
+      "title": "折线图（plot）",
+      "label": "第34章 折线图（plot）",
       "module": "matplotlib",
-      "path": "/course/course-chapter-34.ipynb",
+      "path": "/course/course-chapter-29.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-35",
       "chapter": 35,
       "sortOrder": 35,
-      "title": "子图与组合图（subplots）",
-      "label": "第35章 子图与组合图（subplots）",
+      "title": "柱状图（bar / barh）",
+      "label": "第35章 柱状图（bar / barh）",
       "module": "matplotlib",
-      "path": "/course/course-chapter-35.ipynb",
+      "path": "/course/course-chapter-30.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-36",
       "chapter": 36,
       "sortOrder": 36,
-      "title": "美化、注释与导出",
-      "label": "第36章 美化、注释与导出",
+      "title": "散点与气泡图（scatter）",
+      "label": "第36章 散点与气泡图（scatter）",
       "module": "matplotlib",
-      "path": "/course/course-chapter-36.ipynb",
+      "path": "/course/course-chapter-31.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
-      ]
-    },
-    {
-      "id": "capstone-matplotlib",
-      "chapter": 36,
-      "sortOrder": 36.5,
-      "title": "实验数据可视化与报告",
-      "label": "实验数据可视化与报告",
-      "module": "matplotlib",
-      "path": "/course/module-capstones/module-capstone-matplotlib.ipynb",
-      "kind": "capstone",
-      "estimatedMinutes": 120,
-      "hasCode": true,
-      "tags": [
-        "基础绘图",
-        "子图布局",
-        "图表标注"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-37",
       "chapter": 37,
       "sortOrder": 37,
-      "title": "数据结构与主题",
-      "label": "第37章 数据结构与主题",
-      "module": "seaborn",
-      "path": "/course/course-chapter-37.ipynb",
+      "title": "直方图（hist）",
+      "label": "第37章 直方图（hist）",
+      "module": "matplotlib",
+      "path": "/course/course-chapter-32.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-38",
       "chapter": 38,
       "sortOrder": 38,
-      "title": "频数图（countplot）",
-      "label": "第38章 频数图（countplot）",
-      "module": "seaborn",
-      "path": "/course/course-chapter-38.ipynb",
+      "title": "箱线图（boxplot）",
+      "label": "第38章 箱线图（boxplot）",
+      "module": "matplotlib",
+      "path": "/course/course-chapter-33.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-39",
       "chapter": 39,
       "sortOrder": 39,
-      "title": "统计柱状图（barplot）",
-      "label": "第39章 统计柱状图（barplot）",
-      "module": "seaborn",
-      "path": "/course/course-chapter-39.ipynb",
+      "title": "面积图（fill_between / stackplot）",
+      "label": "第39章 面积图（fill_between / stackplot）",
+      "module": "matplotlib",
+      "path": "/course/course-chapter-34.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-40",
       "chapter": 40,
       "sortOrder": 40,
-      "title": "点图（pointplot）",
-      "label": "第40章 点图（pointplot）",
-      "module": "seaborn",
-      "path": "/course/course-chapter-40.ipynb",
+      "title": "饼图与环形图（pie）",
+      "label": "第40章 饼图与环形图（pie）",
+      "module": "matplotlib",
+      "path": "/course/course-chapter-35.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-41",
       "chapter": 41,
       "sortOrder": 41,
-      "title": "箱线图（boxplot）",
-      "label": "第41章 箱线图（boxplot）",
-      "module": "seaborn",
-      "path": "/course/course-chapter-41.ipynb",
+      "title": "误差线与区间图（errorbar）",
+      "label": "第41章 误差线与区间图（errorbar）",
+      "module": "matplotlib",
+      "path": "/course/course-chapter-36.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-42",
       "chapter": 42,
       "sortOrder": 42,
-      "title": "小提琴图（violinplot）",
-      "label": "第42章 小提琴图（violinplot）",
-      "module": "seaborn",
-      "path": "/course/course-chapter-42.ipynb",
+      "title": "子图与组合图（subplots）",
+      "label": "第42章 子图与组合图（subplots）",
+      "module": "matplotlib",
+      "path": "/course/course-chapter-37.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-43",
       "chapter": 43,
       "sortOrder": 43,
-      "title": "抖动散点图（stripplot）",
-      "label": "第43章 抖动散点图（stripplot）",
-      "module": "seaborn",
-      "path": "/course/course-chapter-43.ipynb",
+      "title": "美化、注释与导出",
+      "label": "第43章 美化、注释与导出",
+      "module": "matplotlib",
+      "path": "/course/course-chapter-38.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
-      "id": "chapter-44",
-      "chapter": 44,
-      "sortOrder": 44,
-      "title": "蜂群图（swarmplot）",
-      "label": "第44章 蜂群图（swarmplot）",
-      "module": "seaborn",
-      "path": "/course/course-chapter-44.ipynb",
-      "kind": "lesson",
-      "estimatedMinutes": 40,
+      "id": "capstone-matplotlib",
+      "chapter": 43,
+      "sortOrder": 43.5,
+      "title": "经营周会一页报告",
+      "label": "经营周会一页报告",
+      "module": "matplotlib",
+      "path": "/course/module-capstones/module-capstone-matplotlib.ipynb",
+      "kind": "capstone",
+      "estimatedMinutes": 120,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "Matplotlib",
+        "统计图",
+        "静态报告"
       ]
+    },
+    {
+      "id": "intro-seaborn",
+      "chapter": 44,
+      "sortOrder": 43.75,
+      "title": "Seaborn 模块入门",
+      "label": "第44章 Seaborn 模块入门",
+      "module": "seaborn",
+      "path": "/course/module-intro-seaborn.ipynb",
+      "kind": "intro",
+      "estimatedMinutes": 45,
+      "hasCode": true,
+      "tags": []
     },
     {
       "id": "chapter-45",
       "chapter": 45,
       "sortOrder": 45,
-      "title": "直方图（histplot）",
-      "label": "第45章 直方图（histplot）",
+      "title": "数据结构与主题",
+      "label": "第45章 数据结构与主题",
       "module": "seaborn",
-      "path": "/course/course-chapter-45.ipynb",
+      "path": "/course/course-chapter-39.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-46",
       "chapter": 46,
       "sortOrder": 46,
-      "title": "核密度图（kdeplot）",
-      "label": "第46章 核密度图（kdeplot）",
+      "title": "频数图（countplot）",
+      "label": "第46章 频数图（countplot）",
       "module": "seaborn",
-      "path": "/course/course-chapter-46.ipynb",
+      "path": "/course/course-chapter-40.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-47",
       "chapter": 47,
       "sortOrder": 47,
-      "title": "累积分布图（ecdfplot）",
-      "label": "第47章 累积分布图（ecdfplot）",
+      "title": "统计柱状图（barplot）",
+      "label": "第47章 统计柱状图（barplot）",
       "module": "seaborn",
-      "path": "/course/course-chapter-47.ipynb",
+      "path": "/course/course-chapter-41.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-48",
       "chapter": 48,
       "sortOrder": 48,
-      "title": "散点图（scatterplot）",
-      "label": "第48章 散点图（scatterplot）",
+      "title": "点图（pointplot）",
+      "label": "第48章 点图（pointplot）",
       "module": "seaborn",
-      "path": "/course/course-chapter-48.ipynb",
+      "path": "/course/course-chapter-42.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-49",
       "chapter": 49,
       "sortOrder": 49,
-      "title": "统计折线图（lineplot）",
-      "label": "第49章 统计折线图（lineplot）",
+      "title": "箱线图（boxplot）",
+      "label": "第49章 箱线图（boxplot）",
       "module": "seaborn",
-      "path": "/course/course-chapter-49.ipynb",
+      "path": "/course/course-chapter-43.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-50",
       "chapter": 50,
       "sortOrder": 50,
-      "title": "回归图（regplot / lmplot）",
-      "label": "第50章 回归图（regplot / lmplot）",
+      "title": "小提琴图（violinplot）",
+      "label": "第50章 小提琴图（violinplot）",
       "module": "seaborn",
-      "path": "/course/course-chapter-50.ipynb",
+      "path": "/course/course-chapter-44.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-51",
       "chapter": 51,
       "sortOrder": 51,
-      "title": "联合分布图（jointplot）",
-      "label": "第51章 联合分布图（jointplot）",
+      "title": "抖动散点图（stripplot）",
+      "label": "第51章 抖动散点图（stripplot）",
       "module": "seaborn",
-      "path": "/course/course-chapter-51.ipynb",
+      "path": "/course/course-chapter-45.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-52",
       "chapter": 52,
       "sortOrder": 52,
-      "title": "成对关系图（pairplot）",
-      "label": "第52章 成对关系图（pairplot）",
+      "title": "蜂群图（swarmplot）",
+      "label": "第52章 蜂群图（swarmplot）",
       "module": "seaborn",
-      "path": "/course/course-chapter-52.ipynb",
+      "path": "/course/course-chapter-46.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-53",
       "chapter": 53,
       "sortOrder": 53,
-      "title": "热力图（heatmap）",
-      "label": "第53章 热力图（heatmap）",
+      "title": "直方图（histplot）",
+      "label": "第53章 直方图（histplot）",
       "module": "seaborn",
-      "path": "/course/course-chapter-53.ipynb",
+      "path": "/course/course-chapter-47.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-54",
       "chapter": 54,
       "sortOrder": 54,
-      "title": "聚类热力图（clustermap）",
-      "label": "第54章 聚类热力图（clustermap）",
+      "title": "核密度图（kdeplot）",
+      "label": "第54章 核密度图（kdeplot）",
       "module": "seaborn",
-      "path": "/course/course-chapter-54.ipynb",
+      "path": "/course/course-chapter-48.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-55",
       "chapter": 55,
       "sortOrder": 55,
-      "title": "分面图（FacetGrid）",
-      "label": "第55章 分面图（FacetGrid）",
+      "title": "累积分布图（ecdfplot）",
+      "label": "第55章 累积分布图（ecdfplot）",
       "module": "seaborn",
-      "path": "/course/course-chapter-55.ipynb",
+      "path": "/course/course-chapter-49.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
-      ]
-    },
-    {
-      "id": "capstone-seaborn",
-      "chapter": 55,
-      "sortOrder": 55.5,
-      "title": "企鹅数据分组比较与关系探索",
-      "label": "企鹅数据分组比较与关系探索",
-      "module": "seaborn",
-      "path": "/course/module-capstones/module-capstone-seaborn.ipynb",
-      "kind": "capstone",
-      "estimatedMinutes": 150,
-      "hasCode": true,
-      "tags": [
-        "分布图",
-        "分类图",
-        "多变量关系"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-56",
       "chapter": 56,
       "sortOrder": 56,
-      "title": "图表结构与Hover",
-      "label": "第56章 图表结构与Hover",
-      "module": "plotly",
-      "path": "/course/course-chapter-56.ipynb",
+      "title": "散点图（scatterplot）",
+      "label": "第56章 散点图（scatterplot）",
+      "module": "seaborn",
+      "path": "/course/course-chapter-50.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-57",
       "chapter": 57,
       "sortOrder": 57,
-      "title": "交互折线图（px.line）",
-      "label": "第57章 交互折线图（px.line）",
-      "module": "plotly",
-      "path": "/course/course-chapter-57.ipynb",
+      "title": "统计折线图（lineplot）",
+      "label": "第57章 统计折线图（lineplot）",
+      "module": "seaborn",
+      "path": "/course/course-chapter-51.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-58",
       "chapter": 58,
       "sortOrder": 58,
-      "title": "交互柱状图（px.bar）",
-      "label": "第58章 交互柱状图（px.bar）",
-      "module": "plotly",
-      "path": "/course/course-chapter-58.ipynb",
+      "title": "回归图（regplot / lmplot）",
+      "label": "第58章 回归图（regplot / lmplot）",
+      "module": "seaborn",
+      "path": "/course/course-chapter-52.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-59",
       "chapter": 59,
       "sortOrder": 59,
-      "title": "交互散点图（px.scatter）",
-      "label": "第59章 交互散点图（px.scatter）",
-      "module": "plotly",
-      "path": "/course/course-chapter-59.ipynb",
+      "title": "联合分布图（jointplot）",
+      "label": "第59章 联合分布图（jointplot）",
+      "module": "seaborn",
+      "path": "/course/course-chapter-53.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-60",
       "chapter": 60,
       "sortOrder": 60,
-      "title": "交互气泡图",
-      "label": "第60章 交互气泡图",
-      "module": "plotly",
-      "path": "/course/course-chapter-60.ipynb",
+      "title": "成对关系图（pairplot）",
+      "label": "第60章 成对关系图（pairplot）",
+      "module": "seaborn",
+      "path": "/course/course-chapter-54.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-61",
       "chapter": 61,
       "sortOrder": 61,
-      "title": "交互面积图（px.area）",
-      "label": "第61章 交互面积图（px.area）",
-      "module": "plotly",
-      "path": "/course/course-chapter-61.ipynb",
+      "title": "热力图（heatmap）",
+      "label": "第61章 热力图（heatmap）",
+      "module": "seaborn",
+      "path": "/course/course-chapter-55.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-62",
       "chapter": 62,
       "sortOrder": 62,
-      "title": "交互直方图（px.histogram）",
-      "label": "第62章 交互直方图（px.histogram）",
-      "module": "plotly",
-      "path": "/course/course-chapter-62.ipynb",
+      "title": "聚类热力图（clustermap）",
+      "label": "第62章 聚类热力图（clustermap）",
+      "module": "seaborn",
+      "path": "/course/course-chapter-56.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-63",
       "chapter": 63,
       "sortOrder": 63,
-      "title": "交互箱线图（px.box）",
-      "label": "第63章 交互箱线图（px.box）",
-      "module": "plotly",
-      "path": "/course/course-chapter-63.ipynb",
-      "kind": "lesson",
-      "estimatedMinutes": 45,
-      "hasCode": true,
-      "tags": [
-        "可视化",
-        "实践"
-      ]
-    },
-    {
-      "id": "chapter-64",
-      "chapter": 64,
-      "sortOrder": 64,
-      "title": "交互小提琴图（px.violin）",
-      "label": "第64章 交互小提琴图（px.violin）",
-      "module": "plotly",
-      "path": "/course/course-chapter-64.ipynb",
+      "title": "分面图（FacetGrid）",
+      "label": "第63章 分面图（FacetGrid）",
+      "module": "seaborn",
+      "path": "/course/course-chapter-57.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
+    },
+    {
+      "id": "capstone-seaborn",
+      "chapter": 63,
+      "sortOrder": 63.5,
+      "title": "客群消费行为差异研究",
+      "label": "客群消费行为差异研究",
+      "module": "seaborn",
+      "path": "/course/module-capstones/module-capstone-seaborn.ipynb",
+      "kind": "capstone",
+      "estimatedMinutes": 135,
+      "hasCode": true,
+      "tags": [
+        "Seaborn",
+        "客群比较",
+        "统计语义",
+        "分面"
+      ]
+    },
+    {
+      "id": "intro-plotly",
+      "chapter": 64,
+      "sortOrder": 63.75,
+      "title": "Plotly 模块入门",
+      "label": "第64章 Plotly 模块入门",
+      "module": "plotly",
+      "path": "/course/module-intro-plotly.ipynb",
+      "kind": "intro",
+      "estimatedMinutes": 45,
+      "hasCode": true,
+      "tags": []
     },
     {
       "id": "chapter-65",
       "chapter": 65,
       "sortOrder": 65,
-      "title": "交互热力图（px.imshow）",
-      "label": "第65章 交互热力图（px.imshow）",
+      "title": "图表结构与Hover",
+      "label": "第65章 图表结构与Hover",
       "module": "plotly",
-      "path": "/course/course-chapter-65.ipynb",
+      "path": "/course/course-chapter-58.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-66",
       "chapter": 66,
       "sortOrder": 66,
-      "title": "矩形树图（px.treemap）",
-      "label": "第66章 矩形树图（px.treemap）",
+      "title": "交互折线图（px.line）",
+      "label": "第66章 交互折线图（px.line）",
       "module": "plotly",
-      "path": "/course/course-chapter-66.ipynb",
+      "path": "/course/course-chapter-59.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-67",
       "chapter": 67,
       "sortOrder": 67,
-      "title": "旭日图（px.sunburst）",
-      "label": "第67章 旭日图（px.sunburst）",
+      "title": "交互柱状图（px.bar）",
+      "label": "第67章 交互柱状图（px.bar）",
       "module": "plotly",
-      "path": "/course/course-chapter-67.ipynb",
+      "path": "/course/course-chapter-60.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-68",
       "chapter": 68,
       "sortOrder": 68,
-      "title": "漏斗图（px.funnel）",
-      "label": "第68章 漏斗图（px.funnel）",
+      "title": "交互散点图（px.scatter）",
+      "label": "第68章 交互散点图（px.scatter）",
       "module": "plotly",
-      "path": "/course/course-chapter-68.ipynb",
+      "path": "/course/course-chapter-61.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-69",
       "chapter": 69,
       "sortOrder": 69,
-      "title": "瀑布图（Waterfall）",
-      "label": "第69章 瀑布图（Waterfall）",
+      "title": "交互气泡图",
+      "label": "第69章 交互气泡图",
       "module": "plotly",
-      "path": "/course/course-chapter-69.ipynb",
+      "path": "/course/course-chapter-62.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-70",
       "chapter": 70,
       "sortOrder": 70,
-      "title": "时间线与甘特图（px.timeline）",
-      "label": "第70章 时间线与甘特图（px.timeline）",
+      "title": "交互面积图（px.area）",
+      "label": "第70章 交互面积图（px.area）",
       "module": "plotly",
-      "path": "/course/course-chapter-70.ipynb",
+      "path": "/course/course-chapter-63.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-71",
       "chapter": 71,
       "sortOrder": 71,
-      "title": "地图图表（Map / Geo）",
-      "label": "第71章 地图图表（Map / Geo）",
+      "title": "交互直方图（px.histogram）",
+      "label": "第71章 交互直方图（px.histogram）",
       "module": "plotly",
-      "path": "/course/course-chapter-71.ipynb",
+      "path": "/course/course-chapter-64.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-72",
       "chapter": 72,
       "sortOrder": 72,
-      "title": "子图、控件与导出",
-      "label": "第72章 子图、控件与导出",
+      "title": "交互箱线图（px.box）",
+      "label": "第72章 交互箱线图（px.box）",
       "module": "plotly",
-      "path": "/course/course-chapter-72.ipynb",
+      "path": "/course/course-chapter-65.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "可视化",
-        "实践"
-      ]
-    },
-    {
-      "id": "capstone-plotly",
-      "chapter": 72,
-      "sortOrder": 72.5,
-      "title": "共享单车数据交互分析",
-      "label": "共享单车数据交互分析",
-      "module": "plotly",
-      "path": "/course/module-capstones/module-capstone-plotly.ipynb",
-      "kind": "capstone",
-      "estimatedMinutes": 150,
-      "hasCode": true,
-      "tags": [
-        "交互图表",
-        "筛选联动",
-        "HTML 导出"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-73",
       "chapter": 73,
       "sortOrder": 73,
-      "title": "在线零售用户消费与RFM",
-      "label": "第73章 在线零售用户消费与RFM",
-      "module": "projects",
-      "path": "/course/course-chapter-73.ipynb",
-      "kind": "project",
-      "estimatedMinutes": 120,
+      "title": "交互小提琴图（px.violin）",
+      "label": "第73章 交互小提琴图（px.violin）",
+      "module": "plotly",
+      "path": "/course/course-chapter-66.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "项目",
-        "机器学习"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-74",
       "chapter": 74,
       "sortOrder": 74,
-      "title": "Olist电商物流履约分析",
-      "label": "第74章 Olist电商物流履约分析",
-      "module": "projects",
-      "path": "/course/course-chapter-74.ipynb",
-      "kind": "project",
-      "estimatedMinutes": 120,
+      "title": "交互热力图（px.imshow）",
+      "label": "第74章 交互热力图（px.imshow）",
+      "module": "plotly",
+      "path": "/course/course-chapter-67.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "项目",
-        "机器学习"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-75",
       "chapter": 75,
       "sortOrder": 75,
-      "title": "共享单车需求与运力调度",
-      "label": "第75章 共享单车需求与运力调度",
-      "module": "projects",
-      "path": "/course/course-chapter-75.ipynb",
-      "kind": "project",
-      "estimatedMinutes": 120,
+      "title": "矩形树图（px.treemap）",
+      "label": "第75章 矩形树图（px.treemap）",
+      "module": "plotly",
+      "path": "/course/course-chapter-68.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "项目",
-        "机器学习"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-76",
       "chapter": 76,
       "sortOrder": 76,
-      "title": "银行客户营销转化分析",
-      "label": "第76章 银行客户营销转化分析",
-      "module": "projects",
-      "path": "/course/course-chapter-76.ipynb",
-      "kind": "project",
-      "estimatedMinutes": 120,
+      "title": "旭日图（px.sunburst）",
+      "label": "第76章 旭日图（px.sunburst）",
+      "module": "plotly",
+      "path": "/course/course-chapter-69.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "项目",
-        "机器学习"
-      ]
-    },
-    {
-      "id": "capstone-projects",
-      "chapter": 76,
-      "sortOrder": 76.5,
-      "title": "综合数据分析小项目",
-      "label": "综合数据分析小项目",
-      "module": "projects",
-      "path": "/course/module-capstones/module-capstone-projects.ipynb",
-      "kind": "capstone",
-      "estimatedMinutes": 180,
-      "hasCode": true,
-      "tags": [
-        "问题定义",
-        "数据处理",
-        "结果表达"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-77",
       "chapter": 77,
       "sortOrder": 77,
-      "title": "Scikit-learn工作流与数据切分",
-      "label": "第77章 Scikit-learn工作流与数据切分",
-      "module": "machine-learning",
-      "path": "/course/course-chapter-77.ipynb",
+      "title": "漏斗图（px.funnel）",
+      "label": "第77章 漏斗图（px.funnel）",
+      "module": "plotly",
+      "path": "/course/course-chapter-70.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 55,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-78",
       "chapter": 78,
       "sortOrder": 78,
-      "title": "数据预处理与Pipeline",
-      "label": "第78章 数据预处理与Pipeline",
-      "module": "machine-learning",
-      "path": "/course/course-chapter-78.ipynb",
+      "title": "瀑布图（Waterfall）",
+      "label": "第78章 瀑布图（Waterfall）",
+      "module": "plotly",
+      "path": "/course/course-chapter-71.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 55,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-79",
       "chapter": 79,
       "sortOrder": 79,
-      "title": "线性回归与正则化",
-      "label": "第79章 线性回归与正则化",
-      "module": "machine-learning",
-      "path": "/course/course-chapter-79.ipynb",
+      "title": "时间线与甘特图（px.timeline）",
+      "label": "第79章 时间线与甘特图（px.timeline）",
+      "module": "plotly",
+      "path": "/course/course-chapter-72.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 55,
+      "estimatedMinutes": 35,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-80",
       "chapter": 80,
       "sortOrder": 80,
-      "title": "逻辑回归分类",
-      "label": "第80章 逻辑回归分类",
-      "module": "machine-learning",
-      "path": "/course/course-chapter-80.ipynb",
+      "title": "地图图表（Map / Geo）",
+      "label": "第80章 地图图表（Map / Geo）",
+      "module": "plotly",
+      "path": "/course/course-chapter-73.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 55,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-81",
       "chapter": 81,
       "sortOrder": 81,
-      "title": "K近邻模型（KNN）",
-      "label": "第81章 K近邻模型（KNN）",
-      "module": "machine-learning",
-      "path": "/course/course-chapter-81.ipynb",
+      "title": "子图、控件与导出",
+      "label": "第81章 子图、控件与导出",
+      "module": "plotly",
+      "path": "/course/course-chapter-74.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 55,
+      "estimatedMinutes": 120,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
+      ]
+    },
+    {
+      "id": "capstone-plotly",
+      "chapter": 81,
+      "sortOrder": 81.5,
+      "title": "周度经营预警会：交互诊断与行动看板",
+      "label": "周度经营预警会：交互诊断与行动看板",
+      "module": "plotly",
+      "path": "/course/module-capstones/module-capstone-plotly.ipynb",
+      "kind": "capstone",
+      "estimatedMinutes": 180,
+      "hasCode": true,
+      "tags": [
+        "Plotly",
+        "经营预警",
+        "交互诊断",
+        "行动看板"
       ]
     },
     {
       "id": "chapter-82",
       "chapter": 82,
       "sortOrder": 82,
-      "title": "决策树",
-      "label": "第82章 决策树",
-      "module": "machine-learning",
-      "path": "/course/course-chapter-82.ipynb",
-      "kind": "lesson",
-      "estimatedMinutes": 55,
+      "title": "在线零售用户消费与RFM",
+      "label": "第82章 在线零售用户消费与RFM",
+      "module": "projects",
+      "path": "/course/course-chapter-75.ipynb",
+      "kind": "project",
+      "estimatedMinutes": 120,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-83",
       "chapter": 83,
       "sortOrder": 83,
-      "title": "随机森林",
-      "label": "第83章 随机森林",
-      "module": "machine-learning",
-      "path": "/course/course-chapter-83.ipynb",
-      "kind": "lesson",
-      "estimatedMinutes": 55,
+      "title": "Olist电商物流履约分析",
+      "label": "第83章 Olist电商物流履约分析",
+      "module": "projects",
+      "path": "/course/course-chapter-76.ipynb",
+      "kind": "project",
+      "estimatedMinutes": 120,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-84",
       "chapter": 84,
       "sortOrder": 84,
-      "title": "梯度提升模型",
-      "label": "第84章 梯度提升模型",
-      "module": "machine-learning",
-      "path": "/course/course-chapter-84.ipynb",
-      "kind": "lesson",
-      "estimatedMinutes": 55,
+      "title": "共享单车需求与运力调度",
+      "label": "第84章 共享单车需求与运力调度",
+      "module": "projects",
+      "path": "/course/course-chapter-77.ipynb",
+      "kind": "project",
+      "estimatedMinutes": 120,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-85",
       "chapter": 85,
       "sortOrder": 85,
-      "title": "支持向量机（SVM）",
-      "label": "第85章 支持向量机（SVM）",
-      "module": "machine-learning",
-      "path": "/course/course-chapter-85.ipynb",
-      "kind": "lesson",
+      "title": "银行客户营销转化分析",
+      "label": "第85章 银行客户营销转化分析",
+      "module": "projects",
+      "path": "/course/course-chapter-78.ipynb",
+      "kind": "project",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
-      "id": "chapter-86",
-      "chapter": 86,
-      "sortOrder": 86,
-      "title": "朴素贝叶斯",
-      "label": "第86章 朴素贝叶斯",
-      "module": "machine-learning",
-      "path": "/course/course-chapter-86.ipynb",
-      "kind": "lesson",
-      "estimatedMinutes": 55,
+      "id": "capstone-projects",
+      "chapter": 85,
+      "sortOrder": 85.5,
+      "title": "跨模块业务决策项目",
+      "label": "跨模块业务决策项目",
+      "module": "projects",
+      "path": "/course/module-capstones/module-capstone-projects.ipynb",
+      "kind": "capstone",
+      "estimatedMinutes": 210,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "综合项目",
+        "方法迁移",
+        "证据链",
+        "决策备忘录"
       ]
+    },
+    {
+      "id": "intro-machine-learning",
+      "chapter": 86,
+      "sortOrder": 85.75,
+      "title": "机器学习模块入门",
+      "label": "第86章 机器学习模块入门",
+      "module": "machine-learning",
+      "path": "/course/module-intro-machine-learning.ipynb",
+      "kind": "intro",
+      "estimatedMinutes": 45,
+      "hasCode": true,
+      "tags": []
     },
     {
       "id": "chapter-87",
       "chapter": 87,
       "sortOrder": 87,
-      "title": "K-Means聚类",
-      "label": "第87章 K-Means聚类",
+      "title": "Scikit-learn工作流与数据切分",
+      "label": "第87章 Scikit-learn工作流与数据切分",
       "module": "machine-learning",
-      "path": "/course/course-chapter-87.ipynb",
+      "path": "/course/course-chapter-79.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-88",
       "chapter": 88,
       "sortOrder": 88,
-      "title": "主成分分析（PCA）",
-      "label": "第88章 主成分分析（PCA）",
+      "title": "数据预处理与Pipeline",
+      "label": "第88章 数据预处理与Pipeline",
       "module": "machine-learning",
-      "path": "/course/course-chapter-88.ipynb",
+      "path": "/course/course-chapter-80.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-89",
       "chapter": 89,
       "sortOrder": 89,
-      "title": "交叉验证与超参数调优",
-      "label": "第89章 交叉验证与超参数调优",
+      "title": "线性回归与正则化",
+      "label": "第89章 线性回归与正则化",
       "module": "machine-learning",
-      "path": "/course/course-chapter-89.ipynb",
+      "path": "/course/course-chapter-81.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-90",
       "chapter": 90,
       "sortOrder": 90,
-      "title": "不平衡分类与阈值选择",
-      "label": "第90章 不平衡分类与阈值选择",
+      "title": "逻辑回归分类",
+      "label": "第90章 逻辑回归分类",
       "module": "machine-learning",
-      "path": "/course/course-chapter-90.ipynb",
+      "path": "/course/course-chapter-82.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-91",
       "chapter": 91,
       "sortOrder": 91,
-      "title": "随机森林回归",
-      "label": "第91章 随机森林回归",
+      "title": "K近邻模型（KNN）",
+      "label": "第91章 K近邻模型（KNN）",
       "module": "machine-learning",
-      "path": "/course/course-chapter-91.ipynb",
+      "path": "/course/course-chapter-83.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-92",
       "chapter": 92,
       "sortOrder": 92,
-      "title": "梯度提升与加法模型",
-      "label": "第92章 梯度提升与加法模型",
+      "title": "决策树",
+      "label": "第92章 决策树",
       "module": "machine-learning",
-      "path": "/course/course-chapter-92.ipynb",
+      "path": "/course/course-chapter-84.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-93",
       "chapter": 93,
       "sortOrder": 93,
-      "title": "多分类与Softmax",
-      "label": "第93章 多分类与Softmax",
+      "title": "随机森林",
+      "label": "第93章 随机森林",
       "module": "machine-learning",
-      "path": "/course/course-chapter-93.ipynb",
+      "path": "/course/course-chapter-85.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-94",
       "chapter": 94,
       "sortOrder": 94,
-      "title": "混淆矩阵与分类指标",
-      "label": "第94章 混淆矩阵与分类指标",
+      "title": "梯度提升模型",
+      "label": "第94章 梯度提升模型",
       "module": "machine-learning",
-      "path": "/course/course-chapter-94.ipynb",
+      "path": "/course/course-chapter-86.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-95",
       "chapter": 95,
       "sortOrder": 95,
-      "title": "ROC、PR曲线与决策阈值",
-      "label": "第95章 ROC、PR曲线与决策阈值",
+      "title": "支持向量机（SVM）",
+      "label": "第95章 支持向量机（SVM）",
       "module": "machine-learning",
-      "path": "/course/course-chapter-95.ipynb",
+      "path": "/course/course-chapter-87.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-96",
       "chapter": 96,
       "sortOrder": 96,
-      "title": "类别不平衡与Top-K Lift",
-      "label": "第96章 类别不平衡与Top-K Lift",
+      "title": "朴素贝叶斯",
+      "label": "第96章 朴素贝叶斯",
       "module": "machine-learning",
-      "path": "/course/course-chapter-96.ipynb",
+      "path": "/course/course-chapter-88.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-97",
       "chapter": 97,
       "sortOrder": 97,
-      "title": "概率校准与Brier Score",
-      "label": "第97章 概率校准与Brier Score",
+      "title": "K-Means聚类",
+      "label": "第97章 K-Means聚类",
       "module": "machine-learning",
-      "path": "/course/course-chapter-97.ipynb",
+      "path": "/course/course-chapter-89.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-98",
       "chapter": 98,
       "sortOrder": 98,
-      "title": "K-Means客户分群实战",
-      "label": "第98章 K-Means客户分群实战",
+      "title": "主成分分析（PCA）",
+      "label": "第98章 主成分分析（PCA）",
       "module": "machine-learning",
-      "path": "/course/course-chapter-98.ipynb",
+      "path": "/course/course-chapter-90.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-99",
       "chapter": 99,
       "sortOrder": 99,
-      "title": "层次聚类与DBSCAN",
-      "label": "第99章 层次聚类与DBSCAN",
+      "title": "交叉验证与超参数调优",
+      "label": "第99章 交叉验证与超参数调优",
       "module": "machine-learning",
-      "path": "/course/course-chapter-99.ipynb",
+      "path": "/course/course-chapter-91.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-100",
       "chapter": 100,
       "sortOrder": 100,
-      "title": "PCA降维与可视化",
-      "label": "第100章 PCA降维与可视化",
+      "title": "不平衡分类与阈值选择",
+      "label": "第100章 不平衡分类与阈值选择",
       "module": "machine-learning",
-      "path": "/course/course-chapter-100.ipynb",
+      "path": "/course/course-chapter-92.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-101",
       "chapter": 101,
       "sortOrder": 101,
-      "title": "交叉验证策略",
-      "label": "第101章 交叉验证策略",
+      "title": "随机森林回归",
+      "label": "第101章 随机森林回归",
       "module": "machine-learning",
-      "path": "/course/course-chapter-101.ipynb",
+      "path": "/course/course-chapter-93.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-102",
       "chapter": 102,
       "sortOrder": 102,
-      "title": "GridSearch与随机搜索",
-      "label": "第102章 GridSearch与随机搜索",
+      "title": "梯度提升与加法模型",
+      "label": "第102章 梯度提升与加法模型",
       "module": "machine-learning",
-      "path": "/course/course-chapter-102.ipynb",
+      "path": "/course/course-chapter-94.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-103",
       "chapter": 103,
       "sortOrder": 103,
-      "title": "模型比较与基线",
-      "label": "第103章 模型比较与基线",
+      "title": "多分类与Softmax",
+      "label": "第103章 多分类与Softmax",
       "module": "machine-learning",
-      "path": "/course/course-chapter-103.ipynb",
+      "path": "/course/course-chapter-95.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-104",
       "chapter": 104,
       "sortOrder": 104,
-      "title": "特征选择与模型解释",
-      "label": "第104章 特征选择与模型解释",
+      "title": "混淆矩阵与分类指标",
+      "label": "第104章 混淆矩阵与分类指标",
       "module": "machine-learning",
-      "path": "/course/course-chapter-104.ipynb",
+      "path": "/course/course-chapter-96.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-105",
       "chapter": 105,
       "sortOrder": 105,
-      "title": "模型保存与批量推理",
-      "label": "第105章 模型保存与批量推理",
+      "title": "ROC、PR曲线与决策阈值",
+      "label": "第105章 ROC、PR曲线与决策阈值",
       "module": "machine-learning",
-      "path": "/course/course-chapter-105.ipynb",
+      "path": "/course/course-chapter-97.ipynb",
       "kind": "lesson",
       "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "机器学习",
-        "sklearn"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-106",
       "chapter": 106,
       "sortOrder": 106,
-      "title": "用户消费价值预测项目",
-      "label": "第106章 用户消费价值预测项目",
+      "title": "类别不平衡与Top-K Lift",
+      "label": "第106章 类别不平衡与Top-K Lift",
       "module": "machine-learning",
-      "path": "/course/course-chapter-106.ipynb",
-      "kind": "project",
-      "estimatedMinutes": 120,
+      "path": "/course/course-chapter-98.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "项目",
-        "机器学习"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-107",
       "chapter": 107,
       "sortOrder": 107,
-      "title": "物流延期风险预测项目",
-      "label": "第107章 物流延期风险预测项目",
+      "title": "概率校准与Brier Score",
+      "label": "第107章 概率校准与Brier Score",
       "module": "machine-learning",
-      "path": "/course/course-chapter-107.ipynb",
-      "kind": "project",
-      "estimatedMinutes": 120,
+      "path": "/course/course-chapter-99.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "项目",
-        "机器学习"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-108",
       "chapter": 108,
       "sortOrder": 108,
-      "title": "共享单车需求预测项目",
-      "label": "第108章 共享单车需求预测项目",
+      "title": "K-Means客户分群实战",
+      "label": "第108章 K-Means客户分群实战",
       "module": "machine-learning",
-      "path": "/course/course-chapter-108.ipynb",
-      "kind": "project",
-      "estimatedMinutes": 120,
+      "path": "/course/course-chapter-100.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "项目",
-        "机器学习"
+        "实训平台"
       ]
     },
     {
       "id": "chapter-109",
       "chapter": 109,
       "sortOrder": 109,
-      "title": "银行营销响应预测项目",
-      "label": "第109章 银行营销响应预测项目",
+      "title": "层次聚类与DBSCAN",
+      "label": "第109章 层次聚类与DBSCAN",
+      "module": "machine-learning",
+      "path": "/course/course-chapter-101.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 55,
+      "hasCode": true,
+      "tags": [
+        "实训平台"
+      ]
+    },
+    {
+      "id": "chapter-110",
+      "chapter": 110,
+      "sortOrder": 110,
+      "title": "PCA降维与可视化",
+      "label": "第110章 PCA降维与可视化",
+      "module": "machine-learning",
+      "path": "/course/course-chapter-102.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 55,
+      "hasCode": true,
+      "tags": [
+        "实训平台"
+      ]
+    },
+    {
+      "id": "chapter-111",
+      "chapter": 111,
+      "sortOrder": 111,
+      "title": "交叉验证策略",
+      "label": "第111章 交叉验证策略",
+      "module": "machine-learning",
+      "path": "/course/course-chapter-103.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 55,
+      "hasCode": true,
+      "tags": [
+        "实训平台"
+      ]
+    },
+    {
+      "id": "chapter-112",
+      "chapter": 112,
+      "sortOrder": 112,
+      "title": "GridSearch与随机搜索",
+      "label": "第112章 GridSearch与随机搜索",
+      "module": "machine-learning",
+      "path": "/course/course-chapter-104.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 55,
+      "hasCode": true,
+      "tags": [
+        "实训平台"
+      ]
+    },
+    {
+      "id": "chapter-113",
+      "chapter": 113,
+      "sortOrder": 113,
+      "title": "模型比较与基线",
+      "label": "第113章 模型比较与基线",
+      "module": "machine-learning",
+      "path": "/course/course-chapter-105.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 55,
+      "hasCode": true,
+      "tags": [
+        "实训平台"
+      ]
+    },
+    {
+      "id": "chapter-114",
+      "chapter": 114,
+      "sortOrder": 114,
+      "title": "特征选择与模型解释",
+      "label": "第114章 特征选择与模型解释",
+      "module": "machine-learning",
+      "path": "/course/course-chapter-106.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 55,
+      "hasCode": true,
+      "tags": [
+        "实训平台"
+      ]
+    },
+    {
+      "id": "chapter-115",
+      "chapter": 115,
+      "sortOrder": 115,
+      "title": "模型保存与批量推理",
+      "label": "第115章 模型保存与批量推理",
+      "module": "machine-learning",
+      "path": "/course/course-chapter-107.ipynb",
+      "kind": "lesson",
+      "estimatedMinutes": 120,
+      "hasCode": true,
+      "tags": [
+        "实训平台"
+      ]
+    },
+    {
+      "id": "chapter-116",
+      "chapter": 116,
+      "sortOrder": 116,
+      "title": "用户消费价值预测项目",
+      "label": "第116章 用户消费价值预测项目",
+      "module": "machine-learning",
+      "path": "/course/course-chapter-108.ipynb",
+      "kind": "project",
+      "estimatedMinutes": 120,
+      "hasCode": true,
+      "tags": [
+        "实训平台"
+      ]
+    },
+    {
+      "id": "chapter-117",
+      "chapter": 117,
+      "sortOrder": 117,
+      "title": "物流延期风险预测项目",
+      "label": "第117章 物流延期风险预测项目",
       "module": "machine-learning",
       "path": "/course/course-chapter-109.ipynb",
       "kind": "project",
       "estimatedMinutes": 120,
       "hasCode": true,
       "tags": [
-        "项目",
-        "机器学习"
+        "实训平台"
+      ]
+    },
+    {
+      "id": "chapter-118",
+      "chapter": 118,
+      "sortOrder": 118,
+      "title": "共享单车需求预测项目",
+      "label": "第118章 共享单车需求预测项目",
+      "module": "machine-learning",
+      "path": "/course/course-chapter-110.ipynb",
+      "kind": "project",
+      "estimatedMinutes": 120,
+      "hasCode": true,
+      "tags": [
+        "实训平台"
+      ]
+    },
+    {
+      "id": "chapter-119",
+      "chapter": 119,
+      "sortOrder": 119,
+      "title": "银行营销响应预测项目",
+      "label": "第119章 银行营销响应预测项目",
+      "module": "machine-learning",
+      "path": "/course/course-chapter-111.ipynb",
+      "kind": "project",
+      "estimatedMinutes": 45,
+      "hasCode": true,
+      "tags": [
+        "实训平台"
       ]
     },
     {
       "id": "capstone-machine-learning",
-      "chapter": 109,
-      "sortOrder": 109.5,
-      "title": "客户转化预测与模型评估",
-      "label": "客户转化预测与模型评估",
+      "chapter": 119,
+      "sortOrder": 119.5,
+      "title": "模型上线评审会",
+      "label": "模型上线评审会",
       "module": "machine-learning",
       "path": "/course/module-capstones/module-capstone-machine-learning.ipynb",
       "kind": "capstone",
-      "estimatedMinutes": 180,
+      "estimatedMinutes": 240,
       "hasCode": true,
       "tags": [
-        "特征处理",
-        "模型比较",
-        "指标评估"
+        "机器学习",
+        "上线评审",
+        "业务阈值",
+        "模型卡"
       ]
     }
   ]

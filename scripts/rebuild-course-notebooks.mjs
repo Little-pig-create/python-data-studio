@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chapters, moduleMap, modules } from "../src/data.js";
 import { foundationContexts, foundationProfiles } from "./course-content-foundations.mjs";
+import { foundationIndependentExamples } from "./course-content-independent-examples.mjs";
+import { foundationDetailNotes } from "./course-content-foundation-details.mjs";
 import { visualizationProfiles, visualizationSetups } from "./course-content-visualization.mjs";
 import { projectProfiles } from "./course-content-projects-business.mjs";
 import { machineLearningProfiles } from "./course-content-machine-learning-advanced.mjs";
@@ -11,7 +13,12 @@ import { machineLearningProjectProfiles } from "./course-content-machine-learnin
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outputDirectory = path.join(root, "public", "course");  // 直接生成到 public/course
 const catalogOutputPath = path.join(root, "public", "course", "catalog.json");
-const COURSE_CONTENT_VERSION = 18;
+const COURSE_CONTENT_VERSION = 21;
+
+// 时间与日期作为第13章插入后，原第13章及之后的公开章节号顺延一位。
+// lesson.chapter 仍保留原始内容索引，保证现有内容配置和文件路径稳定。
+const displayChapterNumber = (lesson) => lesson.chapter >= 13 ? lesson.chapter + 1 : lesson.chapter;
+const displayChapterLabel = (lesson) => `第${displayChapterNumber(lesson)}章 ${lesson.title}`;
 
 // Dataset files are served by the app; generated examples should not depend on browser globals.
 const sanitizeNotebookCode = (source) => String(source || "")
@@ -262,6 +269,69 @@ const keySyntax = (source) => {
 
   return snippets.slice(0, 4).map((snippet) => `\`${snippet}\``).join("、") || "参见本节示例";
 };
+
+// 每个章节都先给一张“分类速查”，再进入独立示例。
+// 这样初学者可以先建立方法地图，再按需回到某个方法练习，
+// 也避免只有字符串章节拥有可复习的知识索引。
+const quickReferenceRows = (lesson, profile, foundationKey = null) => {
+  const pitfalls = profile?.pitfalls || [];
+  const caution = (index, fallback = "先确认输入结构，再检查输出") =>
+    pitfalls[index % Math.max(pitfalls.length, 1)] || fallback;
+
+  if (lesson.module === "matplotlib" || lesson.module === "seaborn" || lesson.module === "plotly") {
+    const parameterRows = (profile.parameters || []).map((item, index) => {
+      const [name, ...description] = String(item).split(/[：:]/);
+      return [
+        "关键参数",
+        `\`${name.trim()}\``,
+        description.join("：").trim() || "控制图表表达方式",
+        caution(index, "改变参数后要重新观察图例、单位和可读性")
+      ];
+    });
+    return [
+      ["基础图表", keySyntax(profile.basicCode), profile.when, caution(0, "先保留最少编码，确认图表回答的问题")],
+      ["进阶变体", keySyntax(profile.advancedCode), "在基础图表上增加分组、注释、布局或交互", caution(1, "新增视觉编码必须服务于一个明确问题")],
+      ...parameterRows
+    ];
+  }
+
+  if (lesson.module === "projects" || lesson.kind === "project") {
+    return (profile.codeCells || []).map((cell, index) => [
+      cell.title,
+      keySyntax(cell.code),
+      cell.explanation || profile.tasks?.[index] || "完成一个项目阶段",
+      profile.qualityChecks?.[index % Math.max(profile.qualityChecks.length, 1)] || "记录输入、口径和输出"
+    ]);
+  }
+
+  const independent = profile.methodExamples?.length
+    ? profile.methodExamples
+    : foundationKey !== null
+      ? (foundationIndependentExamples[foundationKey] || [])
+      : [];
+  const examples = independent.length
+    ? independent.map((item) => ({ title: item.title, explanation: item.explanation, code: item.code }))
+    : (profile.examples || []).filter((example) => example.title !== "方法逐个示例");
+  return examples.map((example, index) => [
+    example.title,
+    keySyntax(example.code),
+    example.explanation || "完成本节核心操作",
+    caution(index)
+  ]);
+};
+
+const quickReferenceSection = (lesson, profile, foundationKey = null) => {
+  const rows = quickReferenceRows(lesson, profile, foundationKey);
+  const title = ["matplotlib", "seaborn", "plotly"].includes(lesson.module)
+    ? "图表与参数速查"
+    : lesson.module === "projects"
+      ? "项目阶段速查"
+      : "方法分类速查";
+  const intro = lesson.module === "projects"
+    ? "先看每个阶段要做什么、留下什么证据，再按任务顺序运行项目代码。"
+    : "先用这张表建立本章的方法地图；每一行后面都有对应的独立示例或练习。";
+  return markdown("quick-reference", `## ${title}\n\n${intro}\n\n${markdownTable(["类别", "常用方法或写法", "主要用途", "需要特别注意"], rows)}`);
+};
 const table = (rows) => [
   "| 字段 | 含义 | 使用说明 |",
   "| --- | --- | --- |",
@@ -270,16 +340,18 @@ const table = (rows) => [
 
 const lessonContext = (lesson, profile) => {
   const moduleLabel = moduleMap[lesson.module]?.label || lesson.module;
-  const foundationContext = foundationContexts[lesson.chapter];
+  const foundationContext = lesson.module === "python"
+    ? foundationContexts[foundationProfileKey(lesson)]
+    : null;
   if (lesson.module === "python" && foundationContext) {
     return foundationContext;
   }
-  if (lesson.chapter >= 76 && lesson.chapter < 105) {
+  if (lesson.module === "machine-learning" && lesson.kind !== "project") {
     const focus = lesson.title || "本章方法";
     const objectives = profile?.objectives?.slice(0, 3) || [];
     return {
       scenario: `围绕“${focus}”完成一个可验证的小型建模实验：先明确输入和目标，再比较方法带来的变化。${profile?.summary || ""}`,
-      position: `这是“${moduleLabel}”建模主线中的第 ${lesson.chapter} 章，重点放在“${focus}”对应的一个具体决策，而不是重复完整流程。`,
+      position: `这是“${moduleLabel}”建模主线中的第 ${displayChapterNumber(lesson)} 章，重点放在“${focus}”对应的一个具体决策，而不是重复完整流程。`,
       prerequisites: [
         "能够使用 pandas 读取、筛选和汇总数据",
         "理解训练集、测试集和基本统计指标",
@@ -293,7 +365,7 @@ const lessonContext = (lesson, profile) => {
     const objective = profile?.objectives?.[0] || "完成一次可核对的数据处理";
     return {
       scenario: `拿一组小型业务数据练习“${focus}”：先看数据结构，再完成一次明确的计算或转换。${profile?.summary || ""}`,
-      position: `这是“${moduleLabel}”路线中第 ${lesson.chapter} 章的操作重点。本章只解决“${focus}”，不重复前面章节已经完成的准备工作。`,
+      position: `这是“${moduleLabel}”路线中第 ${displayChapterNumber(lesson)} 章的操作重点。本章只解决“${focus}”，不重复前面章节已经完成的准备工作。`,
       prerequisites: [
         lesson.module === "numpy" ? "掌握 Python 列表、切片和基本运算" : "掌握 Python 基础语法、列表和字典",
         `开始前先确认：${objective}`
@@ -337,7 +409,7 @@ const practiceGuide = (lesson, profile) => {
 };
 
 const projectTeachingPlan = (lesson, profile) => {
-  const isMl = lesson.chapter >= 105;
+  const isMl = lesson.module === "machine-learning";
   const deliverables = isMl
     ? ["一份从数据审计到模型评价可完整运行的 Notebook", "数据清洗前后样本变化和关键质量检查结果", "基线与候选模型的指标对比表", "错误切片、特征解释和有边界的业务结论"]
     : ["一份可复现的分析 Notebook", "清洗规则与关键指标表", "至少一张支持结论的图表", "结论、限制和下一步建议"];
@@ -348,18 +420,12 @@ const projectTeachingPlan = (lesson, profile) => {
 };
 
 const foundationSummary = (lesson, profile) => {
-  const quickRows = profile.examples.map((example) => [
-    example.title,
-    example.explanation,
-    example.keySyntax || keySyntax(example.code)
-  ]);
   const checks = profile.objectives.map((objective) => `能够${objective}`);
 
   return [
     summarySection("summary-intro", `## 本章小结\n\n${profile.summaryQuestion || profile.summary}`),
     summarySection("summary-mastery", `### 你已经掌握\n\n${bullets(profile.objectives)}`),
     summarySection("summary-output", `### 验收标准\n\n- 输入、计算和输出单元格完整。\n- 关键变量类型、形状或数值可核对。\n- 结论引用输出证据，并注明适用范围。`),
-    summarySection("summary-reference", `### 关键知识速查\n\n${markdownTable(["知识点", "作用与提醒", "关键写法"], quickRows)}`),
     summarySection("summary-pitfalls", `### 需要注意\n\n${bullets(profile.pitfalls)}`),
     summarySection("summary-checklist", `### 完成检查\n\n${checklist(checks)}`),
     summarySection("summary-next", `### 排错顺序\n\n1. 从上到下重新运行依赖单元格。\n2. 检查变量类型、列名、形状和缺失值。\n3. 缩小输入范围，定位产生错误的最小步骤。\n4. 修复后重新运行完整流程。`)
@@ -382,11 +448,6 @@ const visualizationSummary = (lesson, profile) => {
   return [
     summarySection("summary-intro", `## 本章小结\n\n${profile.summary}`),
     summarySection("summary-mastery", `### 你已经掌握\n\n- 判断${lesson.title}的适用场景\n- 准备与图表匹配的数据结构\n- 从基础图表扩展到分组、注释或交互变体\n- 按照业务问题解读图表并说明结论边界`),
-    summarySection("summary-reference", `### 图表选择速查\n\n${markdownTable(["选择要点", "本章说明"], [
-      ["适用场景", profile.when],
-      ["数据结构", profile.dataShape],
-      ["结果解读", profile.interpretation]
-    ])}`),
     summarySection("summary-parameters", `### 关键参数\n\n${markdownTable(["参数", "作用"], parameterRows)}`),
     summarySection("summary-pitfalls", `### 需要注意\n\n${bullets(profile.pitfalls)}`),
     summarySection("summary-checklist", `### 完成检查\n\n${checklist(checks)}`),
@@ -395,14 +456,12 @@ const visualizationSummary = (lesson, profile) => {
 };
 
 const projectSummary = (lesson, profile) => {
-  const taskRows = profile.tasks.map((task, index) => [`步骤 ${index + 1}`, task]);
   const reminders = [...profile.qualityChecks.slice(0, 3), ...profile.conclusions];
   const isTeachingProject = lesson.chapter >= 105;
 
   return [
     summarySection("summary-intro", `## 本章小结\n\n${profile.summary}`),
     summarySection("summary-mastery", `### 你已经完成\n\n${bullets(profile.objectives)}`),
-    summarySection("summary-reference", `### ${isTeachingProject ? "建模流程速查" : "项目流程速查"}\n\n${markdownTable(["阶段", isTeachingProject ? "学习内容" : "交付内容"], taskRows)}`),
     summarySection("summary-reminders", `### 质量与结论提醒\n\n${bullets(reminders)}`),
     summarySection("summary-checklist", `### ${isTeachingProject ? "学习检查" : "项目交付检查"}\n\n${checklist(profile.acceptance)}`),
     summarySection("summary-next", `### 后续迭代建议\n\n完成验收后，记录一个最值得继续验证的假设：可以是更多数据、不同时间窗口、另一种模型，或一个更细的分组分析。`)
@@ -437,8 +496,10 @@ const createNotebook = (lesson, cells) => ({
 
 const foundationCells = (lesson, profile) => {
   const context = lessonContext(lesson, profile);
+  const foundationKey = lesson.chapter <= 26 ? foundationProfileKey(lesson) : null;
+  const detailNotes = profile.detailNotes || foundationDetailNotes[foundationKey];
   const cells = [
-    markdown("intro", `# ${lesson.label}\n\n${profile.summary}`),
+    markdown("intro", `# ${displayChapterLabel(lesson)}\n\n${profile.summary}`),
     markdown("context-scenario", `## 先解决一个小问题\n\n${context.scenario}`),
     markdown("context-position", `## 这章为什么先学\n\n${context.position}`),
     markdown("context-prerequisites", `## 开始前确认\n\n${bullets(context.prerequisites)}`),
@@ -446,10 +507,12 @@ const foundationCells = (lesson, profile) => {
     markdown("context-execution", `## 运行规则\n\n代码单元格按依赖顺序执行；需要复现结果时从上到下运行，并保留输入、计算和输出。`),
     markdown("context-objectives", `## 本章要会\n\n${bullets(profile.objectives)}`),
     markdown("concepts", `## 核心概念\n\n${bullets(profile.concepts)}`),
-    ...(profile.detailNotes ? [markdown("concepts-detail", profile.detailNotes)] : [])
+    ...(detailNotes ? [markdown("concepts-detail", detailNotes)] : []),
+    quickReferenceSection(lesson, profile, foundationKey)
   ];
 
-  profile.examples.forEach((example, index) => {
+  const visibleExamples = profile.examples.filter((example) => example.title !== "方法逐个示例");
+  visibleExamples.forEach((example, index) => {
     const number = index + 1;
     cells.push(
       markdown(`example-${number}-notes`, `## 示例 ${number}：${example.title}\n\n${example.explanation}`),
@@ -457,17 +520,35 @@ const foundationCells = (lesson, profile) => {
     );
   });
 
-  if (lesson.chapter >= 76 && lesson.chapter < 105) {
+  const independentExamples = profile.methodExamples || foundationIndependentExamples[foundationKey] || [];
+  if (independentExamples.length) {
+    cells.push(
+      markdown(
+        "method-examples-intro",
+        "## 核心操作独立示例\n\n下面每个代码单元格只演示一个核心方法、函数或语法操作。请先阅读方法名称和任务说明，再单独运行当前单元格；示例尽量自带最小输入，不要求依赖前一个单元格留下的变量。"
+      )
+    );
+    independentExamples.forEach((methodExample, index) => {
+      cells.push(
+        code(
+          `method-example-${index + 1}`,
+          `# ${methodExample.title}\n# ${methodExample.explanation}\n${methodExample.code}`
+        )
+      );
+    });
+  }
+
+  if (lesson.module === "machine-learning" && lesson.kind !== "project") {
     cells.push(
       markdown("modeling-workflow", `## 建模流程提醒\n\n1. **定义问题**：写清楚样本粒度、预测时点、目标变量和业务代价。\n2. **建立基线**：先用均值、规则或 Dummy 模型得到最低可接受结果。\n3. **准备数据**：只用预测时点可获得的信息，避免目标泄漏和时间穿越。\n4. **训练与验证**：在训练/验证数据上选择方案，测试集只用于最终估计泛化表现。\n5. **评价与解释**：同时看总体指标、错误切片和结果边界，不能只报一个分数。`)
     );
   }
 
-  if (largeDataCases[lesson.chapter]) {
+  if (foundationKey && largeDataCases[foundationKey]) {
     cells.push(
       markdown("large-data-notes", "## 公开大型数据实战\n\n下面使用 UCI Machine Learning Repository 的 Online Retail 公开数据集。原始数据包含 541,909 条英国在线零售交易，本课程使用固定随机种子抽取的 200,000 行子集。分析时在完整子集上计算，只展示摘要或少量样本。"),
       code("large-data-setup", largeOrderSetup),
-      code("large-data-case", largeDataCases[lesson.chapter])
+      code("large-data-case", largeDataCases[foundationKey])
     );
   }
 
@@ -492,8 +573,9 @@ const foundationCells = (lesson, profile) => {
 const visualizationCells = (lesson, profile) => {
   const setup = visualizationSetups[lesson.module];
   const cells = [
-    markdown("intro", `# ${lesson.label}\n\n${profile.summary}\n\n## 学习目标\n\n本章围绕一种明确的图表结构展开，先看最小可用示例，再加入分组、注释或交互细节。学习重点不是“把图画出来”，而是让图表服务于一个可回答的问题。`),
+    markdown("intro", `# ${displayChapterLabel(lesson)}\n\n${profile.summary}\n\n## 学习目标\n\n本章围绕一种明确的图表结构展开，先看最小可用示例，再加入分组、注释或交互细节。学习重点不是“把图画出来”，而是让图表服务于一个可回答的问题。`),
     markdown("when", `## 适用场景\n\n${profile.when}\n\n## 数据结构\n\n${profile.dataShape}\n\n## 本章练习任务\n\n${profile.practiceTask || "明确要比较的变量，改变一个关键参数，记录视觉变化，并说明这个变化是否让结论更清楚。"}`),
+    quickReferenceSection(lesson, profile),
     markdown("setup-notes", "## 0. 准备可复现数据\n\n先完成导入和数据准备，后续单元格只负责一种图表或一种分析动作。"),
     code("setup", setup),
     markdown("basic-notes", "## 1. 基础图表\n\n先保留必要的编码：位置、颜色或大小。图表标题、坐标轴和单位应能让读者脱离代码理解结果。"),
@@ -512,9 +594,10 @@ const visualizationCells = (lesson, profile) => {
 
 const projectCells = (lesson, profile) => {
   const cells = [
-    markdown("intro", `# ${lesson.label}\n\n${profile.summary}\n\n## 项目背景\n\n${profile.background}\n\n## 学习目标\n\n${bullets(profile.objectives)}`),
+    markdown("intro", `# ${displayChapterLabel(lesson)}\n\n${profile.summary}\n\n## 项目背景\n\n${profile.background}\n\n## 学习目标\n\n${bullets(profile.objectives)}`),
     markdown("data-dictionary", `## 数据字典\n\n${table(profile.dataDictionary)}\n\n## 数据质量检查清单\n\n${bullets(profile.qualityChecks)}`),
     markdown("tasks", `## 项目任务\n\n${numbered(profile.tasks)}`),
+    quickReferenceSection(lesson, profile),
     markdown("teaching-plan", projectTeachingPlan(lesson, profile))
   ];
 
@@ -534,12 +617,29 @@ const projectCells = (lesson, profile) => {
   return cells;
 };
 
+const foundationProfileKeys = new Map([
+  [1, 1], [2, 2], [3, 3], [4, 4], [5, "tuple"],
+  [6, 5], [7, 6], [8, 7], [9, 8], [10, 9], [11, 9], [12, 10],
+  [13, 11], [14, 12], [15, 13], [16, 14], [17, 15], [18, 16],
+  [19, 17], [20, 18], [21, 19], [22, 20], [23, 21], [24, 22],
+  [25, 23], [26, 24]
+]);
+
+const foundationProfileKey = (lesson) => {
+  const key = foundationProfileKeys.get(lesson.chapter);
+  if (key === undefined) throw new Error(`第${lesson.chapter}章没有基础内容键映射`);
+  return key;
+};
+
 const contentForLesson = (lesson) => {
-  if (lesson.chapter <= 24) return foundationCells(lesson, foundationProfiles[lesson.chapter]);
-  if (lesson.chapter <= 71) return visualizationCells(lesson, visualizationProfiles[lesson.chapter]);
-  if (lesson.chapter <= 75) return projectCells(lesson, projectProfiles[lesson.chapter]);
-  if (lesson.chapter >= 105) return projectCells(lesson, machineLearningProjectProfiles[lesson.chapter]);
-  return foundationCells(lesson, machineLearningProfiles[lesson.chapter]);
+  if (lesson.chapter <= 26) {
+    const profileKey = foundationProfileKey(lesson);
+    return foundationCells(lesson, foundationProfiles[profileKey]);
+  }
+  if (lesson.chapter <= 73) return visualizationCells(lesson, visualizationProfiles[lesson.chapter - 2]);
+  if (lesson.chapter <= 77) return projectCells(lesson, projectProfiles[lesson.chapter - 2]);
+  if (lesson.chapter <= 106) return foundationCells(lesson, machineLearningProfiles[lesson.chapter - 2]);
+  return projectCells(lesson, machineLearningProjectProfiles[lesson.chapter - 1]);
 };
 
 const catalogFromNotebooks = () => {
@@ -562,10 +662,10 @@ const catalogFromNotebooks = () => {
         label: `第${chapter}章 ${title}`,
         module,
         path: `/course/${encodeURIComponent(name)}`,  // 统一使用 /course/ 路径
-        kind: (chapter >= 72 && chapter <= 75) || chapter >= 105 ? "project" : "lesson",
-        estimatedMinutes: (chapter >= 72 && chapter <= 75) || chapter >= 105 ? 120 : chapter >= 76 ? 55 : chapter === 1 ? 25 : 35 + (chapter % 3) * 5,
+        kind: (chapter >= 74 && chapter <= 77) || chapter >= 107 ? "project" : "lesson",
+        estimatedMinutes: (chapter >= 74 && chapter <= 77) || chapter >= 107 ? 120 : chapter >= 78 ? 55 : chapter === 1 ? 25 : 35 + (chapter % 3) * 5,
         hasCode: notebook.cells?.some((cell) => cell.cell_type === "code") || false,
-        tags: chapter <= 10 ? ["语法", "基础"] : chapter <= 24 ? ["数据处理"] : chapter <= 71 ? ["可视化", "实践"] : chapter <= 75 || chapter >= 105 ? ["项目", "机器学习"] : ["机器学习", "sklearn"]
+        tags: chapter <= 12 ? ["语法", "基础"] : chapter <= 26 ? ["数据处理"] : chapter <= 73 ? ["可视化", "实践"] : chapter <= 77 || chapter >= 107 ? ["项目", "机器学习"] : ["机器学习", "sklearn"]
       };
     })
     .filter((lesson) => Number.isFinite(lesson.chapter))

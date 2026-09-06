@@ -2,12 +2,18 @@ import { Link } from "react-router-dom";
 import ArrowBackRounded from "@mui/icons-material/ArrowBackRounded";
 import ArrowForwardRounded from "@mui/icons-material/ArrowForwardRounded";
 
+function navigationLabel(lesson) {
+  if (lesson.kind === "capstone") return `模块大作业｜${lesson.label || lesson.title}`;
+  if (lesson.kind === "project") return `综合项目｜${lesson.label || lesson.title}`;
+  return lesson.label;
+}
+
 export function NotebookNavigation({ previousLesson, nextLesson, lessonPosition, totalLessons }) {
   const item = (target, direction, Icon) => target
     ? (
       <Link className={`notebook-navigation-item is-${direction}`} to={`/course/${target.id}`}>
         <Icon fontSize="small" />
-        <span><small>{direction === "previous" ? "上一节" : "下一节"}</small><strong>{target.label}</strong></span>
+        <span><small>{direction === "previous" ? "上一节" : "下一节"}</small><strong>{navigationLabel(target)}</strong></span>
       </Link>
     )
     : (

@@ -1,7 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypeSanitize from "rehype-sanitize";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
 import ChevronRightRounded from "@mui/icons-material/ChevronRightRounded";
@@ -13,8 +16,9 @@ import { useNotebookStore } from "../notebookStore";
 import { CodeEditor } from "./CodeEditor";
 import { OutputRenderer } from "./OutputRenderer";
 import { CellToolbar } from "./CellToolbar";
+import { splitMarkdownByElementGroups } from "../lib/markdownSplit";
 
-function LazyCodeEditor({ value, onChange, onRun, active }) {
+function LazyCodeEditor({ value, onChange, onRun, onRunAndAdvance, onRunAndInsert, onExitEditMode, active }) {
   const hostRef = useRef(null);
   const [ready, setReady] = useState(active);
 
@@ -41,16 +45,35 @@ function LazyCodeEditor({ value, onChange, onRun, active }) {
   const lineCount = String(value || "").split(/\r?\n/).length;
   return <div ref={hostRef}>
     {ready
-      ? <CodeEditor value={value} onChange={onChange} onRun={onRun} />
+      ? <CodeEditor value={value} onChange={onChange} onRun={onRun} onRunAndAdvance={onRunAndAdvance} onRunAndInsert={onRunAndInsert} onExitEditMode={onExitEditMode} />
       : <pre className="notebook-code-preview" style={{ minHeight: Math.min(320, Math.max(70, lineCount * 22 + 24)) }}><code>{value || " "}</code></pre>}
   </div>;
 }
 
-export function NotebookCell({ cell, index, codeIndex, cellCount, runningCellId, onRun, onAdd, onMove, onDelete, onDuplicate, markdownCollapsed, onToggleMarkdown }) {
+export function NotebookCell({ cell, index, codeIndex, cellCount, runningCellId, onRun, onRunAndAdvance, onRunAndInsert, onAdd, onMove, onDelete, onDuplicate, markdownCollapsed, onToggleMarkdown }) {
   const { activeCellId, notebookKey, selectCell, updateCellSource } = useNotebookStore();
   const [outputCollapsed, setOutputCollapsed] = useState(false);
   const [markdownEditing, setMarkdownEditing] = useState(false);
+  const [markdownDraft, setMarkdownDraft] = useState(cell.source);
+  const [markdownSavedFlash, setMarkdownSavedFlash] = useState(false);
   const [checklistState, setChecklistState] = useState({});
+  const cellElementRef = useRef(null);
+  const markdownEditorRef = useRef(null);
+
+  // 编辑模式：textarea 高度自适应内容，全部展示、不使用滚动
+  useEffect(() => {
+    if (!markdownEditing) return undefined;
+    const editor = markdownEditorRef.current;
+    if (!editor) return undefined;
+    const resize = () => {
+      editor.style.height = "auto";
+      editor.style.height = Math.max(56, editor.scrollHeight) + "px";
+    };
+    resize();
+    const frame = window.requestAnimationFrame(resize);
+    return () => window.cancelAnimationFrame(frame);
+  }, [markdownDraft, markdownEditing]);
+
 
   const checklistStorageKey = notebookKey && cell.type === "markdown"
     ? `notebook-checklist:${notebookKey}:${cell.id}`
@@ -69,6 +92,10 @@ export function NotebookCell({ cell, index, codeIndex, cellCount, runningCellId,
     }
   }, [checklistStorageKey]);
 
+  useEffect(() => {
+    if (!markdownEditing) setMarkdownDraft(cell.source);
+  }, [cell.source, markdownEditing]);
+
   const isSolution = cell.metadata?.tags?.includes("solution");
   const [solutionCollapsed, setSolutionCollapsed] = useState(isSolution);
 
@@ -76,6 +103,71 @@ export function NotebookCell({ cell, index, codeIndex, cellCount, runningCellId,
   const isRunning = runningCellId === cell.id;
   const outputId = `cell-output-${cell.id}`;
   const run = () => onRun(cell);
+  const startMarkdownEditing = () => {
+    if (cell.type !== "markdown") return;
+    selectCell(cell.id);
+    setMarkdownDraft(cell.source);
+    setMarkdownEditing(true);
+  };
+  const saveMarkdown = () => {
+    const changed = markdownDraft !== cell.source;
+    if (changed) updateCellSource(cell.id, markdownDraft);
+    setMarkdownEditing(false);
+    if (changed) {
+      setMarkdownSavedFlash(true);
+      window.setTimeout(() => setMarkdownSavedFlash(false), 1800);
+
+    }
+  };
+  const cancelMarkdownEditing = () => {
+    setMarkdownDraft(cell.source);
+    setMarkdownEditing(false);
+  };
+  const handleMarkdownKeyDown = (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      cancelMarkdownEditing();
+      return;
+    }
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey || event.shiftKey)) {
+      event.preventDefault();
+      event.stopPropagation();
+      saveMarkdown();
+      return;
+    }
+    if (event.key === "Tab" && !event.shiftKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      const target = event.currentTarget;
+      const start = target.selectionStart;
+      const end = target.selectionEnd;
+      const next = markdownDraft.slice(0, start) + "  " + markdownDraft.slice(end);
+      setMarkdownDraft(next);
+      window.requestAnimationFrame(() => {
+        target.selectionStart = target.selectionEnd = start + 2;
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleEditRequest = (event) => {
+      if (event.detail?.cellId !== cell.id || isSolution) return;
+      selectCell(cell.id);
+      if (cell.type === "markdown") {
+        setMarkdownDraft(cell.source);
+        setMarkdownEditing(true);
+        window.requestAnimationFrame(() => markdownEditorRef.current?.focus());
+        return;
+      }
+      const focusEditor = () => cellElementRef.current?.querySelector(".cm-content")?.focus();
+      window.requestAnimationFrame(focusEditor);
+      window.setTimeout(focusEditor, 80);
+    };
+    window.addEventListener("notebook-edit-cell", handleEditRequest);
+    return () => window.removeEventListener("notebook-edit-cell", handleEditRequest);
+  }, [cell.id, cell.source, cell.type, isSolution, selectCell]);
+
   let checklistIndex = 0;
   const markdownComponents = {
     input: ({ checked, type, disabled: _disabled, ...props }) => {
@@ -88,6 +180,7 @@ export function NotebookCell({ cell, index, codeIndex, cellCount, runningCellId,
         {...props}
         type="checkbox"
         checked={isChecked}
+        disabled={_disabled}
         onChange={(event) => {
           event.stopPropagation();
           const nextState = { ...checklistState, [itemIndex]: event.target.checked };
@@ -98,7 +191,10 @@ export function NotebookCell({ cell, index, codeIndex, cellCount, runningCellId,
     }
   };
 
-  return <article id={"notebook-cell-" + cell.id} className={`notebook-cell notebook-cell-${cell.type} ${selected ? "is-selected" : ""} ${isRunning ? "is-running" : ""} ${isSolution ? "is-solution" : ""}`} onClick={() => selectCell(cell.id)}>
+  // 展示拆分：按元素分组（切分 + 相邻同类合并），与加载拆分的 cell 结构一致
+  const markdownSections = useMemo(() => splitMarkdownByElementGroups(cell.source).map((group) => group.source), [cell.source]);
+
+  return <article ref={cellElementRef} tabIndex={-1} id={"notebook-cell-" + cell.id} className={`notebook-cell notebook-cell-${cell.type} ${selected ? "is-selected" : ""} ${isRunning ? "is-running" : ""} ${isSolution ? "is-solution" : ""} ${markdownEditing ? "is-editing" : ""}`} onClick={() => selectCell(cell.id)}>
     <div className="notebook-cell-meta">
       <div className="notebook-cell-gutter">
         {cell.type === "code" && cell.executionCount != null ? <span className="notebook-cell-index"><Badge
@@ -131,7 +227,7 @@ export function NotebookCell({ cell, index, codeIndex, cellCount, runningCellId,
     </div>
     <div className="notebook-cell-frame">
       <div className="notebook-cell-body">
-        {selected && <CellToolbar cell={cell} index={index} cellCount={cellCount} onAdd={onAdd} onMove={onMove} onEdit={() => setMarkdownEditing(true)} onDelete={onDelete} onDuplicate={onDuplicate} />}
+        {selected && !isSolution && <CellToolbar cell={cell} index={index} cellCount={cellCount} onAdd={onAdd} onMove={onMove} onEdit={startMarkdownEditing} onDelete={onDelete} onDuplicate={onDuplicate} />}
         {cell.type === "code" ? <>
           {isSolution && solutionCollapsed ? (
             <div className="solution-placeholder">
@@ -148,7 +244,18 @@ export function NotebookCell({ cell, index, codeIndex, cellCount, runningCellId,
                   </IconButton>
                 </Tooltip>
               </div>}
-              <LazyCodeEditor value={cell.source} onChange={(value) => updateCellSource(cell.id, value)} onRun={run} active={selected || isRunning} />
+              <LazyCodeEditor
+                value={cell.source}
+                onChange={(value) => updateCellSource(cell.id, value)}
+                onRun={run}
+                onRunAndAdvance={() => onRunAndAdvance?.(cell)}
+                onRunAndInsert={() => onRunAndInsert?.(cell)}
+                onExitEditMode={() => {
+                  selectCell(cell.id);
+                  cellElementRef.current?.focus({ preventScroll: true });
+                }}
+                active={selected || isRunning}
+              />
             </>
           )}
           {cell.outputs?.length > 0 && <div className={`notebook-output ${outputCollapsed ? "is-collapsed" : ""}`}>
@@ -170,7 +277,16 @@ export function NotebookCell({ cell, index, codeIndex, cellCount, runningCellId,
             </div>
             {!outputCollapsed && <div id={outputId}><OutputRenderer outputs={cell.outputs} /></div>}
           </div>}
-        </> : markdownEditing ? <textarea className="notebook-markdown-editor" autoFocus value={cell.source} onChange={(event) => updateCellSource(cell.id, event.target.value)} onBlur={() => setMarkdownEditing(false)} /> : markdownCollapsed ? <button className="notebook-markdown-collapsed" type="button" onClick={(event) => { event.stopPropagation(); onToggleMarkdown?.(cell.id); }}><span><MenuBookRounded fontSize="small" />{String(cell.source || "本节说明").split(/\r?\n/).find((line) => line.trim())?.replace(/^#+\s*/, "") || "本节说明"}</span><span>展开说明 <ExpandMoreRounded fontSize="small" /></span></button> : <div className="notebook-markdown-content"><ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]} components={markdownComponents}>{cell.source}</ReactMarkdown></div>}
+        </> : markdownEditing ? (
+          <div className="notebook-markdown-editor-wrap" onClick={(event) => event.stopPropagation()}>
+            <textarea ref={markdownEditorRef} className="notebook-markdown-editor" autoFocus value={markdownDraft} onChange={(event) => setMarkdownDraft(event.target.value)} onKeyDown={handleMarkdownKeyDown} onBlur={saveMarkdown} aria-label="编辑说明文本" />
+            {markdownSavedFlash && <div className="notebook-markdown-saved-flash">✓ 已保存</div>}
+          </div>
+        ) : markdownCollapsed ? <button className="notebook-markdown-collapsed" type="button" onClick={(event) => { event.stopPropagation(); onToggleMarkdown?.(cell.id); }}><span><MenuBookRounded fontSize="small" />{String(cell.source || "本节说明").split(/\r?\n/).find((line) => line.trim())?.replace(/^#+\s*/, "") || "本节说明"}</span><span>展开说明 <ExpandMoreRounded fontSize="small" /></span></button> : <div className="notebook-markdown-content" onDoubleClick={(event) => { event.stopPropagation(); startMarkdownEditing(); }}>{markdownSections.map((section, sectionIndex) => (
+        <section key={sectionIndex} className={"notebook-md-section" + (markdownSections.length > 1 ? " is-split" : "")} data-section={sectionIndex + 1}>
+          <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeSanitize, rehypeKatex]} components={markdownComponents}>{section}</ReactMarkdown>
+        </section>
+      ))}</div>}
       </div>
     </div>
     <div className="notebook-insert-rail" onClick={(event) => event.stopPropagation()}>

@@ -269,9 +269,25 @@ const installer = files.find((file) => new RegExp(`_${version.replace(/\./g, "\\
 const checksums = path.join(releaseDir, "SHA256SUMS.txt");
 const releaseInfoPath = path.join(releaseDir, "release-info.json");
 const notesPath = path.join(releaseDir, "RELEASE_NOTES.md");
-for (const [label, filePath] of [["当前版本安装包", installer], ["SHA256SUMS.txt", checksums], ["release-info.json", releaseInfoPath], ["RELEASE_NOTES.md", notesPath]]) {
+const updaterManifestPath = path.join(releaseDir, "latest.json");
+const installerSignaturePath = installer ? `${installer}.sig` : "";
+for (const [label, filePath] of [
+  ["当前版本安装包", installer],
+  ["SHA256SUMS.txt", checksums],
+  ["release-info.json", releaseInfoPath],
+  ["RELEASE_NOTES.md", notesPath],
+]) {
   if (!filePath || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
     fail(`发布产物缺失：${label}`);
+  }
+}
+// 在线更新资产：签名构建会生成 latest.json 与安装包 .sig；缺失则在线更新不可用。
+for (const [label, filePath] of [
+  ["更新清单 latest.json", updaterManifestPath],
+  ["安装包签名 .sig", installerSignaturePath],
+]) {
+  if (!filePath || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+    fail(`在线更新资产缺失：${label}。请使用签名构建（tauri.release.conf.json）后重试。`);
   }
 }
 
@@ -284,7 +300,7 @@ if (!metadataUrl.endsWith(`/${expectedInstallerName}`)) {
 }
 
 const notes = fs.readFileSync(notesPath, "utf8");
-const uploads = [installer, checksums, releaseInfoPath];
+const uploads = [installer, checksums, releaseInfoPath, updaterManifestPath, installerSignaturePath];
 const expectedAssets = uploads.map((filePath) => ({
   name: assetName(filePath),
   size: fs.statSync(filePath).size,

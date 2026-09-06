@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { recordActivity } from "./utils/learningActivity";
 
 export const defaultLearningProfile = Object.freeze({
   activeChapterId: "chapter-1",
@@ -11,6 +12,7 @@ export const defaultLearningProfile = Object.freeze({
   completedIds: [],
   chapterExecutionProgress: {},
   chapterNotes: {},
+  learningActivity: {},
   runtimeState: "idle",
   runtimeProgress: 0,
   isNotebookDirty: false,
@@ -40,10 +42,11 @@ export const useAppStore = create(persist((set) => ({
   completedIds: [],
   chapterExecutionProgress: {},
   chapterNotes: {},
+  learningActivity: {},
   runtimeState: "idle",
   runtimeProgress: 0,
   isNotebookDirty: false,
-  setActiveChapter: (id) => set((state) => ({ activeChapterId: id, recentIds: [id, ...state.recentIds.filter((item) => item !== id)].slice(0, 48), sidebarTab: "course" })),
+  setActiveChapter: (id) => set((state) => ({ activeChapterId: id, recentIds: [id, ...state.recentIds.filter((item) => item !== id)].slice(0, 48), learningActivity: recordActivity(state.learningActivity), sidebarTab: "course" })),
   toggleModule: (id) => set((state) => ({ expandedModules: state.expandedModules.includes(id) ? state.expandedModules.filter((item) => item !== id) : [...state.expandedModules, id] })),
   setExpandedModules: (expandedModules) => set({ expandedModules }),
   setSidebarMode: (sidebarMode) => set({ sidebarMode }),
@@ -60,10 +63,11 @@ export const useAppStore = create(persist((set) => ({
       chapterExecutionProgress: {
         ...state.chapterExecutionProgress,
         [chapterId]: { completedCellIds, totalCells }
-      }
+      },
+      learningActivity: recordActivity(state.learningActivity)
     };
   }),
-  clearLearningProgress: () => set({ completedIds: [], chapterExecutionProgress: {} }),
+  clearLearningProgress: () => set({ completedIds: [], chapterExecutionProgress: {}, learningActivity: {} }),
   setChapterNote: (chapterId, content) => set((state) => {
     const note = content.trim();
     if (!note) {
@@ -79,7 +83,7 @@ export const useAppStore = create(persist((set) => ({
   name: "python-data-studio:app:v1",
   version: 2,
   migrate: migratePersistedState,
-  partialize: (state) => ({ activeChapterId: state.activeChapterId, expandedModules: state.expandedModules, sidebarMode: state.sidebarMode, recentIds: state.recentIds, completedIds: state.completedIds, chapterExecutionProgress: state.chapterExecutionProgress, chapterNotes: state.chapterNotes })
+  partialize: (state) => ({ activeChapterId: state.activeChapterId, expandedModules: state.expandedModules, sidebarMode: state.sidebarMode, recentIds: state.recentIds, completedIds: state.completedIds, chapterExecutionProgress: state.chapterExecutionProgress, chapterNotes: state.chapterNotes, learningActivity: state.learningActivity })
 }));
 
 
@@ -102,5 +106,6 @@ export function activateLearningProfile(userId) {
     completedIds: savedState?.completedIds || [],
     chapterExecutionProgress: savedState?.chapterExecutionProgress || {},
     chapterNotes: savedState?.chapterNotes || {},
+    learningActivity: savedState?.learningActivity || {},
   });
 }

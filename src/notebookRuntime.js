@@ -44,6 +44,8 @@ const errorMessage = (reason, fallback = "Python 运行时初始化失败") => {
   return fallback;
 };
 
+const installedExternalPackages = new Set();
+
 const withTimeout = (promise, timeoutMs, message) => new Promise((resolve, reject) => {
   const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
   Promise.resolve(promise).then(
@@ -86,6 +88,7 @@ async function tauriInvoke(command, args) {
 // ---- JupyterLite 运行时创建（动态导入 thebe-core）----
 let serverRuntimePromise;
 let thebeLiteScriptPromise;
+let activeNotebookRuntime;
 
 async function ensureThebeLiteLoaded() {
   if (typeof window === "undefined") throw new Error("浏览器环境不可用");
@@ -151,6 +154,146 @@ async function getServerRuntime() {
   }
 
   return serverRuntimePromise;
+}
+
+export async function readActiveRuntimeDirectory(path = "") {
+  if (!serverRuntimePromise) return null;
+  const runtime = await serverRuntimePromise;
+  const contents = runtime?.server?.serviceManager?.contents;
+  if (!contents) return null;
+  return contents.get(String(path || "").replace(/^\/+|\/+$/g, ""), { content: true });
+}
+
+const runtimeFileTreeScript = `
+from pathlib import Path
+import base64
+import json
+
+_studio_file_count = 0
+
+def _studio_file_tree(folder, relative="", depth=0):
+    global _studio_file_count
+    node = {
+        "name": folder.name or "/",
+        "path": relative,
+        "type": "directory",
+        "size": 0,
+        "children": [],
+    }
+    if depth >= 12 or _studio_file_count >= 2000:
+        return node
+    try:
+        entries = sorted(
+            folder.iterdir(),
+            key=lambda item: (not item.is_dir(), item.name.casefold()),
+        )
+    except (OSError, PermissionError):
+        return node
+    for entry in entries:
+        if _studio_file_count >= 2000:
+            break
+        _studio_file_count += 1
+        entry_path = f"{relative}/{entry.name}".strip("/")
+        try:
+            is_directory = entry.is_dir() and not entry.is_symlink()
+        except OSError:
+            is_directory = False
+        if is_directory:
+            node["children"].append(_studio_file_tree(entry, entry_path, depth + 1))
+            continue
+        try:
+            size = entry.stat().st_size
+        except OSError:
+            size = 0
+        node["children"].append({
+            "name": entry.name,
+            "path": entry_path,
+            "type": "notebook" if entry.suffix.lower() == ".ipynb" else "file",
+            "size": size,
+            "children": [],
+        })
+    return node
+
+_studio_file_payload = json.dumps(
+    _studio_file_tree(Path.cwd()),
+    ensure_ascii=False,
+    separators=(",", ":"),
+).encode("utf-8")
+print("__STUDIO_FILE_TREE__" + base64.b64encode(_studio_file_payload).decode("ascii"))
+`;
+
+export async function readActiveKernelFileTree() {
+  const kernel = activeNotebookRuntime?.session?.kernel;
+  if (!kernel || kernel.isDisposed || kernel.status === "dead" || kernel.status === "busy") return null;
+  let stdout = "";
+  const future = kernel.requestExecute({
+    code: runtimeFileTreeScript,
+    silent: false,
+    store_history: false,
+    user_expressions: {},
+    allow_stdin: false,
+    stop_on_error: true
+  });
+  future.onIOPub = (message) => {
+    if (message.header.msg_type === "stream" && message.content?.name === "stdout") {
+      stdout += message.content.text || "";
+    }
+  };
+  const reply = await future.done;
+  if (reply?.content?.status !== "ok") return null;
+  const encodedPayload = stdout.match(/__STUDIO_FILE_TREE__([A-Za-z0-9+/=]+)/)?.[1];
+  if (!encodedPayload) return null;
+  const bytes = Uint8Array.from(atob(encodedPayload), (character) => character.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+export async function readActiveKernelFile(path, maxBytes = 256 * 1024) {
+  const kernel = activeNotebookRuntime?.session?.kernel;
+  if (!kernel || kernel.isDisposed || kernel.status === "dead") throw new Error("请先运行一个代码单元格，再预览输出文件");
+  if (kernel.status === "busy") throw new Error("Python 正在运行，请稍后再试");
+  const normalizedPath = String(path || "").replaceAll("\\", "/").replace(/^\/+/, "");
+  const byteLimit = Math.max(1, Math.min(Number(maxBytes) || 0, 1024 * 1024));
+  const script = `
+from pathlib import Path
+import base64
+import json
+
+_studio_root = Path.cwd().resolve()
+_studio_target = (_studio_root / ${JSON.stringify(normalizedPath)}).resolve()
+if _studio_target != _studio_root and _studio_root not in _studio_target.parents:
+    raise PermissionError("只能预览课程工作目录中的文件")
+if not _studio_target.is_file():
+    raise FileNotFoundError("文件不存在")
+_studio_size = _studio_target.stat().st_size
+with _studio_target.open("rb") as _studio_file:
+    _studio_content = _studio_file.read(${byteLimit})
+_studio_payload = json.dumps({
+    "size": _studio_size,
+    "truncated": _studio_size > len(_studio_content),
+    "content": base64.b64encode(_studio_content).decode("ascii"),
+}, separators=(",", ":")).encode("utf-8")
+print("__STUDIO_FILE_PREVIEW__" + base64.b64encode(_studio_payload).decode("ascii"))
+`;
+  let stdout = "";
+  const future = kernel.requestExecute({
+    code: script,
+    silent: false,
+    store_history: false,
+    user_expressions: {},
+    allow_stdin: false,
+    stop_on_error: true
+  });
+  future.onIOPub = (message) => {
+    if (message.header.msg_type === "stream" && message.content?.name === "stdout") {
+      stdout += message.content.text || "";
+    }
+  };
+  const reply = await future.done;
+  if (reply?.content?.status !== "ok") throw new Error(reply?.content?.evalue || "输出文件读取失败");
+  const encodedPayload = stdout.match(/__STUDIO_FILE_PREVIEW__([A-Za-z0-9+/=]+)/)?.[1];
+  if (!encodedPayload) throw new Error("输出文件读取失败");
+  const bytes = Uint8Array.from(atob(encodedPayload), (character) => character.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
 }
 
 async function createJupyterLiteRuntime(notebookPath) {
@@ -291,6 +434,7 @@ async function createNotebookRuntime(notebookPath, options = {}) {
 // ---- 公共入口 ----
 export async function createRuntimeAdapter(notebookPath, options = {}) {
   const runtime = await createNotebookRuntime(notebookPath, options);
+  activeNotebookRuntime = runtime;
   return {
     ...runtime,
     capabilities: runtime.info?.capabilities || (runtime.native
@@ -300,10 +444,47 @@ export async function createRuntimeAdapter(notebookPath, options = {}) {
       await ensureCoursePackages(runtime, source);
       return executeNotebookCell(runtime, source);
     },
+    prewarm: () => prewarmCoursePackages(runtime),
+    installPackages: (packages) => installExternalPackages(runtime, packages),
     interrupt: () => runtime.session?.kernel?.interrupt(),
     restart: () => restartNotebookRuntime(runtime),
     dispose: () => stopNotebookRuntime(runtime)
   };
+}
+
+// 内核对齐后，提前在后台加载最常用的基础包，避免首个单元格运行前才下载大包。
+// 仅对 JupyterLite 生效；native runtime 已内置依赖。失败静默，不阻塞启动。
+const PYODIDE_PREWARM = ["numpy", "pandas", "matplotlib"];
+
+export async function prewarmCoursePackages(runtime) {
+  if (runtime?.native) return;
+  const kernel = runtime?.session?.kernel;
+  if (!kernel || kernel.isDisposed || kernel.status === "dead") return;
+  const installedPackages = runtime.installedPackages || new Set();
+  runtime.installedPackages = installedPackages;
+  const pending = PYODIDE_PREWARM.filter((name) => !installedPackages.has(name));
+  if (!pending.length) return;
+  const pyodideNames = pending.map((name) => coursePackages[name].name);
+  const setupCode = [
+    "from pyodide_js import loadPackage",
+    `await loadPackage(${JSON.stringify(pyodideNames)})`,
+  ];
+  try {
+    const future = kernel.requestExecute({
+      code: setupCode.join("\n"),
+      silent: true,
+      store_history: false,
+      user_expressions: {},
+      allow_stdin: false,
+      stop_on_error: true,
+    });
+    const reply = await future.done;
+    if (reply?.content?.status === "ok") {
+      pending.forEach((name) => installedPackages.add(name));
+    }
+  } catch (error) {
+    // 预热失败不阻塞：首个单元格仍会按需加载。
+  }
 }
 
 export async function ensureCoursePackages(runtime, source) {
@@ -351,7 +532,10 @@ from pyodide.http import pyfetch
 import matplotlib
 from matplotlib import font_manager
 
-font_path = Path("/tmp/NotoSansSC-Regular.otf")
+# 中文字体专属目录：运行时可写，集中存放课程字体，避免散落各处。
+_font_dir = Path("/tmp/pds_fonts")
+_font_dir.mkdir(parents=True, exist_ok=True)
+font_path = _font_dir / "NotoSansSC-Regular.otf"
 if not font_path.exists():
     response = await pyfetch("/fonts/NotoSansSC-Regular.otf")
     response.raise_for_status()
@@ -380,6 +564,41 @@ matplotlib.rcParams["axes.unicode_minus"] = False
 
   pendingPackages.forEach((name) => installedPackages.add(name));
   if (pyodidePackages.includes("matplotlib")) runtime.matplotlibConfigured = true;
+}
+
+export async function installExternalPackages(runtime, packages = []) {
+  const specs = [...new Set((Array.isArray(packages) ? packages : [packages])
+    .map((item) => String(item || "").trim())
+    .filter(Boolean))];
+  if (!specs.length) return [];
+  if (runtime?.native) {
+    throw new Error("桌面端动态 pip 服务尚未启用，请先使用预装依赖或切换到浏览器运行时");
+  }
+
+  const kernel = runtime?.session?.kernel;
+  if (!kernel || kernel.isDisposed || kernel.status === "dead") {
+    throw new Error("Python 内核不可用，无法安装外部依赖");
+  }
+
+  const future = kernel.requestExecute({
+    code: `import piplite\nawait piplite.install(${JSON.stringify(specs)}, keep_going=False)`,
+    silent: true,
+    store_history: false,
+    user_expressions: {},
+    allow_stdin: false,
+    stop_on_error: true
+  });
+  const reply = await future.done;
+  if (reply?.content?.status !== "ok") {
+    throw new Error(reply?.content?.evalue || "外部 Python 包安装失败");
+  }
+  runtime.externalPackages = new Set([...(runtime.externalPackages || []), ...specs]);
+  specs.forEach((spec) => installedExternalPackages.add(spec));
+  return specs;
+}
+
+export function getInstalledExternalPackages() {
+  return [...installedExternalPackages].sort((left, right) => left.localeCompare(right));
 }
 
 // ---- 代码源转换 ----
@@ -464,7 +683,7 @@ const jupyterLiteCjkFontSetup = `def _studio_ensure_cjk_font():
         import matplotlib
         import os as _os
         _font_candidates = [
-            "/tmp/NotoSansSC-Regular.otf",
+            "/tmp/pds_fonts/NotoSansSC-Regular.otf",
             "C:/Windows/Fonts/msyh.ttc",
             "C:/Windows/Fonts/simhei.ttf",
         ]
@@ -509,6 +728,28 @@ const applyNativeCjkFont = (source) => {
 
 const applyJupyterLiteCjkFont = (source) => applyCjkFont(source, jupyterLiteCjkFontSetup);
 
+// IPython 要求 Cell 魔法（%%time、%%capture 等）位于第一条非空语句。
+// 数据路径和中文字体预处理会向源码前方插入辅助代码，因此需要把这些辅助代码
+// 放进“执行 Python 正文”的 Cell 魔法体内；写文件、HTML、脚本等非 Python 魔法
+// 则保持原文，避免改变其内容语义。
+const pythonBodyCellMagics = new Set(["time", "timeit", "capture", "prun", "debug"]);
+
+export const preserveCellMagicHeader = (source, transformPythonSource) => {
+  const text = String(source || "");
+  const match = text.match(/^((?:[ \t]*\r?\n)*[ \t]*%%([A-Za-z_]\w*)[^\r\n]*(?:\r?\n|$))([\s\S]*)$/);
+  if (!match) return transformPythonSource(text);
+  const magicName = match[2].toLowerCase();
+  if (!pythonBodyCellMagics.has(magicName)) return text;
+  return `${match[1]}${transformPythonSource(match[3])}`;
+};
+
+export const prepareNotebookSourceForExecution = (runtime, source) => preserveCellMagicHeader(
+  source,
+  runtime?.native
+    ? (body) => applyNativeCjkFont(normalizeNativeNotebookSource(body))
+    : (body) => applyJupyterLiteCjkFont(normalizeNotebookSource(body))
+);
+
 // ---- 单元格执行 ----
 export async function executeNotebookCell(runtime, source) {
   const kernel = runtime?.session?.kernel;
@@ -539,9 +780,7 @@ export async function executeNotebookCell(runtime, source) {
   };
 
   const future = kernel.requestExecute({
-    code: runtime?.native
-      ? applyNativeCjkFont(normalizeNativeNotebookSource(source))
-      : applyJupyterLiteCjkFont(normalizeNotebookSource(source)),
+    code: prepareNotebookSourceForExecution(runtime, source),
     silent: false,
     store_history: true,
     user_expressions: {},
@@ -625,6 +864,7 @@ export async function executeNotebookCell(runtime, source) {
 // ---- 生命周期管理 ----
 export async function stopNotebookRuntime(runtime) {
   if (!runtime) return;
+  if (activeNotebookRuntime === runtime) activeNotebookRuntime = null;
   await runtime.session?.shutdown?.().catch(() => runtime.session?.dispose?.());
   if (runtime.native) await tauriInvoke("stop_native_runtime").catch(() => {});
 }
@@ -640,6 +880,7 @@ export async function disposeNotebookRuntime() {
   await runtime.server.shutdownAllSessions();
   runtime.server.dispose();
   serverRuntimePromise = null;
+  activeNotebookRuntime = null;
 }
 
 export { requiredCoursePackages };

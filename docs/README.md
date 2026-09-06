@@ -26,7 +26,7 @@ Python Data Studio 是面向 Python 数据分析初学者的浏览器课程工�
 - 外层应用不得通过 CSS 或 DOM 查询修改 JupyterLite 内部结构；
 - Notebook 美化必须由正式 JupyterLite/JupyterLab 主题扩展完成；
 - 第一章保持以计算机基础、Python 语言介绍和 Jupyter Notebook 使用理由为主的阅读式定位；
-- 当前课程为 117 个课程章节（109 个连续教学章节 + 8 个独立模块大作业章节）、8 个模块；章节正式作业和独立实训主路径取消，模块末大作业作为模块级成果；
+- 当前课程为 127 个课程资源（119 个连续展示章节资源 + 8 个独立模块大作业资源）、8 个模块；章节正式作业和独立实训主路径取消，模块末大作业作为模块级成果；
 - 教学代码不使用 `assert` 作为自检要求，结果通过打印和解释反馈；
 - 所有关键工作流必须支持键盘、移动端和减少动画偏好。
 
@@ -51,6 +51,7 @@ Python Data Studio 是面向 Python 数据分析初学者的浏览器课程工�
 | [COURSE_GLOSSARY.md](./COURSE_GLOSSARY.md) | 术语、命名和语言风格 |
 | [DATASET_CARDS.md](./DATASET_CARDS.md) | 公开数据集卡片、来源、许可和字段说明 |
 | [CAPSTONE_RUBRICS.md](./CAPSTONE_RUBRICS.md) | 模块大作业评分量规和反馈模板 |
+| [MODULE_TEACHING_RESOURCES.md](./MODULE_TEACHING_RESOURCES.md) | 八个模块的能力目标、补学路径、课堂组织和维护命令 |
 | [NOTEBOOK_AUTHORING_GUIDE.md](./NOTEBOOK_AUTHORING_GUIDE.md) | Notebook 编写、Cell 顺序和审阅手册 |
 | [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md) | 内容、数据、运行和静态发布操作流程 |
 | [CHANGELOG.md](./CHANGELOG.md) | 课程和文档变更记录 |

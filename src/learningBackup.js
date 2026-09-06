@@ -1,7 +1,7 @@
 import { useAppStore } from "./store";
 
 const BACKUP_VERSION = 1;
-const fields = ["activeChapterId", "recentIds", "completedIds", "chapterExecutionProgress", "chapterNotes"];
+const fields = ["activeChapterId", "recentIds", "completedIds", "chapterExecutionProgress", "chapterNotes", "learningActivity"];
 
 export function exportLearningBackup() {
   const state = useAppStore.getState();
@@ -24,6 +24,7 @@ export function restoreLearningBackup(backup) {
     recentIds: learning.recentIds.filter((item) => typeof item === "string").slice(0, 48),
     completedIds: learning.completedIds.filter((item) => typeof item === "string"),
     chapterExecutionProgress: learning.chapterExecutionProgress && typeof learning.chapterExecutionProgress === "object" ? learning.chapterExecutionProgress : {},
-    chapterNotes: learning.chapterNotes && typeof learning.chapterNotes === "object" ? learning.chapterNotes : {}
+    chapterNotes: learning.chapterNotes && typeof learning.chapterNotes === "object" ? learning.chapterNotes : {},
+    learningActivity: learning.learningActivity && typeof learning.learningActivity === "object" ? learning.learningActivity : {}
   });
 }

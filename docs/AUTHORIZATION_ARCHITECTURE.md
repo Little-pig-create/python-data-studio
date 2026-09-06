@@ -28,13 +28,33 @@ Python Data Studio 采用一个前端应用和一个登录入口，但按用户�
 
 推荐使用 Secure、HttpOnly、SameSite Cookie，前端请求设置 `credentials: include`。角色只能来自服务端会话，生产登录页不允许由用户选择角色。涉及 Cookie 的写接口还需使用合适的 CSRF 防护。
 
-环境变量：
+环境变量（前端）：
 
 - `VITE_AUTH_API_ENABLED=true`
 - `VITE_AUTH_API_BASE_URL=/api/auth/v1`
 - `VITE_AUTH_DEMO_MODE=true`：只允许本地开发显式启用，生产构建不得启用。
 
 开发模式提供学生、教师、管理员演示账号，只把最小用户资料放入 `sessionStorage`，不保存密码或真实令牌。
+
+## 服务端实现现状（server/，Rust axum）
+
+`server/` 是独立认证服务（默认 `127.0.0.1:8787`），自 v0.2.0 起具备生产化基础能力：
+
+| 能力 | 实现 |
+|---|---|
+| 密码存储 | argon2id 哈希（随机盐，`argon2` crate），存储中不出现任何明文密码 |
+| 持久化 | 账号/会话/验证码/CDKey 写时保存到 JSON 文件（`PDS_DATA_DIR`，默认 `server-data/`），重启不丢失 |
+| 会话过期 | 默认 24 小时 TTL（`PDS_SESSION_TTL_HOURS`），读取时惰性清理过期会话 |
+| 登录保护 | 每账号连续失败 5 次（`PDS_LOGIN_MAX_ATTEMPTS`）锁定 10 分钟（`PDS_LOGIN_LOCK_MINUTES`） |
+| 验证码 | 只存储 argon2id 哈希；默认不返回明文，仅当显式设置 `PDS_DEV_RETURN_CODE=true` 时开发环境可见 |
+| 种子账号 | 首次启动创建三个演示账号（`AUTH_ADMIN_PASSWORD` 等环境变量覆盖默认密码），`PDS_SEED_DEFAULT_USERS=false` 可关闭 |
+
+仍待生产化（不阻塞本地/教学部署）：
+
+- 真实邮件发送适配器（当前验证码哈希存储，传输需接入 SMTP/短信服务）；
+- 数据库存储与账号唯一约束（当前为 JSON 文件）；
+- 审计日志与 CSRF 防护（写接口使用 HttpOnly Cookie，建议加 SameSite=Strict 与 CSRF Token）；
+- 服务端学习进度权威存储（当前进度在浏览器本地）。
 
 ## 业务服务边界
 

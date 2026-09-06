@@ -6,13 +6,14 @@ function Glyph({ children, className = "" }) {
 }
 
 const modules = [
-  { id: "python", label: "Python 基础", range: "01–10", color: "#2563eb" },
-  { id: "numpy", label: "NumPy", range: "11–15", color: "#0e7490" },
-  { id: "pandas", label: "Pandas", range: "16–24", color: "#16865c" },
-  { id: "matplotlib", label: "Matplotlib / Seaborn", range: "25–54", color: "#c77908" },
-  { id: "plotly", label: "Plotly", range: "55–71", color: "#b4236b" },
-  { id: "projects", label: "综合项目", range: "72–75", color: "#7c3aed" },
-  { id: "machine-learning", label: "机器学习", range: "76–108", color: "#0f766e" },
+  { id: "python", label: "Python 基础", range: "01–15", color: "#2563eb" },
+  { id: "numpy", label: "NumPy", range: "16–21", color: "#0e7490" },
+  { id: "pandas", label: "Pandas", range: "22–31", color: "#16865c" },
+  { id: "matplotlib", label: "Matplotlib", range: "32–43", color: "#c77908" },
+  { id: "seaborn", label: "Seaborn", range: "44–63", color: "#d15b35" },
+  { id: "plotly", label: "Plotly", range: "64–81", color: "#b4236b" },
+  { id: "projects", label: "综合项目", range: "82–85", color: "#7c3aed" },
+  { id: "machine-learning", label: "机器学习", range: "86–119", color: "#0f766e" },
 ];
 
 const features = [
@@ -44,6 +45,18 @@ export function LandingPage({ catalog }) {
     () => catalog?.chapters?.filter((item) => item.module === activeCatalogModule?.id) || [],
     [catalog, activeCatalogModule],
   );
+  const moduleCards = catalog?.modules?.length ? catalog.modules : modules;
+  const courseResourceCount = catalog?.chapters?.length || 127;
+  const continuousChapterCount = catalog?.chapters?.filter((item) => item.kind !== "capstone").length || 119;
+  const projectCount = catalog?.chapters?.filter((item) => item.module === "projects" && item.kind === "project").length || 4;
+  const displayRange = (range) => String(range || "").replace(/^第\s*/, "").replace(/章$/, "");
+  const chapterKindLabel = (chapter) => chapter.kind === "capstone"
+    ? "模块大作业"
+    : chapter.kind === "project"
+      ? "综合项目"
+      : chapter.kind === "extra"
+        ? "专题"
+      : `${chapter.estimatedMinutes || 35} 分钟`;
   return (
     <main className="landing-page">
       <MouseGlow />
@@ -52,7 +65,7 @@ export function LandingPage({ catalog }) {
         <div className="ambient-scanline" />
         <div className="ambient-route route-one"><i /><i /><i /><i /></div>
         <div className="ambient-route route-two"><i /><i /><i /></div>
-        <div className="ambient-data-label label-one">DATA / 108 CHAPTERS</div>
+        <div className="ambient-data-label label-one">DATA / {continuousChapterCount} CHAPTERS</div>
         <div className="ambient-data-label label-two">PYTHON.RUNTIME // READY</div>
         <div className="ambient-data-label label-three">PANDAS · PLOTLY · SKLEARN</div>
       </div>
@@ -85,8 +98,8 @@ export function LandingPage({ catalog }) {
           </div>
           <div className="landing-proof-row">
             <span><Glyph className="check">✓</Glyph>无需本地安装</span>
-            <span><Glyph className="check">✓</Glyph>108 个章节</span>
-            <span><Glyph className="check">✓</Glyph>4 个综合项目</span>
+            <span><Glyph className="check">✓</Glyph>{continuousChapterCount} 个章节资源</span>
+            <span><Glyph className="check">✓</Glyph>{projectCount} 个综合项目</span>
           </div>
         </ScrollReveal>
         <ScrollReveal className="landing-hero-visual" delay={140}>
@@ -125,9 +138,9 @@ export function LandingPage({ catalog }) {
       </section>
 
       <section className="landing-stats">
-        <ScrollReveal delay={0}><div><strong><CountUp value={108} /></strong><span>系统化课程章节</span></div></ScrollReveal>
-        <ScrollReveal delay={70}><div><strong><CountUp value={7} /></strong><span>数据分析核心模块</span></div></ScrollReveal>
-        <ScrollReveal delay={140}><div><strong><CountUp value={4} /></strong><span>真实场景综合项目</span></div></ScrollReveal>
+        <ScrollReveal delay={0}><div><strong><CountUp value={continuousChapterCount} /></strong><span>系统化课程章节</span></div></ScrollReveal>
+        <ScrollReveal delay={70}><div><strong><CountUp value={8} /></strong><span>数据分析核心模块</span></div></ScrollReveal>
+        <ScrollReveal delay={140}><div><strong><CountUp value={projectCount} /></strong><span>真实场景综合项目</span></div></ScrollReveal>
         <ScrollReveal delay={210}><div><strong><CountUp value={3} /></strong><span>教学角色工作台</span></div></ScrollReveal>
       </section>
 
@@ -138,9 +151,9 @@ export function LandingPage({ catalog }) {
           <p>按能力递进组织的课程目录，让学习过程有目标、有反馈、有产出。</p>
         </div>
         <div className="landing-module-grid">
-          {modules.map((item, index) => <ScrollReveal key={item.label} delay={index * 45}><SpotlightCard><button className="landing-module-card" type="button" onClick={() => { setActiveModule(item.id); setCatalogOpen(true); }}>
+          {moduleCards.map((item, index) => <ScrollReveal key={item.id || item.label} delay={index * 45}><SpotlightCard><button className="landing-module-card" type="button" onClick={() => { setActiveModule(item.id); setCatalogOpen(true); }}>
             <i style={{ backgroundColor: item.color }} />
-            <div><strong>{item.label}</strong><span>第 {item.range} 章</span></div>
+            <div><strong>{item.label}</strong><span>第 {displayRange(item.range)} 章</span></div>
             <Glyph>→</Glyph>
           </button></SpotlightCard></ScrollReveal>)}
         </div>
@@ -182,7 +195,7 @@ export function LandingPage({ catalog }) {
       {catalogOpen && <div className="landing-catalog-backdrop" role="presentation" onClick={() => setCatalogOpen(false)}>
         <section className="landing-catalog-panel" role="dialog" aria-modal="true" aria-labelledby="landing-catalog-title" onClick={(event) => event.stopPropagation()}>
           <div className="landing-catalog-heading">
-            <div><span className="landing-overline">COURSE CATALOG</span><h2 id="landing-catalog-title">完整章节目录</h2><p>{catalog?.chapters?.length || 108} 个章节，按能力路径组织学习。</p></div>
+          <div><span className="landing-overline">COURSE CATALOG</span><h2 id="landing-catalog-title">完整章节目录</h2><p>{courseResourceCount} 个课程资源，按能力路径组织学习。</p></div>
             <button className="landing-catalog-close" type="button" aria-label="关闭章节目录" onClick={() => setCatalogOpen(false)}><Glyph>×</Glyph></button>
           </div>
           <div className="landing-catalog-body">
@@ -195,9 +208,9 @@ export function LandingPage({ catalog }) {
               <div className="landing-catalog-chapters-heading"><strong>{activeCatalogModule?.label || "课程章节"}</strong><span>{activeChapters.length} 章</span></div>
               <div className="landing-catalog-chapter-list">
                 {activeChapters.map((chapter) => <a key={chapter.id} href={`/course/${chapter.id}`} onClick={() => setCatalogOpen(false)}>
-                  <span className="chapter-number">{chapter.kind === "capstone" ? "★" : String(chapter.chapter).padStart(2, "0")}</span>
+                  <span className="chapter-number">{chapter.kind === "capstone" ? "★" : chapter.kind === "extra" ? "专题" : String(chapter.chapter).padStart(2, "0")}</span>
                   <span className="chapter-title"><b>{chapter.title}</b><small>{(chapter.tags || []).slice(0, 2).join(" · ")}</small></span>
-                  <span className={`chapter-kind ${chapter.kind === "project" ? "project" : ""}`}>{chapter.kind === "project" ? "项目" : `${chapter.estimatedMinutes || 35} 分钟`}</span>
+                  <span className={`chapter-kind ${chapter.kind === "project" ? "project" : ""} ${chapter.kind === "capstone" ? "capstone" : ""}`}>{chapterKindLabel(chapter)}</span>
                   <Glyph>→</Glyph>
                 </a>)}
               </div>

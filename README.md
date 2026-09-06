@@ -9,7 +9,7 @@
 - **前端**：React 18 + Vite + MUI + Zustand
 - **Python 运行时**：JupyterLite（WebAssembly，零服务器）/ Thebe-lite（章节 72–75）
 - **存储**：IndexedDB（Notebook 草稿 + 自定义内容）+ localStorage（进度、配置）
-- **认证**：内置角色系统（学生 / 教师 / 学校管理员）
+- **认证**：内置角色系统（学生 / 教师 / 学校管理员），演示模式（前端）或 `server/` Rust 认证服务（argon2id 密码哈希 + JSON 持久化 + 会话过期）
 
 ---
 
@@ -82,6 +82,39 @@ npm run sync:catalog
 node scripts/sync-catalog.mjs --dry-run
 ```
 
+### Notebook 三层架构与维护
+
+课程内容分三层，**内容权威在 `public/course/`**（由生成器与 `sync-catalog.mjs` 维护）：
+
+```text
+public/course/                     ← 课程内容权威：教学章节 + module-capstones/ + catalog.json
+notebooks/course|extras/           ← JupyterLite 运行时打包输入：course 由 build:runtime 自动同步（不入库，见 .gitignore），extras 手工维护
+public/runtime/files/course|extras/ ← JupyterLite 运行时副本（构建产物，勿手工编辑）
+```
+
+修改课程内容请直接编辑 `public/course/` 下的 Notebook（或运行生成器），然后执行 `npm run sync:catalog` 重建目录；`npm run build:runtime` 会自动把 `public/course/` 同步进 `notebooks/course/` 再打包 JupyterLite，避免双内容源漂移。历史旧版课程源已归档至 `docs/archive/notebooks-legacy/`。
+
+每个教学 Notebook 都会维护以下结构信息：
+
+- `notebook_architecture_version`：内部结构版本；
+- `cell_id_scheme`：稳定 cell ID 的生成方案；
+- `content_fingerprint`：用于识别内容变化、避免旧草稿误覆盖新内容；
+- cell `id`：用于执行状态、草稿和内容同步的稳定标识；
+- cell `metadata.tags`：统一保留 `exercise`、`solution`、`check` 等教学标签。
+
+修改源文件后，建议运行：
+
+```bash
+npm run normalize:notebooks   # 统一 ID、标签和内容指纹
+npm run check:notebooks       # 检查 JSON、Python 语法和源/运行时一致性
+npm run build:course          # 维护现有课程发布副本并同步 catalog
+npm run build:runtime         # 重新生成 JupyterLite 运行时
+```
+
+`build:course` 会自动执行初学者内容增强、架构规范化和目录同步，不会在日常构建中覆盖已经审阅过的 `public/course/`。如果确实需要从生成器重建课程，使用 `npm run rebuild:course:generated`，完成后应重新审阅目录和抽样 Notebook。`build:runtime` 会在 JupyterLite 构建完成后重新规范化运行时 Notebook。不要直接把 `public/runtime/` 当作内容源文件编辑。
+
+课程发布副本会自动删除重复的泛化“方法与函数详解”模块，但保留章节主线示例、教学实验、项目步骤、练习、答案和小结。手动维护时也可以运行 `npm run prune:notebooks`。
+
 ---
 
 ## 可用命令
@@ -92,7 +125,12 @@ node scripts/sync-catalog.mjs --dry-run
 | `npm run build` | 生产构建 |
 | `npm run preview` | 预览生产构建 |
 | `npm run sync:catalog` | 扫描 `public/course/` 重新生成 `catalog.json` |
-| `npm run build:course` | 旧流程：从 mjs 脚本生成 Notebook（已保留，一般不再使用） |
+| `npm run normalize:notebooks` | 统一所有 Notebook 的结构、稳定 ID、标签和内容指纹 |
+| `npm run check:notebooks` | 检查 Notebook JSON、代码语法、稳定 ID 和源/运行时一致性 |
+| `npm run prune:notebooks` | 删除课程发布副本中的重复泛化教学模块，保留必要练习和示例 |
+| `npm run build:course` | 执行初学者增强、规范化现有课程发布副本并同步目录 |
+| `npm run rebuild:course:generated` | 显式调用旧课程生成器重建发布副本，再执行增强和校验 |
+| `npm run build:runtime` | 构建 JupyterLite，并规范化运行时 Notebook |
 
 ---
 
@@ -116,7 +154,9 @@ src/
 
 scripts/
   sync-catalog.mjs          ← 扫描 public/course/ 生成 catalog.json ✅ 主要使用
-  rebuild-course-notebooks.mjs ← 旧流程：从 mjs 内容生成 Notebook（已弃用）
+  rebuild-course-notebooks.mjs ← 从课程内容生成 public/course/ 的发布副本
+  enhance-notebooks-for-beginners.py ← 初学者渐进式内容增强
+  normalize-notebook-architecture.py ← 稳定 ID、标签、指纹和源/运行时校验
 
 public/
   course/                   ← 课程 Notebook 文件 + catalog.json
@@ -175,7 +215,7 @@ npm run dev -- --port 8766
 
 打开 `http://127.0.0.1:8766/course/chapter-1`。
 
-`npm run build:runtime` 会先编译 JupyterLab 扩展，再把 `notebooks/course` 和 `notebooks/extras` 保留目录层级打包到 JupyterLite，避免同名 Notebook 覆盖。生产构建使用 `npm run build`，输出到 `dist/`。
+`npm run build:runtime` 会先编译 JupyterLab 扩展，再把 `public/course/` 同步进 `notebooks/course/` 并与 `notebooks/extras` 一起保留目录层级打包到 JupyterLite，避免同名 Notebook 覆盖。生产构建使用 `npm run build`，输出到 `dist/`。
 
 Notebook 界面使用 JupyterLab 官方简体中文语言包，不通过前端脚本替换英文文案。
 
@@ -239,8 +279,8 @@ npm run release -- 0.1.3
 ```text
 src/                         React 外壳、Zustand 和 Runtime Bridge 客户端
 runtime/extensions/          JupyterLab Bridge 与课程主题扩展源码
-notebooks/course/             75 个正式课程 Notebook
-notebooks/extras/             2 个补充 Notebook
+notebooks/course/             JupyterLite 运行时打包输入（由 build:runtime 从 public/course 同步）
+notebooks/extras/             2 个补充练习 Notebook
 scripts/                     扩展与 JupyterLite 构建脚本
 docs/                        产品、交互、状态和 QA 设计文档
 ```

@@ -397,7 +397,7 @@ export function NotebookContentCenter() {
   }, []);
   const metadataRecords = records.map((record) => record.metadata || record).filter((item) => item?.id);
   const filtered = metadataRecords.filter((item) => (status === "all" || item.status === status) && (`${item.title} ${item.description} ${(item.tags || []).join(" ")}`).toLowerCase().includes(query.toLowerCase()));
-  const nextChapter = Math.max(108, ...(catalog?.chapters || []).map((item) => Number(item.chapter) || 0), ...metadataRecords.map((item) => Number(item.chapter) || 0)) + 1;
+  const nextChapter = Math.max(0, ...(catalog?.chapters || []).map((item) => Number(item.chapter) || 0), ...metadataRecords.map((item) => Number(item.chapter) || 0)) + 1;
   const exportAll = () => {
     if (!records.length) {
       setToast("当前没有可导出的自定义 Notebook");
@@ -427,7 +427,7 @@ export function NotebookContentCenter() {
         ...(catalog?.chapters || []).map((item) => Number(item.chapter)).filter(Number.isInteger),
         ...metadataRecords.map((item) => Number(item.chapter)).filter(Number.isInteger)
       ]);
-      let nextImportedChapter = Math.max(108, ...occupiedChapters) + 1;
+      let nextImportedChapter = Math.max(0, ...occupiedChapters) + 1;
       const now = new Date().toISOString();
       const prepared = payload.records.map((candidate, index) => {
         const sourceMetadata = candidate?.metadata || candidate;

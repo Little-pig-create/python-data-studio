@@ -146,9 +146,10 @@ public/course/module-capstones/ 8 个模块大作业 Notebook
 datasets/                    源数据、快照和 Manifest
 docs/                        设计、教学与验收文档
 
-# 历史生成链路（不作为当前发布路径）
-notebooks/course/            早期正式课程内容
-notebooks/extras/            早期补充练习内容
+# JupyterLite 运行时打包输入（不是内容权威）
+notebooks/course/            由 build:runtime 从 public/course 自动同步，勿手工编辑
+notebooks/extras/            补充练习 Notebook（手工维护）
+docs/archive/notebooks-legacy/  旧版课程源归档（2026-08 前）
 ```
 
 ## 4. 依赖方向
@@ -205,9 +206,9 @@ React 与 JupyterLite 必须同源部署，以便 Bridge 能使用严格 origin 
 
 历史文档中的 `notebooks/course/` 仅表示早期生成链路，不应被误读为当前发布目录。内容改造不主动修改 `src/`、路由或运行时实现；修改课程 Notebook 后应按课程索引要求同步静态发布目录，并重新执行 JSON、路径、冷启动和质量审计。
 
-当前课程内容基线为 117 个课程章节（109 个连续教学章节 + 8 个独立模块大作业章节）、8 个模块；第 10 章文件操作是普通教学章节。技术栈文档只说明文件和运行边界，模块划分、教学顺序、方法示例和作业规则以课程内容权威文档为准。
+当前课程内容基线为 120 个课程资源（112 个连续教学章节 + 8 个独立模块大作业资源）、8 个模块；Python 基础模块含第 6 章字典与第 7 章集合两个独立章节，第 10 章文件操作、第 14 章模块与类均为普通教学章节。技术栈文档只说明文件和运行边界，模块划分、教学顺序、方法示例和作业规则以课程内容权威文档为准。
 
 
 ## 文件操作专题（Python 基础）
 
-Python 基础模块第 10 章是普通教学章节“文件操作专题：读取、写入与目录管理”，主线使用 `os`、`open`、`csv`、`json`，覆盖路径检查、目录创建、文本读写、追加/覆盖写入、表格文件、结构化结果和错误处理。日期与时间专题的内容规范以 `FOUNDATION_AND_MODULE_TEACHING_DESIGN.md` 为准。
+Python 基础模块第 10 章是普通教学章节“文件操作专题：读取、写入与目录管理”，主线使用 `os`、`open`、`csv`、`json`，覆盖路径检查、目录创建、文本读写、追加/覆盖写入、表格文件、结构化结果和错误处理。第13章时间与日期使用独立方法 Cell 讲解 `time`、`date`、`datetime`、`timedelta`、`strptime` 和 `strftime`。

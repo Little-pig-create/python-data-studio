@@ -2,7 +2,9 @@ import "./notebook.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypeSanitize from "rehype-sanitize";
+import rehypeKatex from "rehype-katex";
 import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
 import StopRounded from "@mui/icons-material/StopRounded";
@@ -14,13 +16,18 @@ import NoteAltRounded from "@mui/icons-material/NoteAltRounded";
 import RestorePageRounded from "@mui/icons-material/RestorePageRounded";
 import DeleteSweepRounded from "@mui/icons-material/DeleteSweepRounded";
 import FormatListBulletedRounded from "@mui/icons-material/FormatListBulletedRounded";
+import KeyboardRounded from "@mui/icons-material/KeyboardRounded";
 import { Alert, Button, ButtonGroup, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, IconButton, Menu, MenuItem, Snackbar, Tab, Tabs, TextField, Tooltip } from "@mui/material";
 import { StudioSpeedDial } from "./StudioSpeedDial";
 import { useAppStore } from "./store";
+import { useAuth } from "./AuthProvider";
 import { createRuntimeAdapter, getPreferredRuntimeKind } from "./notebookRuntime";
+import { loadCourseNotebook } from "./courseNotebookCache";
+import { normalizeDependencies, readInstalledPackages } from "./studentPackageStore";
 import { deleteNotebookDraft, loadCustomNotebook, loadNotebookDraft, saveNotebookDraft } from "./notebookRepository";
 import { normalizeNotebook, serializeNotebook, useNotebookStore } from "./notebookStore";
 import { NotebookCell } from "./components/NotebookCell";
+import { autoSplitDocumentCells } from "./lib/markdownSplit";
 import { NotebookNavigation } from "./components/NotebookNavigation";
 import { formatPythonSource, getChapterMeta, kernelStatusDetails, kernelStatusLabels, markdownOutline, shutdownNotebookRuntime } from "./utils/notebookHelpers";
 import { NotebookSkeleton } from "./LoadingSkeletons";
@@ -35,6 +42,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteTab, setNoteTab] = useState(0);
+  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [outlineAnchor, setOutlineAnchor] = useState(null);
   const [markdownCollapsed, setMarkdownCollapsed] = useState(false);
   const [overviewCollapsed, setOverviewCollapsed] = useState(false);
@@ -47,8 +55,11 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
   const draftGenerationRef = useRef(0);
   const savePromiseRef = useRef(Promise.resolve());
   const kernelStatusBindingRef = useRef(null);
+  const cellClipboardRef = useRef(null);
+  const shortcutSequenceRef = useRef({ key: "", time: 0 });
   const onRuntimeStateRef = useRef(onRuntimeState);
   const store = useNotebookStore();
+  const { user } = useAuth();
   const document = store.document;
   const outline = useMemo(() => markdownOutline(document), [document]);
   const completedIds = useAppStore((state) => state.completedIds);
@@ -137,19 +148,25 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
         if (!record?.notebook) throw new Error("自定义 Notebook 内容未找到");
         return record.notebook;
       })
-      : fetch(lesson.path, { cache: "no-store" }).then((response) => {
-        if (!response.ok) throw new Error("Notebook 文件未找到");
-        return response.json();
-      });
+      : loadCourseNotebook(lesson.path);
     loadSource.then(async (source) => {
       const key = `course:${lesson.id}`;
       const draft = await loadNotebookDraft(key).catch(() => null);
-      const sourceVersion = source?.metadata?.course_content_version ?? 1;
-      const draftVersion = draft?.metadata?.course_content_version ?? 1;
+      // 内容指纹优先于人工维护的版本号，避免“版本号不变但内容已经变化”时
+      // 继续加载旧草稿。旧 Notebook 没有指纹时，仍兼容原有版本字段。
+      const sourceVersion = source?.metadata?.content_fingerprint
+        ?? source?.metadata?.course_content_version
+        ?? 1;
+      const draftVersion = draft?.metadata?.content_fingerprint
+        ?? draft?.metadata?.course_content_version
+        ?? 1;
       const baseDocument = normalizeNotebook(source);
       baseDocument.cells = baseDocument.cells.map((cell) => cell.type === "code"
         ? { ...cell, source: formatPythonSource(cell.source) }
         : cell);
+      // 加载即自动拆分：多元素 markdown cell 拆成独立 cell。
+      // 基准与草稿使用同一拆分结构，保证草稿兼容性检查幂等（草稿是拆后结构时仍能命中）。
+      autoSplitDocumentCells(baseDocument);
       const compatibleDraft = draftVersion === sourceVersion && draft?.cells?.length === baseDocument.cells.length ? draft : null;
       const loadedDocument = normalizeNotebook(compatibleDraft || source);
       if (compatibleDraft && loadedDocument.cells.length === baseDocument.cells.length) {
@@ -158,6 +175,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
           return cell.source === baseCell.source ? { ...cell, type: baseCell.type } : cell;
         });
       }
+      if (!compatibleDraft) autoSplitDocumentCells(loadedDocument);
       if (!disposed) store.setDocument(key, loadedDocument);
       if (!disposed) {
         const nativeRuntime = getPreferredRuntimeKind() === "native";
@@ -204,6 +222,10 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     store.setDirty(true);
   }, [document, lesson.id, store]);
 
+
+  // 提示条（提前声明，供拆分等回调使用）
+  const showToast = useCallback((message, severity = "info") => setToast({ open: true, message, severity }), []);
+
   const ensureRuntime = useCallback(async () => {
     const notebookPath = `course-${lesson.id}.ipynb`;
     const notebookKey = `course:${lesson.id}`;
@@ -240,9 +262,21 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
           onRuntimeStateRef.current?.("loading");
         }
       });
-      if (generation !== runtimeGenerationRef.current) {
+      const dependencies = normalizeDependencies([
+        ...readInstalledPackages(user?.userId),
+        ...(Array.isArray(lesson.dependencies) ? lesson.dependencies : []),
+      ]);
+      try {
+        if (dependencies.length) {
+          useNotebookStore.getState().setRuntime("loading", "正在准备全局依赖");
+          await runtime.installPackages?.(dependencies);
+        }
+        if (generation !== runtimeGenerationRef.current) {
+          throw new Error("Notebook 已切换，内核初始化已取消");
+        }
+      } catch (reason) {
         await shutdownNotebookRuntime(runtime);
-        throw new Error("Notebook 已切换，内核初始化已取消");
+        throw reason;
       }
       runtimeRef.current = runtime;
       bindKernelStatus(runtime);
@@ -254,27 +288,31 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     } finally {
       if (runtimeInitRef.current === initialization) runtimeInitRef.current = null;
     }
-  }, [bindKernelStatus, clearKernelStatusBinding, lesson.id]);
+  }, [bindKernelStatus, clearKernelStatusBinding, lesson.dependencies, lesson.id, user?.userId]);
 
-  // Desktop uses the bundled CPython runtime. Warm it up as soon as the
-  // notebook is visible so the header shows a real kernel state instead of
-  // staying at “未启动” until the first click on Run.
+  // Warm the kernel up as soon as the notebook is visible, so the header shows a
+  // real kernel state instead of staying at “未启动” until the first click on Run.
+  // Browser (JupyterLite) benefits the most: it avoids waiting for kernel creation
+  // + big package downloads (numpy/pandas/matplotlib) on the first Run click.
   useEffect(() => {
-    if (
-      getPreferredRuntimeKind() !== "native"
-      || loading
-      || error
-      || !document?.notebookKey
-    ) return undefined;
+    if (loading || error || !document?.notebookKey) return undefined;
 
     let cancelled = false;
-    const warmup = window.setTimeout(() => {
-      ensureRuntime().catch((reason) => {
-        if (cancelled) return;
+    const warmup = window.setTimeout(async () => {
+      try {
+        const runtime = await ensureRuntime();
+        if (cancelled) return undefined;
+        // 浏览器端：内核对齐后后台预加载常用包，让首个单元格几乎零等待。
+        if (getPreferredRuntimeKind() !== "native") {
+          void runtime.prewarm?.();
+        }
+      } catch (reason) {
+        if (cancelled) return undefined;
         const message = reason?.message || "Python 内核启动失败";
         useNotebookStore.getState().setRuntime("error", message);
         onRuntimeStateRef.current?.("error");
-      });
+      }
+      return undefined;
     }, 0);
 
     return () => {
@@ -285,6 +323,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
 
   const runCell = useCallback(async (cell) => {
     if (cell.type !== "code" || !document) return false;
+    const mayChangeFiles = /\b(?:open|mkdir|makedirs|touch|rename|replace|unlink|remove|rmdir)\s*\(|\.(?:write_text|write_bytes|to_csv|to_json|to_excel|savefig)\s*\(/.test(cell.source || "");
     setRunningCellId(cell.id);
     let runtime = null;
     try {
@@ -308,7 +347,17 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
       const runnableCells = store.document?.cells.filter(
         (item) => item.type === "code" && !item.metadata?.tags?.includes("solution")
       ) || [];
-      useAppStore.getState().recordSuccessfulCell(lesson.id, cell.id, runnableCells.length);
+      // 模块大作业不能因为运行几个说明性或准备性单元就被标记完成。
+      // 只有带 capstone-verify 标签的最终验收单元成功运行时，才记录完成状态；
+      // 没有该标签的旧大作业仍保持原有的逐 Cell 学习进度逻辑。
+      const capstoneVerifier = lesson.kind === "capstone"
+        ? runnableCells.find((item) => item.metadata?.tags?.includes("capstone-verify"))
+        : null;
+      if (!capstoneVerifier) {
+        useAppStore.getState().recordSuccessfulCell(lesson.id, cell.id, runnableCells.length);
+      } else if (cell.id === capstoneVerifier.id) {
+        useAppStore.getState().recordSuccessfulCell(lesson.id, cell.id, 1);
+      }
 
       return true;
     } catch (reason) {
@@ -325,6 +374,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
       store.setRuntime("error", failureMessage);
       return false;
     } finally {
+      if (mayChangeFiles) window.dispatchEvent(new Event("runtime-files-changed"));
       setRunningCellId((currentId) => currentId === cell.id ? null : currentId);
     }
   }, [document, ensureRuntime, lesson.id, publishKernelStatus, store]);
@@ -372,7 +422,6 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
   const activeCell = document?.cells.find((cell) => cell.id === store.activeCellId);
   const hasCodeCells = document?.cells.some((cell) => cell.type === "code");
   const runtimeStarted = Boolean(runtimeRef.current);
-  const showToast = (message, severity = "info") => setToast({ open: true, message, severity });
   const runCellFromCell = async (cell) => {
     showToast("正在运行单元格");
     const succeeded = await runCell(cell);
@@ -401,6 +450,56 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
       showToast("全部代码单元格运行完成", "success");
     }
   };
+  const focusNotebookCell = useCallback((cellId, editMode = false) => {
+    if (!cellId) return;
+    window.requestAnimationFrame(() => {
+      const cellElement = window.document.getElementById("notebook-cell-" + cellId);
+      if (!cellElement) return;
+      cellElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (editMode) {
+        window.dispatchEvent(new CustomEvent("notebook-edit-cell", { detail: { cellId } }));
+      } else {
+        cellElement.focus({ preventScroll: true });
+      }
+    });
+  }, []);
+  const selectCellAtIndex = useCallback((index, editMode = false) => {
+    const state = useNotebookStore.getState();
+    const cells = state.document?.cells || [];
+    if (!cells.length) return null;
+    const target = cells[Math.max(0, Math.min(index, cells.length - 1))];
+    state.selectCell(target.id);
+    focusNotebookCell(target.id, editMode);
+    return target;
+  }, [focusNotebookCell]);
+  const runCellAndAdvance = useCallback(async (cell) => {
+    if (!cell || cell.type !== "code" || cell.metadata?.tags?.includes("solution")) return;
+    showToast("正在运行单元格");
+    const succeeded = await runCell(cell);
+    showToast(succeeded ? "单元格运行完成" : "单元格运行失败", succeeded ? "success" : "error");
+    if (!succeeded) return;
+    const state = useNotebookStore.getState();
+    const cells = state.document?.cells || [];
+    const currentIndex = cells.findIndex((item) => item.id === cell.id);
+    if (currentIndex >= 0 && currentIndex < cells.length - 1) {
+      selectCellAtIndex(currentIndex + 1);
+      return;
+    }
+    state.insertCell(cells.length, "code");
+    focusNotebookCell(useNotebookStore.getState().activeCellId, true);
+  }, [focusNotebookCell, runCell, selectCellAtIndex, showToast]);
+  const runCellAndInsert = useCallback(async (cell) => {
+    if (!cell || cell.type !== "code" || cell.metadata?.tags?.includes("solution")) return;
+    showToast("正在运行单元格");
+    const succeeded = await runCell(cell);
+    showToast(succeeded ? "单元格运行完成" : "单元格运行失败", succeeded ? "success" : "error");
+    if (!succeeded) return;
+    const state = useNotebookStore.getState();
+    const cells = state.document?.cells || [];
+    const currentIndex = cells.findIndex((item) => item.id === cell.id);
+    state.insertCell(currentIndex < 0 ? cells.length : currentIndex + 1, "code");
+    focusNotebookCell(useNotebookStore.getState().activeCellId, true);
+  }, [focusNotebookCell, runCell, showToast]);
   const stopRuntime = async () => {
     try {
       await runtimeRef.current?.interrupt?.();
@@ -478,10 +577,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
       await savePromiseRef.current;
       const source = lesson.customNotebookId
         ? await loadCustomNotebook(lesson.customNotebookId).then((record) => record?.notebook)
-        : await fetch(lesson.path, { cache: "no-store" }).then((response) => {
-          if (!response.ok) throw new Error("无法读取课程原始 Notebook");
-          return response.json();
-        });
+        : await loadCourseNotebook(lesson.path);
       if (!source) throw new Error("无法读取课程原始 Notebook");
       runtimeGenerationRef.current += 1;
       runtimeInitRef.current = null;
@@ -490,7 +586,9 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
       runtimeRef.current = null;
       await shutdownNotebookRuntime(runtime);
       await deleteNotebookDraft("course:" + lesson.id);
-      store.setDocument("course:" + lesson.id, normalizeNotebook(source));
+      const resetDocument = normalizeNotebook(source);
+      autoSplitDocumentCells(resetDocument);
+      store.setDocument("course:" + lesson.id, resetDocument);
       const nativeRuntime = getPreferredRuntimeKind() === "native";
       store.setRuntime(
         nativeRuntime ? "loading" : "idle",
@@ -506,10 +604,148 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
       showToast(reason?.message || "重置本章失败", "error");
     }
   };
+
+  useEffect(() => {
+    const handleNotebookShortcut = (event) => {
+      if (!document || loading || error || shortcutHelpOpen) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest("input, textarea, select, [contenteditable='true'], .cm-editor, [role='dialog'], [role='menu']")) return;
+
+      const state = useNotebookStore.getState();
+      const cells = state.document?.cells || [];
+      const activeIndex = cells.findIndex((cell) => cell.id === state.activeCellId);
+      const active = activeIndex >= 0 ? cells[activeIndex] : cells[0];
+      if (!active) return;
+
+      const key = String(event.key || "").toLowerCase();
+      const running = state.runtimeState === "busy";
+      const isProtected = active.metadata?.tags?.includes("solution");
+      const prevent = () => {
+        event.preventDefault();
+        event.stopPropagation();
+      };
+
+      if ((event.ctrlKey || event.metaKey) && key === "enter") {
+        prevent();
+        if (!running && active.type === "code" && !isProtected) void runActiveCell();
+        return;
+      }
+      if (event.shiftKey && key === "enter") {
+        prevent();
+        if (running) return;
+        if (active.type === "code" && !isProtected) {
+          void runCellAndAdvance(active);
+        } else if (activeIndex < cells.length - 1) {
+          selectCellAtIndex(activeIndex + 1);
+        }
+        return;
+      }
+      if (event.altKey && key === "enter") {
+        prevent();
+        if (!running && active.type === "code" && !isProtected) {
+          void runCellAndInsert(active);
+        }
+        return;
+      }
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+      if (key !== "d") shortcutSequenceRef.current = { key: "", time: 0 };
+
+      if (key === "arrowup" || key === "k") {
+        prevent();
+        selectCellAtIndex(activeIndex - 1);
+        return;
+      }
+      if (key === "arrowdown" || key === "j") {
+        prevent();
+        selectCellAtIndex(activeIndex + 1);
+        return;
+      }
+      if (key === "enter") {
+        prevent();
+        if (!isProtected) focusNotebookCell(active.id, true);
+        return;
+      }
+      if (key === "a" || key === "b") {
+        prevent();
+        const insertionIndex = key === "a" ? activeIndex : activeIndex + 1;
+        state.insertCell(insertionIndex, "code");
+        focusNotebookCell(useNotebookStore.getState().activeCellId);
+        return;
+      }
+      if (key === "m" || key === "y") {
+        prevent();
+        if (isProtected) {
+          showToast("参考答案单元格不能修改类型", "warning");
+          return;
+        }
+        state.updateCellType(active.id, key === "m" ? "markdown" : "code");
+        focusNotebookCell(active.id);
+        showToast(key === "m" ? "已切换为 Markdown 单元格" : "已切换为代码单元格", "success");
+        return;
+      }
+      if (key === "c") {
+        prevent();
+        const tags = (active.metadata?.tags || []).filter((tag) => tag !== "solution" && tag !== "teacher-answer" && !tag.startsWith("solution-step-"));
+        cellClipboardRef.current = { ...active, metadata: { ...(active.metadata || {}), tags } };
+        showToast("已复制单元格", "success");
+        return;
+      }
+      if (key === "x") {
+        prevent();
+        if (isProtected) {
+          showToast("参考答案单元格不能剪切", "warning");
+          return;
+        }
+        cellClipboardRef.current = { ...active, metadata: { ...(active.metadata || {}) } };
+        state.deleteCell(active.id);
+        focusNotebookCell(useNotebookStore.getState().activeCellId);
+        showToast("已剪切单元格", "success");
+        return;
+      }
+      if (key === "v") {
+        prevent();
+        if (!cellClipboardRef.current) {
+          showToast("还没有复制或剪切单元格", "info");
+          return;
+        }
+        state.insertCellFromTemplate(activeIndex + 1, cellClipboardRef.current);
+        focusNotebookCell(useNotebookStore.getState().activeCellId);
+        showToast("已粘贴单元格", "success");
+        return;
+      }
+      if (key === "d") {
+        prevent();
+        const now = Date.now();
+        const previous = shortcutSequenceRef.current;
+        if (previous.key === "d" && now - previous.time <= 700) {
+          shortcutSequenceRef.current = { key: "", time: 0 };
+          if (isProtected) {
+            showToast("参考答案单元格不能删除", "warning");
+            return;
+          }
+          state.deleteCell(active.id);
+          focusNotebookCell(useNotebookStore.getState().activeCellId);
+          showToast("已删除单元格", "success");
+        } else {
+          shortcutSequenceRef.current = { key: "d", time: now };
+        }
+        return;
+      }
+      if (key === "h") {
+        prevent();
+        setShortcutHelpOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleNotebookShortcut);
+    return () => window.removeEventListener("keydown", handleNotebookShortcut);
+  }, [document, error, focusNotebookCell, loading, runCellAndAdvance, runCellAndInsert, selectCellAtIndex, shortcutHelpOpen, showToast]);
+
   return <section className="custom-notebook-shell" aria-label={`${lesson.label} Notebook`}>
     <header className="chapter-learning-header chapter-learning-header-compact">
       <div className="chapter-learning-heading">
-        <div className="chapter-learning-kicker"><span>{chapterMeta.moduleLabel}</span><span className="chapter-position-chip">第 {lessonPosition || lesson.chapter} / {totalLessons || "—"} 章</span><span className="chapter-version-chip">v{APP_VERSION}</span><span className={`chapter-kernel-state state-${store.runtimeState}`}><span />{store.runtimeState === "loading" ? store.runtimeMessage : (kernelStatusLabels[store.runtimeState] || "未知")}</span></div>
+        <div className="chapter-learning-kicker"><span>{chapterMeta.moduleLabel}</span>{chapterMeta.isCapstone && <span>模块大作业</span>}{chapterMeta.isProject && !chapterMeta.isCapstone && <span>综合项目</span>}<span className="chapter-position-chip">第 {lessonPosition || lesson.chapter} / {totalLessons || "—"} 章</span><span className="chapter-version-chip">v{APP_VERSION}</span><span className={`chapter-kernel-state state-${store.runtimeState}`}><span />{store.runtimeState === "loading" ? store.runtimeMessage : (kernelStatusLabels[store.runtimeState] || "未知")}</span></div>
       </div>
       <div className="chapter-learning-header-actions" aria-label="工作台快捷入口">
         <StudioSpeedDial />
@@ -531,6 +767,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
         <Divider orientation="vertical" flexItem className="custom-action-divider" />
         <Tooltip title="下载 Notebook"><IconButton size="small" onClick={downloadNotebook} aria-label="下载 Notebook"><DownloadRounded fontSize="small" /></IconButton></Tooltip>
         <Tooltip title="学习笔记"><IconButton size="small" onClick={openChapterNote} aria-label="编辑本章学习笔记"><NoteAltRounded fontSize="small" /></IconButton></Tooltip>
+        <Tooltip title="快捷键与魔法命令 (H)"><IconButton size="small" onClick={() => setShortcutHelpOpen(true)} aria-label="查看快捷键与魔法命令"><KeyboardRounded fontSize="small" /></IconButton></Tooltip>
         <Tooltip title="恢复本章原始内容"><IconButton size="small" onClick={() => setResetChapterOpen(true)} aria-label="恢复本章原始内容"><RestorePageRounded fontSize="small" /></IconButton></Tooltip>
         <Tooltip title="清除学习记录">
           <IconButton size="small" onClick={() => setClearProgressOpen(true)} aria-label="清除学习记录">
@@ -543,10 +780,57 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     </div>
     {loading && <NotebookSkeleton />}
     {error && <div className="custom-notebook-error">{error}</div>}
-    {!loading && !error && document && <div className="custom-notebook-scroll"><div className="custom-notebook-canvas">{document.cells.map((cell, index) => <NotebookCell key={cell.id} cell={cell} index={index} codeIndex={cell.type === "code" ? document.cells.slice(0, index + 1).filter((item) => item.type === "code").length : null} cellCount={document.cells.length} runningCellId={runningCellId} onRun={runCellFromCell} onAdd={addCell} onMove={moveCell} onDelete={deleteCell} onDuplicate={duplicateCell} markdownCollapsed={markdownCollapsed && cell.type === "markdown"} onToggleMarkdown={(cellId) => { setMarkdownCollapsed(false); window.document.getElementById("notebook-cell-" + cellId)?.scrollIntoView({ behavior: "smooth", block: "center" }); }} />)}<NotebookNavigation previousLesson={previousLesson} nextLesson={nextLesson} lessonPosition={lessonPosition || lesson.chapter} totalLessons={totalLessons} /></div><div className="custom-notebook-end"><button onClick={() => addCell(document.cells.length, "code")}><AddRounded fontSize="small" />添加代码单元格</button><button onClick={() => addCell(document.cells.length, "markdown")}><AddRounded fontSize="small" />添加文本单元格</button></div></div>}
+    {!loading && !error && document && <div className="custom-notebook-scroll"><div className="custom-notebook-canvas">{document.cells.map((cell, index) => <NotebookCell key={cell.id} cell={cell} index={index} codeIndex={cell.type === "code" ? document.cells.slice(0, index + 1).filter((item) => item.type === "code").length : null} cellCount={document.cells.length} runningCellId={runningCellId} onRun={runCellFromCell} onRunAndAdvance={runCellAndAdvance} onRunAndInsert={runCellAndInsert} onAdd={addCell} onMove={moveCell} onDelete={deleteCell} onDuplicate={duplicateCell} markdownCollapsed={markdownCollapsed && cell.type === "markdown"} onToggleMarkdown={(cellId) => { setMarkdownCollapsed(false); window.document.getElementById("notebook-cell-" + cellId)?.scrollIntoView({ behavior: "smooth", block: "center" }); }} />)}<NotebookNavigation previousLesson={previousLesson} nextLesson={nextLesson} lessonPosition={lessonPosition || lesson.chapter} totalLessons={totalLessons} /></div><div className="custom-notebook-end"><button onClick={() => addCell(document.cells.length, "code")}><AddRounded fontSize="small" />添加代码单元格</button><button onClick={() => addCell(document.cells.length, "markdown")}><AddRounded fontSize="small" />添加文本单元格</button></div></div>}
     <Menu anchorEl={outlineAnchor} open={Boolean(outlineAnchor)} onClose={closeOutline} MenuListProps={{ "aria-label": "本章目录" }} PaperProps={{ className: "notebook-outline-menu" }}>
       {outline.map((item) => <MenuItem key={item.cellId + "-" + item.title} className={"notebook-outline-item level-" + item.level} onClick={() => jumpToOutline(item.cellId)}>{item.title}</MenuItem>)}
     </Menu>
+    <Dialog open={shortcutHelpOpen} onClose={() => setShortcutHelpOpen(false)} aria-labelledby="notebook-shortcut-help-title" fullWidth maxWidth="md">
+      <DialogTitle id="notebook-shortcut-help-title">Notebook 快捷键与魔法命令</DialogTitle>
+      <DialogContent>
+        <DialogContentText sx={{ mb: 2 }}>
+          单击 Cell 或按 Esc 进入命令模式；在代码编辑器中可直接使用运行快捷键。魔法命令由当前 IPython 内核执行。
+        </DialogContentText>
+        <div className="notebook-shortcut-help-grid">
+          <section>
+            <h3>运行与编辑</h3>
+            <dl>
+              <div><dt><kbd>Shift</kbd> + <kbd>Enter</kbd></dt><dd>运行并选择下一个 Cell</dd></div>
+              <div><dt><kbd>Ctrl/Cmd</kbd> + <kbd>Enter</kbd></dt><dd>运行当前 Cell</dd></div>
+              <div><dt><kbd>Alt</kbd> + <kbd>Enter</kbd></dt><dd>运行并在下方插入代码 Cell</dd></div>
+              <div><dt><kbd>Esc</kbd></dt><dd>退出编辑，回到命令模式</dd></div>
+              <div><dt><kbd>Enter</kbd></dt><dd>编辑选中的 Cell</dd></div>
+            </dl>
+          </section>
+          <section>
+            <h3>命令模式</h3>
+            <dl>
+              <div><dt><kbd>J</kbd> / <kbd>K</kbd></dt><dd>选择下一个 / 上一个 Cell</dd></div>
+              <div><dt><kbd>A</kbd> / <kbd>B</kbd></dt><dd>在上方 / 下方插入代码 Cell</dd></div>
+              <div><dt><kbd>M</kbd> / <kbd>Y</kbd></dt><dd>切换为 Markdown / Code</dd></div>
+              <div><dt><kbd>C</kbd> / <kbd>X</kbd> / <kbd>V</kbd></dt><dd>复制 / 剪切 / 粘贴 Cell</dd></div>
+              <div><dt><kbd>D</kbd> <kbd>D</kbd></dt><dd>删除选中的 Cell</dd></div>
+              <div><dt><kbd>H</kbd></dt><dd>打开本帮助</dd></div>
+            </dl>
+          </section>
+          <section className="notebook-magic-help">
+            <h3>常用行魔法</h3>
+            <p><code>%time expression</code>　测量一次运行时间</p>
+            <p><code>%timeit expression</code>　重复测量运行时间</p>
+            <p><code>%pwd</code> / <code>%ls</code>　查看工作目录与文件</p>
+            <p><code>%who</code> / <code>%whos</code>　查看当前变量</p>
+            <p><code>%matplotlib inline</code>　设置 Matplotlib 输出方式</p>
+          </section>
+          <section className="notebook-magic-help">
+            <h3>常用 Cell 魔法</h3>
+            <p><code>%%time</code> / <code>%%timeit</code>　测量整个 Cell</p>
+            <p><code>%%capture output</code>　捕获整个 Cell 的输出</p>
+            <p><code>%%writefile demo.py</code>　把 Cell 内容写入文件</p>
+            <p>Cell 魔法必须放在该 Cell 的第一条非空语句。</p>
+          </section>
+        </div>
+      </DialogContent>
+      <DialogActions><Button onClick={() => setShortcutHelpOpen(false)}>关闭</Button></DialogActions>
+    </Dialog>
     <Dialog open={clearProgressOpen} onClose={() => setClearProgressOpen(false)} aria-labelledby="clear-learning-progress-title">
       <DialogTitle id="clear-learning-progress-title">清除全部学习记录？</DialogTitle>
       <DialogContent>
@@ -602,7 +886,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
         ) : (
           <div className="chapter-note-preview" aria-label="学习笔记预览">
             {noteDraft.trim() ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
+              <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeSanitize, rehypeKatex]}>
                 {noteDraft}
               </ReactMarkdown>
             ) : (
@@ -621,6 +905,3 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     </Snackbar>
   </section>;
 }
-
-
-

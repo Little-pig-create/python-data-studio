@@ -1,7 +1,7 @@
 # QA 验收清单
 ## 1. 内容完整性
 
-- [ ] 当前发布目录包含 109 个连续教学章节 Notebook 和 8 个独立模块大作业 Notebook；
+- [ ] 当前发布目录包含 119 个连续展示章节 Notebook 和 8 个独立模块大作业 Notebook；
 - [ ] `public/course/` 与 `dist/course/` 的课程文件一一对应；
 - [ ] 所有 Notebook 通过 nbformat/JSON 校验；
 - [ ] 第一章符合“计算机基础、Python 介绍和 Jupyter Notebook 使用理由”的阅读式定位；

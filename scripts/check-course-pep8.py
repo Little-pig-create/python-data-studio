@@ -26,7 +26,7 @@ def main() -> int:
     paths: list[str] = []
     cell_count = 0
     try:
-        for notebook_path in sorted(NOTEBOOKS.glob("course-chapter-*.ipynb")):
+        for notebook_path in sorted(NOTEBOOKS.rglob("*.ipynb")):
             notebook = json.loads(notebook_path.read_text(encoding="utf-8"))
             for cell_index, cell in enumerate(notebook.get("cells", [])):
                 if cell.get("cell_type") != "code":

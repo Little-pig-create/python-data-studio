@@ -1,6 +1,5 @@
 const catalogUrl = "/course/catalog.json";
 export const CUSTOM_COURSE_CHAPTERS_KEY = "python-data-studio:custom-course-chapters:v1";
-const CATALOG_CACHE_KEY = "python-data-studio:course-catalog-cache:v1";
 
 function readCustomChapterMetadata() {
   try {
@@ -12,18 +11,17 @@ function readCustomChapterMetadata() {
 }
 
 export async function loadCourseCatalog() {
-  const cached = readCachedCatalog();
-  const catalogPromise = fetch(catalogUrl, { cache: "force-cache" }).then(async (response) => {
-    if (!response.ok) throw new Error(`课程目录加载失败（${response.status}）`);
-    const nextCatalog = await response.json();
-    writeCachedCatalog(nextCatalog);
-    return nextCatalog;
-  });
-  if (cached) void catalogPromise.catch(() => null);
-  const catalog = cached || await catalogPromise;
+  const requestUrl = `${catalogUrl}?_=${Date.now()}`;
+  const response = await fetch(requestUrl, { cache: "no-store" });
+  if (!response.ok) throw new Error(`课程目录加载失败（${response.status}）`);
+  const catalog = await response.json();
   if (!Array.isArray(catalog.modules) || !Array.isArray(catalog.chapters) || !catalog.chapters.length) {
     throw new Error("课程目录格式无效");
   }
+  return mergeCustomChapters(catalog);
+}
+
+async function mergeCustomChapters(catalog) {
   const publishedMetadata = readCustomChapterMetadata().filter((item) => item.status === "published" );
   if (!publishedMetadata.length) return catalog;
   const { listCustomNotebooks } = await import("./notebookRepository");
@@ -44,19 +42,6 @@ export async function loadCourseCatalog() {
     })
   };
   return nextCatalog;
-}
-
-function readCachedCatalog() {
-  try {
-    const value = JSON.parse(window.sessionStorage?.getItem(CATALOG_CACHE_KEY) || "null");
-    return value && Array.isArray(value.modules) && Array.isArray(value.chapters) ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeCachedCatalog(catalog) {
-  try { window.sessionStorage?.setItem(CATALOG_CACHE_KEY, JSON.stringify(catalog)); } catch { /* storage is optional */ }
 }
 
 export const chapterById = (chapters, id) => chapters.find((item) => item.id === id) || chapters[0];

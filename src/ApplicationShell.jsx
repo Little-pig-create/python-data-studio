@@ -10,11 +10,15 @@ const LoginPage = lazy(() => import("./LoginPage").then((module) => ({ default: 
 const RegistrationPage = lazy(() => import("./RegistrationPage").then((module) => ({ default: module.RegistrationPage })));
 const AboutPage = lazy(() => import("./AboutPage").then((module) => ({ default: module.AboutPage })));
 const ForbiddenPage = lazy(() => import("./ForbiddenPage").then((module) => ({ default: module.ForbiddenPage })));
-const CourseView = lazy(() => import("./pages/CourseView").then((module) => ({ default: module.CourseView })));
+const loadCourseView = () => import("./pages/CourseView").then((module) => ({ default: module.CourseView }));
+const CourseView = lazy(loadCourseView);
 const ProgressPage = lazy(() => import("./pages/ProgressPage").then((module) => ({ default: module.ProgressPage })));
 const DatasetCenter = lazy(() => import("./DatasetCenter").then((module) => ({ default: module.DatasetCenter })));
 const PracticeCenter = lazy(() => import("./PracticeCenter").then((module) => ({ default: module.PracticeCenter })));
 const StudentTrainingCenter = lazy(() => import("./StudentTrainingCenter").then((module) => ({ default: module.StudentTrainingCenter })));
+const StudentNotebookCenter = lazy(() => import("./StudentNotebookCenter").then((module) => ({ default: module.StudentNotebookCenter })));
+const StudentNotebookPage = lazy(() => import("./StudentNotebookCenter").then((module) => ({ default: module.StudentNotebookPage })));
+const StudentPackageCenter = lazy(() => import("./StudentPackageCenter").then((module) => ({ default: module.StudentPackageCenter })));
 const TeacherCenter = lazy(() => import("./TeacherCenter").then((module) => ({ default: module.TeacherCenter })));
 const SchoolAdminCenter = lazy(() => import("./SchoolAdminCenter").then((module) => ({ default: module.SchoolAdminCenter })));
 const CdKeyManagement = lazy(() => import("./CdKeyManagement").then((module) => ({ default: module.CdKeyManagement })));
@@ -46,6 +50,10 @@ function WorkspaceRoutes() {
     || ["/progress", "/practice", "/training"].includes(location.pathname);
   const { catalog, catalogError } = useCourseCatalog({ enabled: catalogRequired });
 
+  useEffect(() => {
+    if (location.pathname.startsWith("/course/")) void loadCourseView();
+  }, [location.pathname]);
+
   if (catalogError && catalogRequired) {
     return <main className="custom-notebook-error"><strong>课程目录加载失败</strong><p>{catalogError}</p></main>;
   }
@@ -64,6 +72,9 @@ function WorkspaceRoutes() {
         <Route path="/datasets" element={<RequireAuth roles={[ROLES.TEACHER]}><SessionDock /><DatasetCenter variant="teacher" /></RequireAuth>} />
         <Route path="/practice" element={<RequireAuth roles={[ROLES.STUDENT, ROLES.TEACHER]}><SessionDock /><PracticeCenter catalog={catalog} /></RequireAuth>} />
         <Route path="/training" element={<RequireAuth roles={[ROLES.STUDENT]}><SessionDock /><StudentTrainingCenter catalog={catalog} /></RequireAuth>} />
+        <Route path="/student/notebooks" element={<RequireAuth roles={[ROLES.STUDENT]}><StudentNotebookCenter /></RequireAuth>} />
+        <Route path="/student/notebooks/:notebookId" element={<RequireAuth roles={[ROLES.STUDENT]}><StudentNotebookPage /></RequireAuth>} />
+        <Route path="/student/packages" element={<RequireAuth roles={[ROLES.STUDENT]}><StudentPackageCenter /></RequireAuth>} />
         <Route path="/teaching" element={<RequireAuth roles={[ROLES.TEACHER]}><TeacherCenter /></RequireAuth>} />
         <Route path="/teaching/:section" element={<RequireAuth roles={[ROLES.TEACHER]}><TeacherCenter /></RequireAuth>} />
         <Route path="/school-admin/cdkeys" element={<RequireAuth roles={[ROLES.SCHOOL_ADMIN]}><CdKeyManagement /></RequireAuth>} />

@@ -1,7 +1,7 @@
 # Python Data Studio 课程文档索引与权威性说明
 
-- **版本**：V1.3
-- **日期**：2026-08-02
+- **版本**：V1.5
+- **日期**：2026-09-06
 - **适用范围**：课程内容、Notebook、数据集、模块大作业和发布验收
 - **维护原则**：内容方案、运行实现、数据清单和质量评估分开维护，但必须通过版本和变更记录保持一致
 
@@ -13,14 +13,16 @@
 
 1. 本文档：了解各文档职责、权威级别和更新顺序；
 2. `MODULE_CAPSTONE_REDESIGN_AND_NOTEBOOK_ENHANCEMENT_PLAN.md`：了解课程结构、模块大作业和 Notebook 总体规范；
-3. `FOUNDATION_AND_MODULE_TEACHING_DESIGN.md`：了解前置章节、时间模块和全模块教学增强方案；
-4. `NOTEBOOK_NEXT_IMPROVEMENT_ROADMAP.md`：了解 Notebook 后续完善项、数据治理、无障碍、版本和维护流程；
-5. `NOTEBOOK_TEACHING_QUALITY_EVALUATION.md`：了解静态审计结果、风险和发布建议；
-6. `DOCUMENTATION_COMPLETION_CHECKLIST.md`：了解教学、数据、可复现性、维护和文档完成定义；
-7. `COURSE_GLOSSARY.md`、`DATASET_CARDS.md`、`CAPSTONE_RUBRICS.md`、`NOTEBOOK_AUTHORING_GUIDE.md`：查阅术语、数据、评分和 Notebook 编写细则；
-8. `RELEASE_RUNBOOK.md`、`CHANGELOG.md`：执行发布和追踪变更；
-9. `datasets/sklearn/MANIFEST.json` 与 `datasets/classic/README.md`：核对数据来源、本地快照和路径；
-10. `QA_CHECKLIST.md`、`RUNTIME_BRIDGE.md`、`TECH_STACK.md`：需要检查运行环境、前端和 JupyterLite 技术实现时阅读。
+3. `COURSE_116_CHAPTER_ARCHITECTURE_AND_CAPSTONE_DESIGN.md`：了解116章重构目标、完整三级目录、速查单元格规范和8个模块大作业规划；其中已实施部分会标注实施记录，未实施部分仍是目标方案；
+4. `FOUNDATION_AND_MODULE_TEACHING_DESIGN.md`：了解前置章节、时间模块和全模块教学增强方案；
+5. `MODULE_TEACHING_RESOURCES.md`：了解当前八个模块的能力目标、补学路径、课堂组织和维护命令；
+6. `NOTEBOOK_NEXT_IMPROVEMENT_ROADMAP.md`：了解 Notebook 后续完善项、数据治理、无障碍、版本和维护流程；
+7. `NOTEBOOK_TEACHING_QUALITY_EVALUATION.md`：了解静态审计结果、风险和发布建议；
+8. `DOCUMENTATION_COMPLETION_CHECKLIST.md`：了解教学、数据、可复现性、维护和文档完成定义；
+9. `COURSE_GLOSSARY.md`、`DATASET_CARDS.md`、`CAPSTONE_RUBRICS.md`、`NOTEBOOK_AUTHORING_GUIDE.md`：查阅术语、数据、评分和 Notebook 编写细则；
+10. `RELEASE_RUNBOOK.md`、`CHANGELOG.md`：执行发布和追踪变更；
+10. `datasets/sklearn/MANIFEST.json` 与 `datasets/classic/README.md`：核对数据来源、本地快照和路径；
+11. `QA_CHECKLIST.md`、`RUNTIME_BRIDGE.md`、`TECH_STACK.md`：需要检查运行环境、前端和 JupyterLite 技术实现时阅读。
 
 ---
 
@@ -29,6 +31,7 @@
 | 文档 | 权威级别 | 负责内容 | 发生冲突时的处理 |
 |---|---|---|---|
 | `MODULE_CAPSTONE_REDESIGN_AND_NOTEBOOK_ENHANCEMENT_PLAN.md` | 当前内容规范 | 章节结构、模块范围、模块大作业、Notebook 顺序和增强标准 | 优先于历史课程方案 |
+| `COURSE_116_CHAPTER_ARCHITECTURE_AND_CAPSTONE_DESIGN.md` | 目标架构与阶段记录 | 116章目标目录、拆分合并原则、速查结构、Notebook内部架构和8个模块大作业完整设计 | 已实施部分以当前目录和Notebook为准，未实施部分不覆盖事实基线 |
 | `FOUNDATION_AND_MODULE_TEACHING_DESIGN.md` | 当前专题内容规范 | 前置章节、时间模块、全模块方法讲解和实施顺序 | 与总方案冲突时，按最新版本和本索引处理 |
 | `NOTEBOOK_NEXT_IMPROVEMENT_ROADMAP.md` | 当前改进规范 | 方法说明、独立示例、数据治理、无障碍、发布门槛和维护流程 | 用于指导下一轮内容改造 |
 | `NOTEBOOK_TEACHING_QUALITY_EVALUATION.md` | 当前评估基线 | Notebook 静态质量、路径审计、已知风险和评估指标 | 记录“已经验证了什么”，不替代内容规范 |
@@ -54,24 +57,24 @@
 
 | 项目 | 当前值 |
 |---|---|
-| 课程章节数量 | 117 个课程章节（109 个连续教学章节 + 8 个独立模块大作业章节） |
+| 课程资源数量 | 127 个课程资源（119 个连续展示章节资源 + 8 个独立模块大作业） |
 | 模块数量 | 8 个 |
-| Python 基础 | 第 1～11 章（含第10章文件操作专题） |
-| NumPy | 第 12～16 章 |
-| Pandas | 第 17～25 章 |
-| Matplotlib | 第 26～36 章 |
-| Seaborn | 第 37～55 章 |
-| Plotly | 第 56～72 章 |
-| 综合项目 | 第 73～76 章 |
-| 机器学习 | 第 77～109 章 |
+| Python 基础教学 | 第 1～15 章 |
+| NumPy | 第 16～21 章 |
+| Pandas | 第 22～31 章 |
+| Matplotlib | 第 32～43 章 |
+| Seaborn | 第 44～63 章 |
+| Plotly | 第 64～81 章 |
+| 综合项目 | 第 82～85 章 |
+| 机器学习 | 第 86～119 章 |
 | 模块大作业位置 | 每个模块最后一章之后的独立模块大作业章节 |
 | 正式章节作业 | 已取消，改为课堂自检 |
 | 独立实训主路径 | 已取消，不作为课程主要学习结构 |
-| 方法示例 | 每个核心方法独立 Markdown 和代码 Cell |
+| 方法示例 | 方法类章节提供分类速查；基础方法已按独立 Markdown/代码 Cell 组织；可视化章节按基础图表与进阶变体组织并继续细化 |
 | `assert` | 不作为当前课程教学自检要求 |
 | 公开数据运行策略 | 优先使用本地快照，不要求课堂运行时联网 |
 | 应用源代码 | 本轮课程内容改造不修改 `src/` |
-| 静态发布同步 | `public/course/` 与 `dist/course/` 均有 109 个连续教学章节 + 8 个模块大作业，文件名和内容已完成比对 |
+| 静态发布同步 | `public/course/` 已同步 119 个连续展示资源和 8 个模块大作业；生成后通过 Notebook 架构检查和前端构建 |
 
 ---
 

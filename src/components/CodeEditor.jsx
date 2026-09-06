@@ -1,14 +1,22 @@
 import { useEffect, useRef } from "react";
 import { basicSetup } from "codemirror";
 import { python } from "@codemirror/lang-python";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Prec } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 
-export function CodeEditor({ value, onChange, onRun }) {
+export function CodeEditor({ value, onChange, onRun, onRunAndAdvance, onRunAndInsert, onExitEditMode }) {
   const hostRef = useRef(null);
   const viewRef = useRef(null);
   const onChangeRef = useRef(onChange);
+  const onRunRef = useRef(onRun);
+  const onRunAndAdvanceRef = useRef(onRunAndAdvance);
+  const onRunAndInsertRef = useRef(onRunAndInsert);
+  const onExitEditModeRef = useRef(onExitEditMode);
   onChangeRef.current = onChange;
+  onRunRef.current = onRun;
+  onRunAndAdvanceRef.current = onRunAndAdvance;
+  onRunAndInsertRef.current = onRunAndInsert;
+  onExitEditModeRef.current = onExitEditMode;
 
   useEffect(() => {
     if (!hostRef.current) return undefined;
@@ -17,7 +25,12 @@ export function CodeEditor({ value, onChange, onRun }) {
       extensions: [
         basicSetup,
         python(),
-        keymap.of([{ key: "Mod-Enter", run: () => { onRun(); return true; } }]),
+        Prec.high(keymap.of([
+          { key: "Shift-Enter", run: () => { onRunAndAdvanceRef.current?.(); return true; } },
+          { key: "Mod-Enter", run: () => { onRunRef.current?.(); return true; } },
+          { key: "Alt-Enter", run: () => { onRunAndInsertRef.current?.(); return true; } },
+          { key: "Escape", run: () => { onExitEditModeRef.current?.(); return true; } }
+        ])),
         EditorView.lineWrapping,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) onChangeRef.current(update.state.doc.toString());

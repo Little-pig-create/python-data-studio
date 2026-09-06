@@ -20,15 +20,16 @@ export function useCourseCatalog({ enabled = true, defer = false } = {}) {
     } else {
       load();
     }
-    window.addEventListener("course-catalog-updated", load);
+    const refresh = () => load();
+    window.addEventListener("course-catalog-updated", refresh);
     const syncFromOtherTab = (event) => {
-      if (event.key === "python-data-studio:custom-course-chapters:v1") load();
+      if (event.key === "python-data-studio:custom-course-chapters:v1") refresh();
     };
     window.addEventListener("storage", syncFromOtherTab);
     return () => {
       if (idleId != null) window.cancelIdleCallback?.(idleId);
       if (timerId != null) window.clearTimeout(timerId);
-      window.removeEventListener("course-catalog-updated", load);
+      window.removeEventListener("course-catalog-updated", refresh);
       window.removeEventListener("storage", syncFromOtherTab);
     };
   }, [enabled, defer]);

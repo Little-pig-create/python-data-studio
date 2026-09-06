@@ -232,11 +232,25 @@ const releaseDir = path.join(root, "release", tag);
 const bundleSource = path.join(root, "src-tauri", "target", "release", "bundle");
 let builtBundles = [];
 console.log("\n🔨 本地构建桌面安装包...");
+// 正式发布默认使用签名 + updater 配置（tauri.release.conf.json），使生成的
+// 安装包带 .sig 签名与 latest.json 更新清单，客户端在线更新才能工作。
+// 需要先运行 scripts/prepare-tauri-release.mjs（会读取 TAURI_UPDATER_PUBKEY /
+// TAURI_SIGNING_PRIVATE_KEY 等环境变量生成该配置）。如需非签名快速迭代，
+// 可设 RELEASE_TAURI_CONFIG=src-tauri/tauri.student.conf.json 覆盖。
+const releaseTauriConfig = process.env.RELEASE_TAURI_CONFIG || "src-tauri/tauri.release.conf.json";
+const releaseConfigPath = path.join(root, releaseTauriConfig);
+if (!fs.existsSync(releaseConfigPath)) {
+  fail(`Tauri 发布配置不存在：${releaseTauriConfig}。请先运行 prepare-tauri-release.mjs 并配置签名密钥。`);
+}
 // Tauri 不会自动删除旧版本 bundle；先清空固定的 bundle 目录，避免
 // 新 Release 的校验清单和下载元数据误收录上一个版本的安装包。
 fs.rmSync(bundleSource, { recursive: true, force: true });
 try {
-  runLocal(["npm", "run", "desktop:build:student:release"], { label: "npm run desktop:build:student:release" });
+  // 通过 npm run tauri 间接调用，复用 win32 下 npm CLI 的解析逻辑。
+  runLocal(
+    ["npm", "run", "tauri", "--", "build", "--config", releaseTauriConfig],
+    { label: `tauri build --config ${releaseTauriConfig}` }
+  );
 } catch (error) {
   restoreVersionFiles();
   console.error("\n❌ 桌面构建失败，版本号文件已自动恢复，未创建提交或 Tag。\n");
@@ -252,6 +266,22 @@ fs.mkdirSync(releaseDir, { recursive: true });
 copyDirectory(bundleSource, releaseDir);
 builtBundles = collectFiles(releaseDir).filter((file) => fs.statSync(file).isFile());
 console.log(`\n📁 安装包已归档到 release/${tag}/`);
+
+// 签名构建（默认 release 配置）必须带 .sig 签名与 latest.json 更新清单，
+// 否则在线更新不可用。非签名配置（RELEASE_TAURI_CONFIG 覆盖为 student）跳过。
+if (releaseTauriConfig === "src-tauri/tauri.release.conf.json") {
+  const updaterManifest = path.join(releaseDir, "latest.json");
+  if (!fs.existsSync(updaterManifest)) {
+    restoreVersionFiles();
+    fail("签名构建未生成 latest.json。请确认 TAURI_SIGNING_PRIVATE_KEY / TAURI_UPDATER_PUBKEY 已配置，并先运行 prepare-tauri-release.mjs。");
+  }
+  const signatureFiles = builtBundles.filter((file) => /\.sig$/i.test(path.basename(file)));
+  if (!signatureFiles.length) {
+    restoreVersionFiles();
+    fail("签名构建未生成 .sig 签名文件，在线更新不可用。");
+  }
+  console.log(`  ✅ 已生成更新清单 latest.json 与 ${signatureFiles.length} 个签名文件`);
+}
 
 const installerPattern = new RegExp(`_${newVersion.replace(/\./g, "\\.")}_.*setup\\.exe$`, "i");
 const windowsInstallers = builtBundles.filter((file) => installerPattern.test(path.basename(file)));
@@ -324,6 +354,18 @@ const releaseInfo = {
 };
 fs.writeFileSync(path.join(releaseDir, "release-info.json"), JSON.stringify(releaseInfo, null, 2) + "\n", "utf8");
 console.log(`🧭 已生成 release/${tag}/release-info.json`);
+
+// ── 发布前资产自检（push 前门禁）────────────────────────────────────────────
+// 调用独立脚本 scripts/verify-release-assets.mjs（CI 中也可单独运行）：
+// 核对安装包唯一性、SHA256 一致性、release-info.json / latest.json 与安装包对应。
+// 签名构建必须通过完整校验；非签名快速构建（RELEASE_TAURI_CONFIG 覆盖）跳过在线更新资产。
+const verifyArgs = [path.join(root, "scripts", "verify-release-assets.mjs"), newVersion];
+if (releaseTauriConfig !== "src-tauri/tauri.release.conf.json") verifyArgs.push("--no-updater");
+const verifyResult = spawnSync(process.execPath, verifyArgs, { cwd: root, stdio: "inherit" });
+if (verifyResult.error || verifyResult.status !== 0) {
+  restoreVersionFiles();
+  fail("发布前资产自检未通过，已中止发版（版本号文件已自动恢复）。");
+}
 
 // ── Git 提交、Tag、推送 ───────────────────────────────────────────────────────
 try {

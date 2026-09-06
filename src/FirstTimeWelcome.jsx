@@ -1,8 +1,11 @@
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography } from "@mui/material";
 import { useState, useEffect } from "react";
 
-export function FirstTimeWelcome() {
+export function FirstTimeWelcome({ catalog }) {
   const [open, setOpen] = useState(false);
+  const resourceCount = catalog?.chapters?.length || 127;
+  const chapterCount = catalog?.chapters?.filter((item) => item.kind !== "capstone").length || 119;
+  const projectCount = catalog?.chapters?.filter((item) => item.module === "projects" && item.kind === "project").length || 4;
 
   useEffect(() => {
     // 检查是否是首次访问
@@ -49,8 +52,8 @@ export function FirstTimeWelcome() {
               📚 课程特色
             </Typography>
             <Box component="ul" sx={{ pl: 2, m: 0, fontSize: 13, lineHeight: 1.8, "& li": { mb: 1 } }}>
-              <li>108 章完整教程，从入门到机器学习实战</li>
-              <li>真实数据集的 4 个综合项目</li>
+              <li>{chapterCount} 个连续章节资源，另含 {resourceCount - chapterCount} 个模块大作业</li>
+              <li>真实数据集的 {projectCount} 个综合项目</li>
               <li>所有代码可以立即运行，无需配置</li>
               <li>保存进度，随时继续学习</li>
             </Box>

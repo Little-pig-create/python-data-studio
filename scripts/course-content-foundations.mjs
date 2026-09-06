@@ -1,5 +1,89 @@
 const example = (title, explanation, code) => ({ title, explanation, code });
 
+const stringMethodExamples = [
+  example("upper()", "把英文字母转换为大写。", `text = "Python Data"
+print(text.upper())`),
+  example("lower()", "把英文字母转换为小写。", `text = "Python Data"
+print(text.lower())`),
+  example("casefold()", "生成适合不区分大小写比较的文本。", `left = "Python"
+right = "python"
+print(left.casefold() == right.casefold())`),
+  example("capitalize()", "只把字符串开头的第一个字符转为大写。", `text = "python data"
+print(text.capitalize())`),
+  example("title()", "把每个单词的首字母转为大写，适合标题展示。", `text = "python data analysis"
+print(text.title())`),
+  example("swapcase()", "交换英文字母的大小写。", `text = "Python DATA"
+print(text.swapcase())`),
+  example("strip()", "去除字符串两端的空白。", `text = "  Python  "
+print(repr(text.strip()))`),
+  example("lstrip()", "只去除字符串左侧的空白。", `text = "  Python  "
+print(repr(text.lstrip()))`),
+  example("rstrip()", "只去除字符串右侧的空白。", `text = "  Python  "
+print(repr(text.rstrip()))`),
+  example("find()", "查找子字符串第一次出现的位置，找不到返回 -1。", `text = "Python Data Python"
+print(text.find("Python"))
+print(text.find("Java"))`),
+  example("rfind()", "从右侧查找子字符串最后一次出现的位置。", `text = "report_2026_08.csv"
+print(text.rfind("_"))`),
+  example("index()", "查找必须存在的子字符串，找不到会抛出 ValueError。", `text = "order:A102"
+print(text.index(":"))`),
+  example("rindex()", "从右侧查找必须存在的子字符串。", `text = "archive/report/data.csv"
+print(text.rindex("/"))`),
+  example("count()", "统计子字符串出现的次数。", `text = "Python Python pandas"
+print(text.count("Python"))`),
+  example("startswith()", "判断字符串是否以指定内容开头。", `filename = "report_2026.csv"
+print(filename.startswith("report_"))`),
+  example("endswith()", "判断字符串是否以指定内容结尾。", `filename = "report_2026.csv"
+print(filename.endswith(".csv"))`),
+  example("removeprefix()", "删除固定前缀；旧版 Python 使用等价替代写法。", `filename = "backup_report.csv"
+if hasattr(filename, "removeprefix"):
+    result = filename.removeprefix("backup_")
+else:
+    result = filename.replace("backup_", "", 1)
+print(result)`),
+  example("removesuffix()", "删除固定后缀；旧版 Python 使用等价替代写法。", `filename = "report.csv"
+if hasattr(filename, "removesuffix"):
+    result = filename.removesuffix(".csv")
+else:
+    result = filename[:-4] if filename.endswith(".csv") else filename
+print(result)`),
+  example("replace()", "替换文本，可以用 count 参数限制替换次数。", `text = "订单-订单-订单"
+print(text.replace("订单", "销售", 2))`),
+  example("split()", "按照分隔符从左到右拆分字符串。", `record = "A102|华东|1280.50"
+print(record.split("|"))`),
+  example("rsplit()", "从右侧开始拆分，适合只处理最后一个分隔符。", `path = "data/2026/08/report.csv"
+print(path.rsplit("/", 1))`),
+  example("splitlines()", "按照换行符拆分多行文本。", `text = "第一行\\n第二行\\n第三行"
+print(text.splitlines())`),
+  example("partition()", "从左侧第一次出现的位置拆成前缀、分隔符和后缀三部分。", `record = "A102|华东|1280.50"
+print(record.partition("|"))`),
+  example("rpartition()", "从右侧第一次出现的位置拆成三部分。", `record = "A102|华东|1280.50"
+print(record.rpartition("|"))`),
+  example("join()", "用一个分隔符把多个字符串合并起来。", `fields = ["A102", "华东", "1280.50"]
+print("|".join(fields))`),
+  example("isalpha()", "判断字符串是否全部由字母组成。", `print("Python".isalpha())
+print("Python2026".isalpha())`),
+  example("isdigit()", "判断字符串是否全部由数字字符组成。", `print("2026".isdigit())
+print("20.26".isdigit())`),
+  example("isnumeric()", "判断字符串是否表示数值字符，范围比 isdigit 更广。", `print("2026".isnumeric())
+print("²".isnumeric())`),
+  example("isalnum()", "判断字符串是否全部由字母或数字组成。", `print("Python2026".isalnum())
+print("Python 2026".isalnum())`),
+  example("isspace()", "判断字符串是否全部由空白字符组成。", `print("   ".isspace())
+print("  a  ".isspace())`),
+  example("islower()", "判断字符串中的字母是否都是小写。", `print("python".islower())
+print("Python".islower())`),
+  example("isupper()", "判断字符串中的字母是否都是大写。", `print("PYTHON".isupper())
+print("Python".isupper())`),
+  example("center()", "把字符串放在指定宽度的中间。", `print("A7".center(8, "-"))`),
+  example("ljust()", "把字符串向左对齐并用指定字符填充右侧。", `print("A7".ljust(8, "."))`),
+  example("rjust()", "把字符串向右对齐并用指定字符填充左侧。", `print("A7".rjust(8, "."))`),
+  example("zfill()", "在数字文本左侧补零，生成固定宽度。", `print("A7".zfill(5))`),
+  example("format()", "把变量嵌入模板，并控制金额的小数位和千位分隔符。", `code = "A102"
+amount = 1280.5
+print("编号：{}，金额：{:,.2f} 元".format(code, amount))`),
+];
+
 export const foundationContexts = {
   1: {
     scenario: "先用几个变量算出一项学习计划，再观察 Notebook 怎样保存变量、显示输出，以及为什么运行顺序会影响结果。",
@@ -20,10 +104,16 @@ export const foundationContexts = {
     output: "完成一段文本的查找、替换、拆分、拼接和格式化，并保留清洗前后对照。"
   },
   4: {
-    scenario: "整理一周订单金额和课程成绩：需要追加记录、删除异常值、排序，并保留一份不应被修改的基准数据。",
-    position: "列表和元组是后续批量计算的基础容器。先理解可变与不可变，能减少数据被意外改写的问题。",
+    scenario: "整理一周订单金额和课程成绩：需要追加记录、删除异常值、排序，并保留一份可复制的基准数据。",
+    position: "列表是后续批量计算的基础容器。先理解列表的可变性和方法返回值，能减少数据被意外改写的问题。",
     prerequisites: ["掌握字符串和基本运算", "能读取列表中的元素并进行简单遍历"],
-    output: "完成一个列表清洗流程，并用元组保存不可变的范围或多值结果。"
+    output: "完成一个列表创建、清洗、排序和复制流程。"
+  },
+  "tuple": {
+    scenario: "把订单编号、地区、金额和状态保存为一条固定记录，并通过索引和解包读取字段。",
+    position: "元组适合表示不希望被随意修改的记录。它会为函数多返回值、坐标和固定字段结构打基础。",
+    prerequisites: ["掌握字符串和基本运算", "理解列表索引和切片"],
+    output: "完成一个固定结构元组的创建、查询、解包和不可变性检查。"
   },
   5: {
     scenario: "把一条用户消费记录表示成字典，再用集合比较两批用户或商品，找出共同、独有和重复成员。",
@@ -185,64 +275,171 @@ print("达到300元门槛:", reaches_threshold)`,
     practiceAssert: `assert order_amount == 354.0, "检查订单金额计算：应该是 price * quantity - coupon_amount"\nassert reaches_threshold == True, "354元应该达到300元门槛"`
   },
   3: {
-    summary: "集中掌握字符串的索引、切片、查找、拆分、合并、格式化和清洗。",
+    summary: "系统掌握字符串的索引、切片、大小写、空白清理、查找、替换、判断、拆分、合并、填充、格式化和清洗。",
     summaryQuestion: `集中掌握字符串的索引、切片、查找、拆分、合并、格式化和清洗。
 
 **迁移思考**：
 
 1. 如果标签之间的分隔符不是逗号而是空格，清洗步骤需要如何调整？
 2. 为什么 find 找不到时返回 -1 而不是报错？这种设计在什么场景下有用？`,
-    objectives: ["使用索引和切片提取文本", "调用常用字符串方法", "拆分并重新组合字段", "清洗空格、大小写和格式"],
-    concepts: ["字符串是不可变序列，方法通常返回新字符串。", "索引从0开始，负索引从末尾开始。", "清洗前应保留原始列，并明确大小写、空格和缺失值规则。"],
+    objectives: ["使用索引和切片提取文本", "按类别调用并比较常用字符串方法", "判断字符内容、前缀和后缀", "拆分、替换、填充并重新组合字段", "清洗空格、大小写和格式并保留处理规则"],
+    concepts: ["字符串是不可变序列，方法通常返回新字符串。", "索引从0开始，负索引从末尾开始，切片右端不包含。", "字符串方法可以按大小写、空白、查找、替换、拆分、判断和格式化分类学习。", "清洗前应保留原始值，并明确大小写、空格、分隔符和缺失值规则。"],
+    detailNotes: `## 本章三级目录
+
+### 1. 字符串基础
+
+#### 1.1 索引与切片
+读取单个字符、负索引、连续切片和反向切片。
+
+#### 1.2 不可变性
+字符串方法返回新字符串，不会原地修改原变量。
+
+### 2. 字符串方法
+
+#### 2.1 格式标准化
+大小写、空白、前后缀、替换。
+
+#### 2.2 查找与校验
+查找位置、统计次数、内容判断。
+
+#### 2.3 拆分与组合
+split、partition、join 和多行文本处理。
+
+#### 2.4 展示格式
+对齐、补零、f-string 和 format。
+
+### 3. 文本清洗实践
+
+#### 3.1 字段拆分
+按分隔符拆分记录并去除字段两端空白。
+
+#### 3.2 类型转换
+清理千位分隔符后再转换为数值。
+
+#### 3.3 规则检查
+使用前缀、后缀和 is... 方法验证字段。
+
+## 字符串方法分类速查
+
+| 类别 | 常用方法 | 主要用途 | 需要特别注意 |
+| --- | --- | --- | --- |
+| 大小写 | \`upper()\`、\`lower()\`、\`casefold()\`、\`capitalize()\`、\`title()\`、\`swapcase()\` | 统一展示或比较格式 | 方法返回新字符串，不会修改原变量 |
+| 空白处理 | \`strip()\`、\`lstrip()\`、\`rstrip()\` | 去除两端空白或指定字符 | 默认只处理两端，不会删除中间空格 |
+| 查找统计 | \`find()\`、\`rfind()\`、\`index()\`、\`rindex()\`、\`count()\` | 定位子串和统计出现次数 | \`find()\` 找不到返回 -1，\`index()\` 找不到会报 \`ValueError\` |
+| 前后缀 | \`startswith()\`、\`endswith()\`、\`removeprefix()\`、\`removesuffix()\` | 检查或删除固定前后缀 | 只处理开头或结尾，不是任意位置替换 |
+| 替换 | \`replace(old, new, count)\` | 替换文本，可限制次数 | 不传 \`count\` 时替换所有匹配项 |
+| 拆分组合 | \`split()\`、\`rsplit()\`、\`splitlines()\`、\`partition()\`、\`join()\` | 在字符串和列表之间转换 | \`join()\` 的元素必须是字符串 |
+| 内容判断 | \`isalpha()\`、\`isdigit()\`、\`isnumeric()\`、\`isalnum()\`、\`isspace()\`、\`islower()\`、\`isupper()\` | 校验输入内容 | 空字符串通常返回 \`False\` |
+| 对齐填充 | \`center()\`、\`ljust()\`、\`rjust()\`、\`zfill()\` | 生成固定宽度文本 | 宽度小于原长度时不会截断 |
+| 格式化 | f-string、\`format()\`、格式说明符 | 组合变量、控制小数和宽度 | 格式化只是展示，不会改变原数据类型 |`,
     examples: [
       example("索引与切片", "切片左闭右开，可以省略起止位置。", `text = "Python Data Analysis"\nprint(text[0], text[-1])\nprint(text[:6])\nprint(text[7:11])\nprint(text[::-1])`),
-      example("查找、替换与统计", "方法链适合短流程，复杂清洗建议拆分为多步。", `raw = "  python,data,python  "\nclean = raw.strip().replace("python", "Python")\nprint(clean)\nprint("Python出现次数:", clean.count("Python"))\nprint("data位置:", clean.find("data"))`),
-      example("拆分、合并与格式化", "split把文本变成列表，join执行相反操作。", `record = "A102|华东|1280.50"\norder_id, region, amount_text = record.split("|")\namount = float(amount_text)\nlabel = " / ".join([order_id, region])\nprint(f"{label} / 金额 {amount:,.2f} 元")`)
+      example("大小写与空白处理", "先去掉两端空白，再根据展示或比较需求选择大小写方法。", `raw = "  Python Data Analysis  "\nprint("原始文本:", repr(raw))\nprint("upper:", raw.upper())\nprint("lower:", raw.lower())\nprint("casefold:", raw.casefold())\nprint("capitalize:", raw.strip().capitalize())\nprint("swapcase:", raw.swapcase())\nprint("title:", raw.strip().title())\nprint("strip:", repr(raw.strip()))\nprint("lstrip:", repr(raw.lstrip()))\nprint("rstrip:", repr(raw.rstrip()))`),
+      example("查找、统计与前后缀", "find适合安全查找，index适合确认必须存在的字段；startswith和endswith用于判断边界。", `text = "report_2026_08.csv"\nprint("report位置:", text.find("report"))\nprint("最后一个下划线:", text.rfind("_"))\nprint("csv出现次数:", text.count("csv"))\nprint("是否以report开头:", text.startswith("report"))\nprint("是否以.csv结尾:", text.endswith(".csv"))\nprint("扩展名位置:", text.index("."))\nprint("最后一个点号:", text.rindex("."))\nprint("没有的内容:", text.find("xlsx"))`),
+      example("替换与删除前后缀", "replace可以限制替换次数；removeprefix和removesuffix只处理固定的开头或结尾。为了兼容较旧的Python版本，示例提供等价写法。", `raw = "待处理-订单-订单.csv"\nprint("替换全部:", raw.replace("订单", "销售"))\nprint("只替换一次:", raw.replace("订单", "销售", 1))\nfilename = "backup_report.csv"\nif hasattr(filename, "removeprefix"):\n    without_prefix = filename.removeprefix("backup_")\nelse:\n    without_prefix = filename.replace("backup_", "", 1)\nif hasattr(filename, "removesuffix"):\n    without_suffix = filename.removesuffix(".csv")\nelse:\n    without_suffix = filename[:-4] if filename.endswith(".csv") else filename\nprint("删除前缀:", without_prefix)\nprint("删除后缀:", without_suffix)`),
+      example("拆分、反向拆分与partition", "split适合拆成多个字段，rsplit可以从右侧开始，partition始终返回三部分。", `record = "A102|华东|2026|1280.50"\nprint("全部拆分:", record.split("|"))\nprint("从右侧拆一次:", record.rsplit("|", 1))\nprint("只拆第一处:", record.partition("|"))\nprint("只从右侧拆一处:", record.rpartition("|"))\nprint("逐行拆分:", "第一行\\n第二行\\n第三行".splitlines())`),
+      example("内容判断方法", "is开头的方法返回布尔值，适合在转换或清洗前检查输入。", `samples = ["Python", "2026", "Python2026", "²", "   ", "", "中文"]\nfor value in samples:\n    print(repr(value), {\n        "isalpha": value.isalpha(),\n        "isdigit": value.isdigit(),\n        "isnumeric": value.isnumeric(),\n        "isalnum": value.isalnum(),\n        "isspace": value.isspace(),\n        "islower": value.islower(),\n        "isupper": value.isupper(),\n    })`),
+      example("对齐、填充与格式化", "对齐方法适合生成展示文本；f-string适合把变量和格式说明组合起来。", `code = "A7"\namount = 1280.5\nprint("居中:", code.center(8, "-"))\nprint("左对齐:", code.ljust(8, "."))\nprint("右对齐:", code.rjust(8, "."))\nprint("数字补零:", code.zfill(5))\nprint(f"金额：{amount:,.2f} 元")\nprint("编号：{}，金额：{:,.2f} 元".format(code, amount))`),
+      example("拆分、清洗与重新组合", "把复杂清洗拆成多个中间步骤，更容易发现是哪一步改变了数据。", `record = "  A102 | EAST | 1,280.50  "\nparts = [part.strip() for part in record.split("|")]\norder_id = parts[0].upper()\nregion = parts[1].casefold()\namount = float(parts[2].replace(",", ""))\nclean_record = "|".join([order_id, region, f"{amount:.2f}"])\nprint("字段:", parts)\nprint("清洗后:", clean_record)`),
+      example("方法逐个示例", "这一组代码把本章方法速查表中的每个方法都单独调用一次。运行后可以按输出标签回查方法作用。", `text = "  Python 2026 Python  "\nfilename = "backup_report.csv"\nprint("upper ->", text.upper())\nprint("lower ->", text.lower())\nprint("casefold ->", text.casefold())\nprint("capitalize ->", text.strip().capitalize())\nprint("title ->", text.strip().title())\nprint("swapcase ->", text.swapcase())\nprint("strip ->", repr(text.strip()))\nprint("lstrip ->", repr(text.lstrip()))\nprint("rstrip ->", repr(text.rstrip()))\nprint("find ->", text.find("Python"))\nprint("rfind ->", text.rfind("Python"))\nprint("index ->", text.index("Python"))\nprint("rindex ->", text.rindex("Python"))\nprint("count ->", text.count("Python"))\nprint("startswith ->", text.startswith("  Python"))\nprint("endswith ->", text.endswith("  "))\nprint("removeprefix ->", filename.removeprefix("backup_") if hasattr(filename, "removeprefix") else filename.replace("backup_", "", 1))\nprint("removesuffix ->", filename.removesuffix(".csv") if hasattr(filename, "removesuffix") else filename[:-4])\nprint("replace ->", text.replace("Python", "Pandas", 1))\nprint("split ->", text.strip().split())\nprint("rsplit ->", "A|B|C".rsplit("|", 1))\nprint("splitlines ->", "第一行\\n第二行".splitlines())\nprint("partition ->", "A102|华东".partition("|"))\nprint("join ->", "-".join(["Python", "Data"]))\nprint("isalpha ->", "Python".isalpha())\nprint("isdigit ->", "2026".isdigit())\nprint("isnumeric ->", "²".isnumeric())\nprint("isalnum ->", "Python2026".isalnum())\nprint("isspace ->", "   ".isspace())\nprint("islower ->", "python".islower())\nprint("isupper ->", "PYTHON".isupper())\nprint("center ->", "A7".center(6, "-"))\nprint("ljust ->", "A7".ljust(6, "."))\nprint("rjust ->", "A7".rjust(6, "."))\nprint("zfill ->", "A7".zfill(5))\nprint("format ->", "编号：{}，金额：{:,.2f} 元".format("A102", 1280.5))`)
     ],
-    pitfalls: ["忘记字符串方法不会原地修改原变量", "find未找到时返回-1而不是报错", "split后的字段数量与解包变量数量不一致"],
-    practice: ["清理一组带空格和大小写混乱的标签", "把标签统一为小写", "使用连字符重新合并"],
-    practiceScaffold: `raw_tags = "  Python, PANDAS, data Cleaning "
+    methodExamples: stringMethodExamples,
+    pitfalls: ["忘记字符串方法不会原地修改原变量", "把strip误认为会删除中间空格", "混淆find返回-1和index抛出ValueError", "replace默认替换所有匹配项却没有检查数量", "把isdigit、isnumeric和isalpha混为一谈", "split后的字段数量与解包变量数量不一致", "join的列表中混入数字而不是字符串"],
+    practice: ["清理一条带空格、大小写和千位分隔符的订单记录", "使用startswith、endswith和is...方法检查字段", "把清洗后的字段重新组合，并格式化金额", "增加一条异常记录，说明你的处理规则"],
+    practiceScaffold: `raw_record = "  order:a102 | EAST | 1,280.50 | 2026-08-05  "
 
-# TODO: 拆分、清理并转为小写
-tags =
+# TODO: 拆分并去掉每个字段两端空格
+parts =
 
-# TODO: 用连字符合并
+# TODO: 清理订单号、地区和金额
+order_id =
+region =
+amount =
+
+# TODO: 使用 startswith 或 endswith 做一个字段检查
+is_valid_order =
+
+# TODO: 用 | 重新合并
 normalized =
 
-print(tags)
+print(parts)
 print(normalized)`,
-    practiceCode: `raw_tags = "  Python, PANDAS, data Cleaning "\ntags = [item.strip().lower() for item in raw_tags.split(",")]\nnormalized = "-".join(tags)\nprint(tags)\nprint(normalized)`,
-    practiceAssert: `assert tags == ["python", "pandas", "data cleaning"], "检查标签清理：应该是小写且去除空格"\nassert normalized == "python-pandas-data cleaning", "检查合并结果"`
+    practiceCode: `raw_record = "  order:a102 | EAST | 1,280.50 | 2026-08-05  "
+parts = [item.strip() for item in raw_record.split("|")]
+order_id = parts[0].replace("order:", "", 1).upper()
+region = parts[1].casefold()
+amount = float(parts[2].replace(",", ""))
+is_valid_order = order_id.startswith("A") and parts[3].endswith("05")
+normalized = "|".join([order_id, region, f"{amount:.2f}", parts[3]])
+print(parts)
+print(normalized)
+print("字段检查通过:", is_valid_order)`,
+    practiceAssert: `assert parts == ["order:a102", "EAST", "1,280.50", "2026-08-05"], "检查字段拆分和strip"
+assert order_id == "A102", "检查removeprefix和upper"
+assert region == "east", "检查casefold"
+assert amount == 1280.5, "检查replace和float转换"
+assert is_valid_order is True, "检查startswith和endswith"
+assert normalized == "A102|east|1280.50|2026-08-05", "检查join和格式化结果"`
   },
   4: {
-    summary: "理解列表的可变性和元组的不可变性，能够管理有序数据集合。",
-    summaryQuestion: `理解列表的可变性和元组的不可变性，能够管理有序数据集合。
+    summary: "掌握列表这种可修改的有序集合，能够独立完成创建、增删、查询、排序和复制。",
+    summaryQuestion: `掌握列表这种可修改的有序集合，能够独立完成创建、增删、查询、排序和复制。
 
 **迁移思考**：
 
-1. 如果需要筛选前10名的订单金额，除了排序+切片，还可以用什么方法？
-2. 为什么用 = 复制列表会导致两个变量共享同一对象？应该如何正确复制？`,
-    objectives: ["创建和访问列表与元组", "执行列表增删改查", "排序、复制和推导", "使用元组解包返回多值"],
-    concepts: ["列表适合需要修改的有序集合，元组适合固定结构记录。", "浅复制可以避免两个变量意外共享同一列表。", "推导式适合简单映射和筛选，复杂逻辑使用普通循环。"],
+1. 如果需要筛选前10名的订单金额，应该先排序还是先筛选？
+2. 为什么用 = 复制列表会导致两个变量共享同一对象？`,
+    objectives: ["创建、索引和切片列表", "掌握列表增删改查方法", "区分sort、sorted和reverse", "理解复制、嵌套和可变性"],
+    concepts: ["列表有序、可修改并允许重复元素。", "append、extend和insert的输入数量与位置不同。", "sort和reverse会修改原列表，sorted会返回新列表。", "列表赋值只是共享引用，copy或切片才会创建浅副本。"],
     examples: [
-      example("列表增删改查", "append添加单个元素，extend添加多个元素。", `scores = [85, 92, 78]\nscores.append(96)\nscores.extend([88, 91])\nscores[2] = 80\nremoved = scores.pop(0)\nprint("删除:", removed)\nprint("当前:", scores)`),
-      example("排序与推导式", "sorted返回新列表，list.sort原地修改。", `sorted_scores = sorted(scores, reverse=True)\npassed = [score for score in scores if score >= 90]\nscaled = [round(score / 100, 2) for score in scores]\nprint(sorted_scores)\nprint("90分以上:", passed)\nprint("标准化:", scaled)`),
-      example("元组与解包", "固定字段记录可用元组表示并直接解包。", `order = ("A102", "华东", 1280.5)\norder_id, region, amount = order\nminimum, maximum = min(scores), max(scores)\nprint(order_id, region, amount)\nprint("范围:", (minimum, maximum))`)
+      example("列表增删改查", "使用多个输入步骤整理一组成绩，但把每个方法的独立用法放到后面的核心操作区域。", `scores = [85, 92, 78]\nscores[2] = 80\nprint("修改后的成绩:", scores)\nprint("前两项:", scores[:2])`),
+      example("排序与筛选", "先得到新列表，再用原列表完成简单筛选。", `scores = [85, 92, 78, 96]\nordered = sorted(scores, reverse=True)\npassed = [score for score in scores if score >= 90]\nprint("降序副本:", ordered)\nprint("90分以上:", passed)`),
+      example("列表复制与嵌套", "浅复制可以复制外层列表，但嵌套对象仍需特别检查。", `items = [["键盘", 299], ["鼠标", 129]]\nbackup = items.copy()\nbackup.append(["耳机", 499])\nprint("原列表:", items)\nprint("副本:", backup)`)
     ],
-    pitfalls: ["用=复制列表导致两个变量指向同一对象", "把sort的返回值赋给变量，得到None", "试图直接修改元组中的元素"],
-    practice: ["创建一组订单金额", "筛选大于500的订单", "计算最高和最低金额并组成元组"],
+    pitfalls: ["用=复制列表导致两个变量指向同一对象", "把sort的返回值赋给变量，得到None", "误以为copy会递归复制所有嵌套对象"],
+    practice: ["创建一组订单金额", "筛选大于500的订单", "排序并输出最高、最低和平均金额"],
     practiceScaffold: `amounts = [128, 880, 460, 1250, 320]
 
 # TODO: 筛选大于500的订单
-high_value =
+high_value = []  # 先保留可运行的占位值，再尝试写出筛选条件
 
-# TODO: 计算金额范围（最小值，最大值）
-amount_range =
+# TODO: 生成从高到低的新列表
+ordered = []  # 先保留可运行的占位值，再尝试使用 sorted()
 
 print("高价值订单:", high_value)
-print("金额范围:", amount_range)`,
-    practiceCode: `amounts = [128, 880, 460, 1250, 320]\nhigh_value = [amount for amount in amounts if amount > 500]\namount_range = (min(amounts), max(amounts))\nprint("高价值订单:", high_value)\nprint("金额范围:", amount_range)`,
-    practiceAssert: `assert high_value == [880, 1250], "检查筛选结果：应该只包含大于500的金额"\nassert amount_range == (128, 1250), "检查金额范围：应该是 (最小值, 最大值)"`
+print("金额排序:", ordered)`,
+    practiceCode: `amounts = [128, 880, 460, 1250, 320]\nhigh_value = [amount for amount in amounts if amount > 500]\nordered = sorted(amounts, reverse=True)\nprint("高价值订单:", high_value)\nprint("金额排序:", ordered)`,
+    practiceAssert: `assert high_value == [880, 1250], "检查筛选结果：应该只包含大于500的金额"\nassert ordered == [1250, 880, 460, 320, 128], "检查排序结果"`
+  },
+  "tuple": {
+    summary: "掌握元组这种不可修改的有序结构，能够表达固定记录、完成访问和解包。",
+    summaryQuestion: `掌握元组这种不可修改的有序结构，能够表达固定记录、完成访问和解包。
+
+**迁移思考**：
+
+1. 为什么单元素元组必须写成 (value,) 而不是 (value)？
+2. 如果记录需要反复增删字段，应该选择列表还是元组？`,
+    objectives: ["创建和访问元组", "理解元组不可变性", "使用count和index查询", "掌握位置解包和星号解包"],
+    concepts: ["元组有序、允许重复，但创建后不能增删改元素。", "逗号决定元组结构，括号主要用于提高可读性。", "解包可以把固定位置的值分配给多个变量。", "元组适合保存不希望被意外修改的固定记录。"],
+    examples: [
+      example("元组创建与访问", "通过索引和切片读取固定记录。", `record = ("A102", "华东", 1280.5)\nprint("订单编号:", record[0])\nprint("地区和金额:", record[1:])`),
+      example("元组解包", "把固定结构中的字段依次分配给变量。", `record = ("A102", "华东", 1280.5)\norder_id, region, amount = record\nprint(order_id)\nprint(region)\nprint(amount)`),
+      example("扩展解包", "使用星号变量收集不确定数量的中间元素。", `values = ("开始", "清洗", "分析", "输出")\nfirst, *middle, last = values\nprint("第一步:", first)\nprint("中间步骤:", middle)\nprint("最后一步:", last)`)
+    ],
+    pitfalls: ["单元素元组忘记逗号", "试图直接修改元组元素", "解包时变量数量与元素数量不匹配"],
+    practice: ["创建一个固定订单记录", "完成字段解包", "使用count和index检查记录"],
+    practiceScaffold: `record = ("A102", "华东", 1280.5, "完成")
+
+# TODO: 解包订单编号、地区、金额和状态
+order_id, region, amount, status = (None, None, None, None)
+
+# TODO: 查找“完成”出现的位置
+status_position = None
+
+print(order_id, region, amount, status)
+print("状态位置:", status_position)`,
+    practiceCode: `record = ("A102", "华东", 1280.5, "完成")\norder_id, region, amount, status = record\nstatus_position = record.index("完成")\nprint(order_id, region, amount, status)\nprint("状态位置:", status_position)`,
+    practiceAssert: `assert order_id == "A102", "检查订单编号"\nassert status == "完成", "检查状态解包"\nassert status_position == 3, "检查index结果"`
   },
   5: {
     summary: "使用字典表示结构化记录，使用集合完成去重和集合关系计算。",

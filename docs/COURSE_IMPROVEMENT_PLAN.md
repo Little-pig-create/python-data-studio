@@ -11,7 +11,7 @@
 
 ### 已完成能力
 
-- **Notebook 与页面解耦**：Notebook 文件存放在 `notebooks/course/`，页面通过 `public/course/catalog.json` 动态加载章节和路径。
+- **Notebook 与页面解耦**：课程内容权威位于 `public/course/`，页面通过 `public/course/catalog.json` 动态加载章节和路径；`notebooks/course/` 仅为 JupyterLite 运行时打包输入。
 - **目录动态生成**：`npm run build:course` 扫描 Notebook 元数据和文件名，生成模块、章节、前后章节关系及路由信息；新增 Notebook 不需要修改前端目录代码。
 - **课程规模**：当前目录包含 75 个章节、7 个模块，章节名称和 Notebook 文件名保持可追溯关系。
 - **内容生成链路**：内容定义位于 `scripts/course-content-*.mjs`，由 `scripts/rebuild-course-notebooks.mjs` 生成 `.ipynb`，再由 `npm run build:runtime` 发布到 JupyterLite。

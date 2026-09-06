@@ -51,8 +51,11 @@ export const moduleLabels = {
 
 export const getChapterMeta = (lesson) => {
   const isProject = lesson.kind === "project";
-  const difficulty = lesson.difficulty || (isProject ? "项目实训" : lesson.chapter <= 10 ? "基础" : lesson.chapter <= 75 ? "进阶" : "实训");
-  const description = lesson.description || (isProject
+  const isCapstone = lesson.kind === "capstone";
+  const difficulty = lesson.difficulty || (isCapstone ? "模块大作业" : isProject ? "项目实训" : lesson.chapter <= 10 ? "基础" : lesson.chapter <= 75 ? "进阶" : "实训");
+  const description = lesson.description || (isCapstone
+    ? `这是“${lesson.module}”模块的独立大作业，完成从问题定义到结果交付的完整学习闭环。`
+    : isProject
     ? `围绕"${lesson.title}"完成一个从数据理解、清洗、建模到结果解读的完整实训。`
     : `通过 Notebook 动手掌握${lesson.title}，把概念、代码和运行结果连成一条可复用的学习路径。`);
   const objectives = Array.isArray(lesson.objectives) && lesson.objectives.length
@@ -60,7 +63,7 @@ export const getChapterMeta = (lesson) => {
     : [
       `理解${lesson.title}的核心概念和使用场景`,
       "运行示例代码，并根据提示完成一处修改",
-      isProject ? "整理关键指标，形成可解释的分析结论" : "记录本节的关键方法，迁移到下一道练习"
+      isCapstone ? "提交完整的大作业结果、证据和限制说明" : isProject ? "整理关键指标，形成可解释的分析结论" : "记录本节的关键方法，迁移到下一道练习"
     ];
   return {
     moduleLabel: moduleLabels[lesson.module] || "课程章节",
@@ -68,7 +71,8 @@ export const getChapterMeta = (lesson) => {
     description,
     objectives,
     estimatedMinutes: Number(lesson.estimatedMinutes) || 45,
-    isProject
+    isProject,
+    isCapstone
   };
 };
 

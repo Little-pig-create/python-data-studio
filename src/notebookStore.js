@@ -2,20 +2,43 @@ import { create } from "zustand";
 
 const sourceText = (source) => Array.isArray(source) ? source.join("") : (source || "");
 
+const stableHash = (value) => {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+};
+
 export const normalizeNotebook = (notebook) => ({
   metadata: notebook.metadata || {},
   nbformat: notebook.nbformat || 4,
   nbformat_minor: notebook.nbformat_minor || 5,
-  cells: (notebook.cells || []).map((cell, index) => ({
-    id: cell.id || `cell-${index}-${Math.random().toString(36).slice(2, 8)}`,
-    type: cell.cell_type === "markdown" || cell.type === "markdown" ? "markdown" : cell.cell_type === "raw" || cell.type === "raw" ? "raw" : "code",
-    source: sourceText(cell.source),
-    outputs: cell.outputs || [],
-    // Accept both the standard nbformat field and drafts written by older
-    // versions of the custom UI.
-    executionCount: cell.execution_count ?? cell.executionCount ?? null,
-    metadata: cell.metadata || {}
-  }))
+  cells: (() => {
+    const occurrences = new Map();
+    return (notebook.cells || []).map((cell) => {
+      const type = cell.cell_type === "markdown" || cell.type === "markdown"
+        ? "markdown"
+        : cell.cell_type === "raw" || cell.type === "raw"
+          ? "raw"
+          : "code";
+      const source = sourceText(cell.source);
+      const seed = `${type}|${source}`;
+      const occurrence = occurrences.get(seed) || 0;
+      occurrences.set(seed, occurrence + 1);
+      return {
+        id: cell.id || `cell-${stableHash(`${seed}|${occurrence}`)}`,
+        type,
+        source,
+        outputs: cell.outputs || [],
+        // Accept both the standard nbformat field and drafts written by older
+        // versions of the custom UI.
+        executionCount: cell.execution_count ?? cell.executionCount ?? null,
+        metadata: cell.metadata || {}
+      };
+    });
+  })()
 });
 
 export const serializeNotebook = (document) => ({
@@ -52,6 +75,18 @@ export const useNotebookStore = create((set) => ({
     document: state.document ? { ...state.document, cells: state.document.cells.map((cell) => cell.id === id ? { ...cell, source } : cell) } : state.document,
     dirty: true
   })),
+  updateCellType: (id, type) => set((state) => ({
+    document: state.document ? {
+      ...state.document,
+      cells: state.document.cells.map((cell) => cell.id === id ? {
+        ...cell,
+        type: type === "markdown" ? "markdown" : "code",
+        outputs: [],
+        executionCount: null
+      } : cell)
+    } : state.document,
+    dirty: true
+  })),
   updateCellResult: (id, result) => set((state) => ({
     document: state.document ? { ...state.document, cells: state.document.cells.map((cell) => cell.id === id ? { ...cell, ...result } : cell) } : state.document,
     dirty: true
@@ -62,6 +97,21 @@ export const useNotebookStore = create((set) => ({
     const cell = { id, type, source: "", outputs: [], executionCount: null, metadata: {} };
     const cells = [...state.document.cells];
     cells.splice(index, 0, cell);
+    return { document: { ...state.document, cells }, activeCellId: id, selectedCellId: id, dirty: true };
+  }),
+  insertCellFromTemplate: (index, template) => set((state) => {
+    if (!state.document || !template) return state;
+    const id = `cell-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const cell = {
+      id,
+      type: template.type === "markdown" ? "markdown" : "code",
+      source: String(template.source || ""),
+      outputs: [],
+      executionCount: null,
+      metadata: { ...(template.metadata || {}) }
+    };
+    const cells = [...state.document.cells];
+    cells.splice(Math.max(0, Math.min(index, cells.length)), 0, cell);
     return { document: { ...state.document, cells }, activeCellId: id, selectedCellId: id, dirty: true };
   }),
   moveCell: (id, direction) => set((state) => {
