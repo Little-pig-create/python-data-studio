@@ -63,6 +63,39 @@ if (-not $env:PDS_SKIP_INSTALL) {
   ) | Set-Content -LiteralPath (Join-Path $output "python312._pth") -Encoding ascii
 
   $runtimePython = Join-Path $output "python.exe"
+
+  # ── 修正 kernelspec（两个必需改动，缺一则内核无法启动）────────────────────
+  #
+  # ① argv[0] 必须是**打包的绝对路径**。
+  #    ipykernel 安装时写入的是裸命令 "python"，运行时按 PATH 解析，
+  #    会被用户自己的 Miniconda / 系统 Python 抢先命中。那样内核由错误解释器
+  #    启动，既缺依赖又连不上服务，表现为前端"内核一直加载失败"。
+  #
+  # ② 追加 --IPKernelApp.parent_handle=0。
+  #    jupyter_server 在 Windows 上会向内核传入一个父进程句柄；
+  #    ipykernel 的 ParentPollerWindows 监听它，一旦被 signal 就立刻
+  #    os._exit(1)，日志为 "Parent appears to have exited, shutting down."。
+  #    在 Tauri 这类进程树中该句柄会被立即触发，导致内核刚启动就自杀。
+  #    传 0 表示"无父句柄"，poller 不再启动。
+  #
+  # 实测（打包运行时 + jupyter_server）：
+  #    默认            → 内核 starting 后立刻 "Parent appears to have exited"
+  #    仅修 argv[0]    → 仍然自杀（说明 ② 才是主因）
+  #    仅修 ②          → 内核存活并监听 ZMQ，但 argv[0] 仍是 PATH 上的 Python
+  #    两者都修        → 客户端 READY，执行代码返回 EXEC_OK，
+  #                      且 sys.executable 指向打包解释器
+  $kernelSpec = Join-Path $output "share\jupyter\kernels\python3\kernel.json"
+  if (Test-Path -LiteralPath $kernelSpec) {
+    $spec = Get-Content -LiteralPath $kernelSpec -Raw | ConvertFrom-Json
+    $spec.argv[0] = $runtimePython
+    if ($spec.argv -notcontains "--IPKernelApp.parent_handle=0") {
+      $spec.argv += "--IPKernelApp.parent_handle=0"
+    }
+    $spec | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $kernelSpec -Encoding utf8
+    Write-Output "kernelspec pinned: argv[0]=$runtimePython (+parent_handle=0)"
+  } else {
+    throw "未找到 kernelspec：$kernelSpec —— 内核将无法启动"
+  }
 } else {
   $runtimePython = if (Test-Path -LiteralPath (Join-Path $output "python.exe")) { Join-Path $output "python.exe" } else { Join-Path $output "Scripts\python.exe" }
 }

@@ -129,6 +129,54 @@ fn configure_no_window(command: &mut Command) {
 #[cfg(not(windows))]
 fn configure_no_window(_command: &mut Command) {}
 
+/// 校正 kernelspec，保证内核由**打包的**解释器启动且不会被父进程监视误杀。
+///
+/// 两处必需设置（详见 scripts/build-native-runtime.ps1 的注释）：
+///   1. `argv[0]` 必须是当前安装目录下的 Python 绝对路径。
+///      安装后路径与构建机不同，因此必须在此按实际路径重写；否则会按 PATH
+///      命中用户自己的 Python，内核因缺依赖而无法工作。
+///   2. `--IPKernelApp.parent_handle=0`。
+///      jupyter_server 在 Windows 上会向内核传父进程句柄，ipykernel 的
+///      ParentPollerWindows 一旦看到该句柄被 signal 就 `os._exit(1)`
+///      （日志："Parent appears to have exited, shutting down."）。
+///      在 Tauri 的进程树中该句柄会立即触发，导致内核刚起就自杀，
+///      前端一直停在"正在确认内核状态"直到超时报错。
+fn ensure_kernelspec(root: &PathBuf, python: &PathBuf) -> Result<(), String> {
+  let spec_path = root.join("share").join("jupyter").join("kernels").join("python3").join("kernel.json");
+  if !spec_path.is_file() {
+    return Err(format!("缺少 kernelspec：{}", spec_path.display()));
+  }
+  let text = fs::read_to_string(&spec_path).map_err(|error| error.to_string())?;
+  let mut spec: serde_json::Value = serde_json::from_str(&text)
+    .map_err(|error| format!("kernelspec 解析失败：{}", error))?;
+
+  let want = python.to_string_lossy().to_string();
+  let argv = spec.get_mut("argv").and_then(|value| value.as_array_mut())
+    .ok_or_else(|| "kernelspec 缺少 argv".to_string())?;
+
+  let mut changed = false;
+  if argv.first().and_then(|value| value.as_str()) != Some(want.as_str()) {
+    argv[0] = serde_json::Value::String(want);
+    changed = true;
+  }
+  // parent_handle=0 表示不注册父进程监视，避免内核被误判为"父进程已退出"。
+  let parent_flag = "--IPKernelApp.parent_handle=0";
+  let has_parent_flag = argv.iter().any(|value| {
+    value.as_str().map(|text| text == parent_flag).unwrap_or(false)
+  });
+  if !has_parent_flag {
+    argv.push(serde_json::Value::String(parent_flag.to_string()));
+    changed = true;
+  }
+
+  if changed {
+    let serialized = serde_json::to_string_pretty(&spec).map_err(|error| error.to_string())?;
+    fs::write(&spec_path, format!("{}\n", serialized)).map_err(|error| error.to_string())?;
+    log::info!("kernelspec updated: {}", spec_path.display());
+  }
+  Ok(())
+}
+
 fn wait_for_server(url: &str, token: &str) -> Result<(), String> {
   let deadline = Instant::now() + Duration::from_secs(20);
   let address = url.strip_prefix("http://").unwrap_or(url);
@@ -162,6 +210,9 @@ pub async fn start_native_runtime(app: AppHandle, state: State<'_, RuntimeManage
   eprintln!("[native-runtime] root={} python={}", root.display(), python.display());
   log::info!("native runtime root={} python={}", root.display(), python.display());
   if !python.exists() { return Err("Runtime 未找到：缺少打包的 Python 可执行文件".into()); }
+  // 内核由 kernelspec 描述，其中的解释器路径在安装后可能与构建机不同，
+  // 因此每次启动都按当前实际路径校正一遍（幂等、成本可忽略）。
+  ensure_kernelspec(&root, &python)?;
 
   let app_data = app.path().app_data_dir().map_err(|error| error.to_string())?;
   let workspace = app_data.join("workspace");
