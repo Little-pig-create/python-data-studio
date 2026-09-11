@@ -245,13 +245,40 @@ let builtBundles = [];
 console.log("\n🔨 本地构建桌面安装包...");
 // 正式发布默认使用签名 + updater 配置（tauri.release.conf.json），使生成的
 // 安装包带 .sig 签名与 latest.json 更新清单，客户端在线更新才能工作。
-// 需要先运行 scripts/prepare-tauri-release.mjs（会读取 TAURI_UPDATER_PUBKEY /
-// TAURI_SIGNING_PRIVATE_KEY 等环境变量生成该配置）。如需非签名快速迭代，
-// 可设 RELEASE_TAURI_CONFIG=src-tauri/tauri.student.conf.json 覆盖。
+//
+// 注意执行顺序：tauri.release.conf.json 由 prepare-tauri-release.mjs **从
+// tauri.conf.json 复制生成**，因此必须在版本号写入之后重新生成，
+// 否则配置里仍是上一版版本号，导致产物体名（…_0.1.6_…）与本版 tag 不一致，
+// 进而 latest.json 因匹配不到对应版本而无法生成。
 const releaseTauriConfig = process.env.RELEASE_TAURI_CONFIG || "src-tauri/tauri.release.conf.json";
 const releaseConfigPath = path.join(root, releaseTauriConfig);
+const isGeneratedReleaseConfig = releaseTauriConfig === "src-tauri/tauri.release.conf.json";
+if (isGeneratedReleaseConfig) {
+  const missingEnv = ["TAURI_SIGNING_PRIVATE_KEY", "TAURI_UPDATER_PUBKEY"]
+    .filter((key) => !process.env[key]?.trim());
+  if (missingEnv.length) {
+    fail(
+      `缺少签名环境变量：${missingEnv.join(", ")}。\n` +
+      "  在线更新包必须签名。请先设置：\n" +
+      "    TAURI_SIGNING_PRIVATE_KEY     私钥内容（或 TAURI_SIGNING_PRIVATE_KEY_PATH 指向文件）\n" +
+      "    TAURI_UPDATER_PUBKEY          对应公钥内容\n" +
+      "  生成密钥对：npx tauri signer generate -w <路径>\n" +
+      "  如不需在线更新，可设 RELEASE_TAURI_CONFIG=src-tauri/tauri.student.conf.json 跳过。",
+    );
+  }
+  // 用 bump 后的 tauri.conf.json 重新生成发布配置（含新版本号与公钥）。
+  runLocal(["node", "scripts/prepare-tauri-release.mjs"], {
+    label: "prepare-tauri-release（生成含新版本号的发布配置）",
+  });
+}
 if (!fs.existsSync(releaseConfigPath)) {
   fail(`Tauri 发布配置不存在：${releaseTauriConfig}。请先运行 prepare-tauri-release.mjs 并配置签名密钥。`);
+}
+const releaseConfigVersion = JSON.parse(fs.readFileSync(releaseConfigPath, "utf8")).version;
+if (releaseConfigVersion !== newVersion) {
+  fail(
+    `发布配置版本号不一致：${releaseTauriConfig} 为 ${releaseConfigVersion}，期望 ${newVersion}。`,
+  );
 }
 // Tauri 不会自动删除旧版本 bundle；先清空固定的 bundle 目录，避免
 // 新 Release 的校验清单和下载元数据误收录上一个版本的安装包。
