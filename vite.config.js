@@ -62,6 +62,9 @@ export default ({ mode, command }) => {
     },
 
     // 桌面版：thebe-* 替换为空桩，不把 Web 版的 WASM 引擎打进主包。
+    // Web 版：thebe-core 的传递依赖会 import Node 内置模块（path/fs/url 等），
+    // 这些代码路径在浏览器中不执行，但会让 Vite 打印 "has been externalized"
+    // 警告并在属性访问时抛错。统一指向宽容空桩。
     resolve: {
       alias: {
         "@pds/application-shell": path.resolve(
@@ -74,6 +77,20 @@ export default ({ mode, command }) => {
             "thebe-react": path.resolve("src/stubs/thebe-react.js"),
             }
           : {}),
+        // 仅 Web 版需要（桌面版不含 thebe，也就不会引入这些导入）。
+        ...(isDesktop
+          ? {}
+          : {
+            path: path.resolve("src/stubs/node-builtins.js"),
+            "node:path": path.resolve("src/stubs/node-builtins.js"),
+            fs: path.resolve("src/stubs/node-builtins.js"),
+            "node:fs": path.resolve("src/stubs/node-builtins.js"),
+            "fs/promises": path.resolve("src/stubs/node-builtins.js"),
+            "node:fs/promises": path.resolve("src/stubs/node-builtins.js"),
+            url: path.resolve("src/stubs/node-builtins.js"),
+            "node:url": path.resolve("src/stubs/node-builtins.js"),
+            "source-map-js": path.resolve("src/stubs/node-builtins.js"),
+          }),
       },
     },
 

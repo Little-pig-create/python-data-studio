@@ -9,7 +9,7 @@
 // 它们会在 createJupyterLiteRuntime / createNativeRuntime 中按需动态导入
 // 桌面版构建时 thebe-core 会被 vite 别名替换为空桩
 
-import { resolveLitePluginSettings } from "./runtimeAssets.js";
+import { preloadRuntimeAssets, resolveLitePluginSettings } from "./runtimeAssets.js";
 
 // ---- 常量 ----
 const coursePackages = {
@@ -59,17 +59,21 @@ const withTimeout = (promise, timeoutMs, message) => new Promise((resolve, rejec
 /**
  * 内核启动阶段（用于进度提示）。
  *
- * 首次进入 notebook 时浏览器端要下载 Pyodide + numpy/pandas 等资源，
- * 约 30 MB 以上；只显示一行文字会让用户以为卡死。
- * 这里给出**确定性的阶段权重**，把"看不到进度"变成"可预期的等待"。
+ * 权重按**实测耗时**分配（Chrome 无头 + DevTools 计时）：
+ *   冷启动：到达 ready 约 6.4 s，等待 kernel.info 约 5.0 s，总计约 11.4 s；
+ *   二次进入：到达 ready 约 6.5 s，等待 kernel.info 约 0.7 s。
+ * 可见"等待内核就绪"（ready）才是最耗时且最无反馈的一段，
+ * 因此它的权重必须最大 —— 否则进度条会长时间停在同一个数字上，
+ * 看起来像卡死（这正是此前"卡在 40%"的成因）。
  */
 export const RUNTIME_PHASES = [
   { id: "script", label: "正在加载运行时脚本", weight: 8 },
-  { id: "connect", label: "正在连接 Python 运行时", weight: 10 },
-  { id: "session", label: "正在创建 Python 内核", weight: 14 },
-  { id: "ready", label: "正在确认内核状态", weight: 8 },
-  { id: "packages", label: "正在准备课程依赖", weight: 50 },
-  { id: "done", label: "Python 内核已就绪", weight: 10 },
+  { id: "connect", label: "正在连接 Python 运行时", weight: 12 },
+  { id: "session", label: "正在创建 Python 内核", weight: 15 },
+  // 等待 kernel.info：冷启动约 5 秒且无法上报子进度，给最大权重。
+  { id: "ready", label: "正在确认内核状态", weight: 40 },
+  { id: "packages", label: "正在准备课程依赖", weight: 20 },
+  { id: "done", label: "Python 内核已就绪", weight: 5 },
 ];
 
 const PHASE_TOTAL_WEIGHT = RUNTIME_PHASES.reduce((sum, phase) => sum + phase.weight, 0);
@@ -79,22 +83,52 @@ const PHASE_TOTAL_WEIGHT = RUNTIME_PHASES.reduce((sum, phase) => sum + phase.wei
 // 而不是让界面永久停在"正在确认内核状态"。
 const KERNEL_READY_TIMEOUT_MS = 45_000;
 
-/** 按阶段 id 计算累计进度百分比（0–100）。 */
-function progressForPhase(phaseId) {
+/** 阶段在整条进度中的起止百分比（含该阶段自身的推进区间）。 */
+function phaseRange(phaseId) {
   let acc = 0;
   for (const phase of RUNTIME_PHASES) {
+    const start = acc;
     acc += phase.weight;
-    if (phase.id === phaseId) break;
+    if (phase.id === phaseId) {
+      return { start: (start / PHASE_TOTAL_WEIGHT) * 100, end: (acc / PHASE_TOTAL_WEIGHT) * 100 };
+    }
   }
-  return Math.round((acc / PHASE_TOTAL_WEIGHT) * 100);
+  return null;
 }
 
-/** 构造一个上报函数：同时给出文字与百分比；未提供回调时是空操作。 */
+/** 按阶段 id 计算累计进度百分比（0–100）。 */
+function progressForPhase(phaseId) {
+  const range = phaseRange(phaseId);
+  return range ? Math.round(range.end) : 0;
+}
+
+/**
+ * 构造进度上报器。
+ *
+ * 除按阶段跳变外，还提供 `tick(phaseId)`：在"已知要等但拿不到子进度"的阶段
+ * （典型是等待 kernel.info）里按时间**平滑推进**到该阶段上限的 92%，
+ * 让用户看到进度在走，而不是长时间纹丝不动。
+ */
 function makeProgressReporter(onProgress) {
-  if (typeof onProgress !== "function") return () => {};
-  return (phaseId, detail) => {
+  if (typeof onProgress !== "function") {
+    const noop = () => {};
+    noop.tick = () => noop;
+    noop.stopTick = () => {};
+    return noop;
+  }
+
+  let timer = null;
+  const stopTick = () => {
+    if (timer != null) {
+      clearInterval(timer);
+      timer = null;
+    }
+  };
+
+  const report = (phaseId, detail) => {
     const phase = RUNTIME_PHASES.find((item) => item.id === phaseId);
     if (!phase) return;
+    stopTick(); // 进入新阶段时先停掉上一阶段的平滑推进
     onProgress({
       phase: phaseId,
       label: detail || phase.label,
@@ -102,6 +136,40 @@ function makeProgressReporter(onProgress) {
       done: phaseId === "done",
     });
   };
+
+  /**
+   * 在指定阶段内按时间平滑推进（每秒一次，最多到该阶段的 92%）。
+   * @param phaseId 目标阶段
+   * @param expectedMs 预估耗时，用于决定推进速度
+   */
+  report.tick = (phaseId, expectedMs = 6000) => {
+    const phase = RUNTIME_PHASES.find((item) => item.id === phaseId);
+    const range = phaseRange(phaseId);
+    if (!phase || !range) return report;
+    stopTick();
+    const startedAt = Date.now();
+    // 上限留出余量：真正的阶段完成会由 report() 直接跳到 100%，
+    // 避免"自己先跑满再停顿"的观感。
+    const ceiling = range.start + (range.end - range.start) * 0.92;
+    timer = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const ratio = Math.min(1, elapsed / expectedMs);
+      const percent = Math.round(range.start + (ceiling - range.start) * ratio);
+      onProgress({
+        phase: phaseId,
+        label: phase.label,
+        percent,
+        done: false,
+      });
+      if (ratio >= 1) stopTick();
+    }, 500);
+    // Node 环境下不要在退出前挂住事件循环
+    timer?.unref?.();
+    return report;
+  };
+
+  report.stopTick = stopTick;
+  return report;
 }
 
 const normalizeNotebookPath = (notebookPath) => {
@@ -352,8 +420,21 @@ print("__STUDIO_FILE_PREVIEW__" + base64.b64encode(_studio_payload).decode("asci
 
 async function createJupyterLiteRuntime(notebookPath, onProgress) {
   const report = makeProgressReporter(onProgress);
+  // 分阶段耗时记录：内核启动慢时，先在控制台看清"慢在哪一段"，
+  // 而不是靠猜。格式：`[runtime] 内核启动 <阶段> <累计毫秒>ms`。
+  const startedAt = performance.now();
+  const marks = [];
+  const mark = (id) => marks.push(`${id}=${Math.round(performance.now() - startedAt)}`);
+
+  // Pyodide 核心（pyodide.asm.wasm 9.7 MB + python_stdlib.zip 2.3 MB）只在
+  // startNewSession 时才被真正请求。这里先发 preload，让这 12 MB 与
+  // "动态导入 thebe-core + 下载 thebe-lite 脚本"并行，而不是排在它们之后。
+  preloadRuntimeAssets();
+
+  mark("begin");
   report("script");
   const runtime = await getServerRuntime();
+  mark("server");
   report("connect");
   const sessionPath = normalizeNotebookPath(notebookPath);
   report("session");
@@ -361,6 +442,7 @@ async function createJupyterLiteRuntime(notebookPath, onProgress) {
     path: `/${sessionPath}`,
     kernelName: "python"
   });
+  mark("session");
   if (!session?.kernel) {
     session?.dispose?.();
     throw new Error("Python 内核不可用");
@@ -369,20 +451,31 @@ async function createJupyterLiteRuntime(notebookPath, onProgress) {
   report("ready");
   // 注意：内核就绪等待必须有超时。此前直接 await kernel.info，一旦内核
   // 起不来就会永久停在"正在确认内核状态"（进度 40%），用户看不到任何提示。
+  // 同时这是最长且拿不到子进度的一段（实测冷启动约 5 秒），用 tick 平滑推进，
+  // 避免进度条长时间停在同一个数字上。
+  report.tick("ready", 5000);
   try {
     await withTimeout(
       session.kernel.info,
       KERNEL_READY_TIMEOUT_MS,
       `Python 内核在 ${Math.round(KERNEL_READY_TIMEOUT_MS / 1000)} 秒内未就绪`
         + `（当前状态：${session.kernel.status || "未知"}）。`
-        + "常见原因：运行时资源未加载完成，或浏览器阻止了 WebAssembly。"
-        + "可尝试刷新页面；若持续失败，请检查网络能否访问本站的 /pyodide/ 资源。",
+        + "常见原因：浏览器阻止了 WebAssembly，或本地运行时资源不完整"
+        + "（本地资源缺少包 wheel 时 Pyodide 不会回退 CDN）。"
+        + "可尝试刷新页面；若持续失败，请检查 /pyodide/manifest.json 的 complete 字段，"
+        + "或重新执行 npm run build:runtime:assets。",
     );
+    mark("kernel-ready");
     report("done");
   } catch (reason) {
+    mark("kernel-failed");
+    report.stopTick();
     await session.shutdown().catch(() => session.dispose?.());
+    console.warn(`[runtime] 内核启动失败：${marks.join(" ")}`);
     throw new Error(errorMessage(reason, "Python 内核启动失败"));
   }
+
+  console.info(`[runtime] 内核启动耗时：${marks.join(" ")}（毫秒，累计）`);
 
   return {
     server: runtime.server,
@@ -476,6 +569,8 @@ async function createNativeRuntime(notebookPath, onStatus, onProgress) {
 
     report("ready");
     onStatus?.("正在确认 Python 内核状态");
+    // 本地内核通常 1–3 秒就绪，同样平滑推进以保持反馈。
+    report.tick("ready", 3000);
     await withTimeout(session.kernel.info, 12_000, "Python 内核连接超时，请重试");
     report("done");
     onStatus?.("Python 内核已就绪");
@@ -581,6 +676,10 @@ export async function prewarmCoursePackages(runtime, options = {}) {
   if (!pending.length) return;
   const report = runtime.progressReporter || (() => {});
   report("packages", `正在准备课程依赖（${pending.length} 个包）`);
+  console.info(
+    `[runtime] 依赖预热开始：识别=${requested.join(",") || "无"} 待装=${pending.join(",") || "无"}`
+    + ` 源(${String(options.source || "").length}字)=${JSON.stringify(String(options.source || "").slice(0, 400))}`,
+  );
   const pyodideNames = pending
     .filter((name) => coursePackages[name].loader === "pyodide")
     .map((name) => coursePackages[name].name);
@@ -597,6 +696,7 @@ export async function prewarmCoursePackages(runtime, options = {}) {
     setupCode.push(`await piplite.install(${JSON.stringify(pipliteNames)}, keep_going=True)`);
   }
   if (!setupCode.length) return;
+  const prewarmStart = performance.now();
   try {
     const future = kernel.requestExecute({
       code: setupCode.join("\n"),
@@ -610,8 +710,17 @@ export async function prewarmCoursePackages(runtime, options = {}) {
     if (reply?.content?.status === "ok") {
       pending.forEach((name) => installedPackages.add(name));
     }
+    runtime.lastPrewarmMs = Math.round(performance.now() - prewarmStart);
+    console.info(
+      `[runtime] 依赖预热完成：${runtime.lastPrewarmMs} 毫秒（${pending.join(", ")}）`,
+    );
   } catch (error) {
     // 预热失败不阻塞：首个单元格仍会按需加载。
+    runtime.lastPrewarmMs = Math.round(performance.now() - prewarmStart);
+    console.warn(
+      `[runtime] 依赖预热失败：${runtime.lastPrewarmMs} 毫秒（${pending.join(", ")}）`,
+      error,
+    );
   }
 }
 

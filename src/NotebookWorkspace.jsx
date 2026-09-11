@@ -281,8 +281,12 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
   // real kernel state instead of staying at “未启动” until the first click on Run.
   // Browser (JupyterLite) benefits the most: it avoids waiting for kernel creation
   // + big package downloads (numpy/pandas/matplotlib) on the first Run click.
+  //
+  // 注意守卫条件用的是 **store 的 notebookKey**，而不是 `document.notebookKey`。
+  // `normalizeNotebook()` 产出的 document 上从来没有这个字段，早期版本因此让整个
+  // 预热逻辑静默失效：内核只会在用户第一次点“运行”时才冷启动。
   useEffect(() => {
-    if (loading || error || !document?.notebookKey) return undefined;
+    if (loading || error || !store.notebookKey) return undefined;
 
     let cancelled = false;
     const warmup = window.setTimeout(async () => {
@@ -311,7 +315,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
       cancelled = true;
       window.clearTimeout(warmup);
     };
-  }, [document?.notebookKey, ensureRuntime, error, loading, lesson.id, runtimeWarmupToken]);
+  }, [store.notebookKey, ensureRuntime, error, loading, lesson.id, runtimeWarmupToken]);
 
   const runCell = useCallback(async (cell) => {
     if (cell.type !== "code" || !document) return false;
@@ -755,7 +759,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
         <Tooltip title="重启 Python"><span><IconButton size="small" disabled={!runtimeStarted || store.runtimeState === "loading" || store.runtimeState === "busy"} onClick={restartRuntime} aria-label="重启 Python"><RestartAltRounded fontSize="small" /></IconButton></span></Tooltip>
         <Divider orientation="vertical" flexItem className="custom-action-divider" />
         <Tooltip title="本章目录"><span><IconButton size="small" disabled={!outline.length} onClick={openOutline} aria-label="打开本章目录"><FormatListBulletedRounded fontSize="small" /></IconButton></span></Tooltip>
-        <Tooltip title="跳到第一个代码单元格"><IconButton size="small" disabled={!hasCodeCells} onClick={scrollToFirstCode} aria-label="跳到第一个代码单元格"><PlayArrowRounded fontSize="small" /></IconButton></Tooltip>
+        <Tooltip title="跳到第一个代码单元格"><span><IconButton size="small" disabled={!hasCodeCells} onClick={scrollToFirstCode} aria-label="跳到第一个代码单元格"><PlayArrowRounded fontSize="small" /></IconButton></span></Tooltip>
         <Divider orientation="vertical" flexItem className="custom-action-divider" />
         <Tooltip title="下载 Notebook"><IconButton size="small" onClick={downloadNotebook} aria-label="下载 Notebook"><DownloadRounded fontSize="small" /></IconButton></Tooltip>
         <Tooltip title="学习笔记"><IconButton size="small" onClick={openChapterNote} aria-label="编辑本章学习笔记"><NoteAltRounded fontSize="small" /></IconButton></Tooltip>
