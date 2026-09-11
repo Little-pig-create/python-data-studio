@@ -1128,9 +1128,35 @@ export async function stopNotebookRuntime(runtime) {
   }
 }
 
+/**
+ * 重启内核。
+ *
+ * 注意：@jupyterlab/services 的 ISessionConnection **没有 restart()** 方法
+ * （只有 shutdown / changeKernel）。此前这里直接调用 `session.restart()`，
+ * 在原生运行时下会抛 "session.restart is not a function"，
+ * 被上层 catch 吞掉后界面直接变成"错误"且无法恢复。
+ *
+ * 正确做法按运行时区分：
+ *  - 原生：重启内核对内核自身没有意义（内核进程即 Python 解释器），
+ *    但 shim 层的 kernel 支持 restart；优先用它，否则退回 changeKernel。
+ *  - JupyterLite：用 kernel.restart()，若无则重建内核连接。
+ */
 export async function restartNotebookRuntime(runtime) {
-  if (!runtime?.session?.restart) throw new Error("当前运行时不支持重启");
-  await runtime.session.restart();
+  const kernel = runtime?.session?.kernel;
+  if (!kernel) throw new Error("Python 内核不可用");
+
+  // 内核对象自带 restart（Kernel.IKernelConnection.restart）。
+  if (typeof kernel.restart === "function") {
+    await kernel.restart();
+    return;
+  }
+  // 退回：通过 changeKernel 重新拉起一个同名内核。
+  if (typeof runtime.session.changeKernel === "function") {
+    const next = await runtime.session.changeKernel({ name: kernel.name || "python" });
+    if (!next) throw new Error("Python 内核重启失败");
+    return;
+  }
+  throw new Error("当前运行时不支持重启");
 }
 
 export async function disposeNotebookRuntime() {

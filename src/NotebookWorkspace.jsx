@@ -507,8 +507,11 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     }
   };
   const restartRuntime = async () => {
-    const session = runtimeRef.current?.session;
-    if (!session || typeof session.restart !== "function") {
+    const kernel = runtimeRef.current?.session?.kernel;
+    // 注意：不能检查 session.restart —— ISessionConnection 没有该方法
+    // （只有 shutdown / changeKernel），那样判断会永远失败并把状态置为"错误"。
+    // 重启能力在内核对象上（IKernelConnection.restart）。
+    if (!runtimeRef.current || !kernel) {
       store.setRuntime("error", "Python 内核不可用");
       showToast("Python 内核尚未就绪，请稍后重试", "error");
       return;
@@ -520,11 +523,13 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     try {
       showToast("正在重启 Python");
       await runtimeRef.current.restart();
-      if (session.kernel?.status === "dead") throw new Error("Python 内核已停止");
-      publishKernelStatus(session.kernel?.status);
+      // 重启后回读内核真实状态，而不是假定已就绪。
+      const nextKernel = runtimeRef.current?.session?.kernel || kernel;
+      if (nextKernel?.status === "dead") throw new Error("Python 内核已停止");
+      publishKernelStatus(nextKernel?.status);
       showToast("Python 已重新启动", "success");
     } catch (reason) {
-      store.setRuntime("error", "Python 重启失败");
+      store.setRuntime("error", reason?.message || "Python 重启失败");
       showToast(reason?.message || "Python 重启失败", "error");
     }
   };
