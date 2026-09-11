@@ -308,6 +308,18 @@ console.log(`\n📁 安装包已归档到 release/${tag}/`);
 // 签名构建（默认 release 配置）必须带 .sig 签名与 latest.json 更新清单，
 // 否则在线更新不可用。非签名配置（RELEASE_TAURI_CONFIG 覆盖为 student）跳过。
 if (releaseTauriConfig === "src-tauri/tauri.release.conf.json") {
+  // Tauri 只产出安装包与 .sig；latest.json 需要由 generate-updater-manifest.mjs
+  // 依据已归档的产物生成（含下载地址与签名内容）。
+  const generatedManifest = path.join(bundleSource, "latest.json");
+  if (!fs.existsSync(path.join(releaseDir, "latest.json"))) {
+    runLocal(["node", "scripts/generate-updater-manifest.mjs"], {
+      label: "generate-updater-manifest（生成 latest.json 更新清单）",
+    });
+  }
+  if (fs.existsSync(generatedManifest)) {
+    copyDirectory(bundleSource, releaseDir);
+    builtBundles = collectFiles(releaseDir).filter((file) => fs.statSync(file).isFile());
+  }
   const updaterManifest = path.join(releaseDir, "latest.json");
   if (!fs.existsSync(updaterManifest)) {
     restoreVersionFiles();
