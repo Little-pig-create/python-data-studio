@@ -44,9 +44,20 @@ function runLocal(args, options = {}) {
   let executable = args[0];
   let commandArgs = args.slice(1);
   if (process.platform === "win32" && executable === "npm") {
-    const npmCli = process.env.npm_execpath
-      || path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
-    if (!fs.existsSync(npmCli)) throw new Error(`找不到 npm CLI：${npmCli}`);
+    // npm_execpath 在本项目里指向 pnpm（用户用 pnpm 管理依赖）。
+    // pnpm 对 `run <script> -- <args>` 的解析与 npm 不同：会把 `--` 原样传给
+    // 子进程，导致 `tauri -- build` 报 "unexpected argument 'build'"。
+    // 因此这里显式定位真正的 npm-cli.js，而不是复用 npm_execpath。
+    const candidates = [
+      path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js"),
+      path.join(root, "node_modules", "npm", "bin", "npm-cli.js"),
+    ];
+    const npmCli = candidates.find((candidate) => fs.existsSync(candidate));
+    if (!npmCli) {
+      throw new Error(
+        "找不到 npm CLI（npm_execpath 指向 pnpm）。请安装 npm 或改用 `npx tauri build`。",
+      );
+    }
     executable = process.execPath;
     commandArgs = [npmCli, ...commandArgs];
   }
