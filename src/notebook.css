@@ -14,15 +14,18 @@
 .chapter-learning-header-actions .MuiIconButton-root { width: 30px; height: 30px; color: #667085; transition: color .16s ease, background .16s ease, transform .16s ease; }
 .chapter-learning-header-actions .MuiIconButton-root:hover { color: #175cd3; background: #eff6ff; transform: translateY(-1px); }
 .chapter-kernel-state { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #e1e7f0; border-radius: 6px; padding: 5px 8px; color: #667085; background: #f8fafc; font-size: 10px; white-space: nowrap; }
-.chapter-kernel-state > span { width: 7px; height: 7px; border-radius: 50%; background: #12b76a; }
+/* 状态圆点：只作用于"直接子 span 且不是进度条"的元素。
+   此前写作 `.chapter-kernel-state > span`，会把同级的进度条
+   （也是 <span>）一并套上 7×7 + border-radius:50%，导致进度条被压成椭圆。 */
+.chapter-kernel-state > span:not(.chapter-kernel-progress) { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #12b76a; }
 .chapter-kernel-state.state-busy { color: #175cd3; border-color: #cfe0ff; background: #eff6ff; }
-.chapter-kernel-state.state-busy > span { background: #2563eb; }
+.chapter-kernel-state.state-busy > span:not(.chapter-kernel-progress) { background: #2563eb; }
 .chapter-kernel-state.state-loading, .chapter-kernel-state.state-starting, .chapter-kernel-state.state-restarting, .chapter-kernel-state.state-autorestarting { color: #9a6700; border-color: #f5d99b; background: #fffaeb; }
-.chapter-kernel-state.state-loading > span, .chapter-kernel-state.state-starting > span, .chapter-kernel-state.state-restarting > span, .chapter-kernel-state.state-autorestarting > span { background: #f79009; }
+.chapter-kernel-state.state-loading > span:not(.chapter-kernel-progress), .chapter-kernel-state.state-starting > span:not(.chapter-kernel-progress), .chapter-kernel-state.state-restarting > span:not(.chapter-kernel-progress), .chapter-kernel-state.state-autorestarting > span:not(.chapter-kernel-progress) { background: #f79009; }
 .chapter-kernel-state.state-error, .chapter-kernel-state.state-dead { color: #b42318; border-color: #fecdca; background: #fef3f2; }
-.chapter-kernel-state.state-error > span, .chapter-kernel-state.state-dead > span { background: #f04438; }
+.chapter-kernel-state.state-error > span:not(.chapter-kernel-progress), .chapter-kernel-state.state-dead > span:not(.chapter-kernel-progress) { background: #f04438; }
 /* 内核启动进度条：下载运行时/依赖期间给出可见的推进感 */
-.chapter-kernel-progress { position: relative; display: inline-block; width: 46px; height: 3px; flex: 0 0 46px; overflow: hidden; border-radius: 2px; background: #fde3b3; }
+.chapter-kernel-progress { position: relative; display: inline-block; width: 46px; height: 4px; flex: 0 0 46px; overflow: hidden; border-radius: 2px; background: #fde3b3; }
 .chapter-kernel-progress-fill { display: block; height: 100%; border-radius: 2px; background: #f79009; transition: width .3s ease; }
 @media (prefers-reduced-motion: reduce) { .chapter-kernel-progress-fill { transition: none; } }
 @keyframes bits-header-enter { from { opacity: 0; transform: translateY(-7px); } to { opacity: 1; transform: translateY(0); } }
