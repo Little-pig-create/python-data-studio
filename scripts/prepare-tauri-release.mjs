@@ -53,7 +53,24 @@ config.build = {
 };
 config.bundle = {
   ...(config.bundle || {}),
-  createUpdaterArtifacts: true
+  createUpdaterArtifacts: true,
+  // 正式版把数据集资源指向 dist/datasets，而不是根目录 datasets/。
+  //
+  // 原因：Tauri 会把 frontendDist 整体嵌入可执行文件（供前端
+  // fetch("/datasets/…")），若再把根目录 datasets/ 声明为 bundle.resources，
+  // 同一份约 69 MB 数据会在安装包里出现两次，白白拖慢压缩。
+  // build-desktop-web 已把两者生成一致，因此指向 dist/ 那一份即可。
+  //
+  // 基础配置（tauri.conf.json）仍保留 ../datasets：学生版构建不产出
+  // dist/datasets，且各 edition 配置未覆盖 resources，改动基础配置会让它们失败。
+  resources: {
+    ...Object.fromEntries(
+      Object.entries(config.bundle?.resources || {})
+        // 去掉指向根目录 datasets 的那一条，避免与 dist/datasets 重复打包。
+        .filter(([source]) => !/(^|\/)\.\.\/datasets$/.test(source)),
+    ),
+    "../dist/datasets": "datasets",
+  },
 };
 config.plugins = {
   ...(config.plugins || {}),

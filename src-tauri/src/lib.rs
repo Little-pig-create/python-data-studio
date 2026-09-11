@@ -148,8 +148,14 @@ fn wait_for_server(url: &str, token: &str) -> Result<(), String> {
 mod commands {
 use super::*;
 
+// 注意：这里必须用 async + spawn_blocking。
+//
+// Tauri 的**同步** command 会在主线程执行。此前 `wait_for_server` 会在主线程
+// 阻塞最多 20 秒等待 Jupyter 就绪，期间界面完全无法响应——表现为"桌面端初始化
+// 时页面卡死"。改为 async 后命令在异步运行时的线程池执行，再用 spawn_blocking
+// 承载其中的阻塞等待，主线程（UI）始终不被占用。
 #[tauri::command]
-pub fn start_native_runtime(app: AppHandle, state: State<'_, RuntimeManager>) -> Result<RuntimeInfo, String> {
+pub async fn start_native_runtime(app: AppHandle, state: State<'_, RuntimeManager>) -> Result<RuntimeInfo, String> {
   state.stop();
   let root = runtime_root(&app)?;
   let python = python_executable(&root);
@@ -195,7 +201,13 @@ pub fn start_native_runtime(app: AppHandle, state: State<'_, RuntimeManager>) ->
   eprintln!("[native-runtime] spawning jupyter_server on 127.0.0.1:{}", port);
   log::info!("spawning jupyter_server on 127.0.0.1:{}", port);
   let child = command.spawn().map_err(|error| format!("Runtime 启动失败：{}", error))?;
-  if let Err(error) = wait_for_server(&server_url, &token) {
+  // 阻塞式等待放到专用线程，避免占用 async 运行时线程、更不占用 UI 主线程。
+  let wait_url = server_url.clone();
+  let wait_token = token.clone();
+  let waited = tauri::async_runtime::spawn_blocking(move || wait_for_server(&wait_url, &wait_token))
+    .await
+    .unwrap_or_else(|error| Err(format!("等待 Jupyter 启动的任务异常结束：{}", error)));
+  if let Err(error) = waited {
     eprintln!("[native-runtime] server startup failed: {}", error);
     log::error!("native runtime server startup failed: {}", error);
     let mut failed_child = child;
@@ -220,8 +232,13 @@ fn notebook_file(app: &AppHandle, key: &str) -> Result<PathBuf, String> {
   Ok(root.join(format!("{}.ipynb", safe)))
 }
 
+// 同样改为 async：stop() 内部最多阻塞约 2 秒（等待进程退出再强杀），
+// 放在主线程会直接冻结界面。
 #[tauri::command]
-pub fn stop_native_runtime(state: State<'_, RuntimeManager>) -> Result<(), String> { state.stop(); Ok(()) }
+pub async fn stop_native_runtime(state: State<'_, RuntimeManager>) -> Result<(), String> {
+  state.stop();
+  Ok(())
+}
 
 #[tauri::command]
 pub fn native_runtime_status(state: State<'_, RuntimeManager>) -> Option<RuntimeInfo> { state.current() }
@@ -376,7 +393,15 @@ pub fn run() {
       Ok(())
     })
     .on_window_event(|window, event| {
-      if matches!(event, tauri::WindowEvent::Destroyed) { window.state::<RuntimeManager>().stop(); }
+      if matches!(event, tauri::WindowEvent::Destroyed) {
+        // 关窗时停止子进程最多要等约 2 秒（先请求优雅退出，超时再强杀）。
+        // 这段等待放在后台线程，避免阻塞退出路径上的主线程。
+        let app = window.app_handle().clone();
+        std::thread::spawn(move || {
+          use tauri::Manager;
+          app.state::<RuntimeManager>().stop();
+        });
+      }
     })
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

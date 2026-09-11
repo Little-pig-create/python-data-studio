@@ -595,10 +595,27 @@ async function createNativeRuntime(notebookPath, onStatus, onProgress) {
 }
 
 // ---- 公共入口与兼容适配器 ----
-async function createNotebookRuntime(notebookPath, options = {}) {
+// 原生运行时复用：启动本地 Jupyter 服务需要 5–10 秒（spawn Python + 等端口就绪），
+// 而每次切换章节都会请求一次运行时。若不复用，切章会反复重启服务，
+// 既慢又会在日志里留下多次 spawn/停止记录。
+// 这里按"notebook 路径"缓存：同一路径复用，换路径才重建（服务本身与路径绑定）。
+let nativeRuntimePromise = null;
+let nativeRuntimePath = null;
+
+function createNotebookRuntime(notebookPath, options = {}) {
   const kind = getPreferredRuntimeKind();
-  if (kind === "native") return createNativeRuntime(notebookPath, options.onStatus, options.onProgress);
-  return createJupyterLiteRuntime(notebookPath, options.onProgress);
+  if (kind !== "native") return createJupyterLiteRuntime(notebookPath, options.onProgress);
+  const key = String(notebookPath || "");
+  if (nativeRuntimePromise && nativeRuntimePath === key) return nativeRuntimePromise;
+  nativeRuntimePath = key;
+  nativeRuntimePromise = createNativeRuntime(notebookPath, options.onStatus, options.onProgress)
+    .catch((error) => {
+      // 失败后清空缓存，下次可以重试。
+      nativeRuntimePromise = null;
+      nativeRuntimePath = null;
+      throw error;
+    });
+  return nativeRuntimePromise;
 }
 
 // ---- 公共入口 ----
@@ -1103,7 +1120,12 @@ export async function stopNotebookRuntime(runtime) {
   if (!runtime) return;
   if (activeNotebookRuntime === runtime) activeNotebookRuntime = null;
   await runtime.session?.shutdown?.().catch(() => runtime.session?.dispose?.());
-  if (runtime.native) await tauriInvoke("stop_native_runtime").catch(() => {});
+  if (runtime.native) {
+    await tauriInvoke("stop_native_runtime").catch(() => {});
+    // 服务已停止，缓存必须失效，否则下次会复用到一个已死的运行时。
+    nativeRuntimePromise = null;
+    nativeRuntimePath = null;
+  }
 }
 
 export async function restartNotebookRuntime(runtime) {
@@ -1112,6 +1134,13 @@ export async function restartNotebookRuntime(runtime) {
 }
 
 export async function disposeNotebookRuntime() {
+  // 原生运行时：停服务并清缓存。
+  if (nativeRuntimePromise) {
+    nativeRuntimePromise = null;
+    nativeRuntimePath = null;
+    await tauriInvoke("stop_native_runtime").catch(() => {});
+    activeNotebookRuntime = null;
+  }
   if (!serverRuntimePromise) return;
   const runtime = await serverRuntimePromise;
   await runtime.server.shutdownAllSessions();
