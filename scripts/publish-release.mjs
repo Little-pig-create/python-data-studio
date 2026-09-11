@@ -140,19 +140,28 @@ async function jsonRequest(url, token, options = {}) {
   return response.json();
 }
 
+const JSON_HEADERS = {
+  Accept: "application/vnd.github+json",
+  "User-Agent": "Python-Data-Studio-Release",
+  "X-GitHub-Api-Version": "2022-11-28",
+};
+
 async function findRelease(apiBase, tag, token) {
-  const response = await request(`${apiBase}/releases/tags/${tag}`, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "User-Agent": "Python-Data-Studio-Release",
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-  }, 1).catch((error) => {
-    if (error.status === 404) return null;
-    throw error;
-  });
-  return response ? response.json() : null;
+  const headers = { ...JSON_HEADERS, Authorization: `Bearer ${token}` };
+
+  // 优先按 tag 查找已发布的 Release。
+  const response = await request(`${apiBase}/releases/tags/${tag}`, { headers }, 1)
+    .catch((error) => {
+      if (error.status === 404) return null;
+      throw error;
+    });
+  if (response) return response.json();
+
+  // 注意：GitHub 的 /releases/tags/<tag> 对**草稿**返回 404（草稿只能按 id 访问）。
+  // 若只依赖上面的调用，重跑时会把已有草稿当成"不存在"而重复创建 Release。
+  // 因此再遍历一次列表，找出同 tag 的草稿并复用。
+  const list = await jsonRequest(`${apiBase}/releases?per_page=100`, token);
+  return (list || []).find((item) => item.tag_name === tag) || null;
 }
 
 async function uploadAsset(apiBase, releaseId, uploadUrl, filePath, name, token) {
@@ -393,7 +402,8 @@ for (const filePath of uploads) {
   console.log(`${(uploaded.size / 1024 / 1024).toFixed(2)} MB`);
 }
 
-let verified = await jsonRequest(`${apiBase}/releases/tags/${tag}`, token);
+// 用 release.id 而非 /releases/tags/<tag> 复查：草稿状态下 tags 端点会 404。
+let verified = await jsonRequest(`${apiBase}/releases/${release.id}`, token);
 for (const asset of verified.assets || []) {
   const isStaleInstaller = /\.exe$/i.test(asset.name) && asset.name !== expectedInstallerName;
   const isTemporaryUpload = asset.name.endsWith(".uploading");
@@ -401,7 +411,7 @@ for (const asset of verified.assets || []) {
     await jsonRequest(`${apiBase}/releases/assets/${asset.id}`, token, { method: "DELETE" });
   }
 }
-verified = await jsonRequest(`${apiBase}/releases/tags/${tag}`, token);
+verified = await jsonRequest(`${apiBase}/releases/${release.id}`, token);
 verifyAssets(verified);
 verified = await jsonRequest(`${apiBase}/releases/${release.id}`, token, {
   method: "PATCH",
