@@ -74,6 +74,11 @@ export const RUNTIME_PHASES = [
 
 const PHASE_TOTAL_WEIGHT = RUNTIME_PHASES.reduce((sum, phase) => sum + phase.weight, 0);
 
+// 内核就绪等待上限。JupyterLite 首次启动需加载 WebAssembly 与标准库，
+// 网络较慢时约 10–20 秒；超过该上限视为失败并给出可读提示，
+// 而不是让界面永久停在"正在确认内核状态"。
+const KERNEL_READY_TIMEOUT_MS = 45_000;
+
 /** 按阶段 id 计算累计进度百分比（0–100）。 */
 function progressForPhase(phaseId) {
   let acc = 0;
@@ -362,8 +367,17 @@ async function createJupyterLiteRuntime(notebookPath, onProgress) {
   }
 
   report("ready");
+  // 注意：内核就绪等待必须有超时。此前直接 await kernel.info，一旦内核
+  // 起不来就会永久停在"正在确认内核状态"（进度 40%），用户看不到任何提示。
   try {
-    await session.kernel.info;
+    await withTimeout(
+      session.kernel.info,
+      KERNEL_READY_TIMEOUT_MS,
+      `Python 内核在 ${Math.round(KERNEL_READY_TIMEOUT_MS / 1000)} 秒内未就绪`
+        + `（当前状态：${session.kernel.status || "未知"}）。`
+        + "常见原因：运行时资源未加载完成，或浏览器阻止了 WebAssembly。"
+        + "可尝试刷新页面；若持续失败，请检查网络能否访问本站的 /pyodide/ 资源。",
+    );
     report("done");
   } catch (reason) {
     await session.shutdown().catch(() => session.dispose?.());

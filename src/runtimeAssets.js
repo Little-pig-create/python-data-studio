@@ -53,6 +53,9 @@ export function resolveLitePluginSettings() {
     resolvedPromise = probeLocalAssets()
       .then((manifest) => {
         if (!manifest) {
+          // 便于在 DevTools 中确认当前走的是本地资源还是 CDN。
+          console.info("[runtime] 未找到本地 Pyodide 资源，回退 CDN。"
+            + "如需离线可用，请运行 npm run build:runtime:assets");
           return { source: "cdn", settings: {} };
         }
         const settings = {
@@ -63,9 +66,13 @@ export function resolveLitePluginSettings() {
             ...(manifest.disablePyPIFallback === false ? {} : { disablePyPIFallback: true }),
           },
         };
+        console.info("[runtime] 使用本地 Pyodide 资源：", manifest.pyodideUrl);
         return { source: "local", settings };
       })
-      .catch(() => ({ source: "cdn", settings: {} }));
+      .catch((reason) => {
+        console.warn("[runtime] 探测本地资源失败，回退 CDN：", reason?.message || reason);
+        return { source: "cdn", settings: {} };
+      });
   }
   return resolvedPromise;
 }
