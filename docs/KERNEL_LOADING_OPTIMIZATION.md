@@ -99,7 +99,7 @@ const u = a.pyodideUrl || "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide
 
 ### 实现
 
-1. **`scripts/fetch-runtime-assets.mjs`（新增）** —— 下载 Pyodide 最小文件集到
+1. **`scripts/fetch-runtime-assets.mjs`（新增）** —— 下载 Pyodide 资源到
    `public/pyodide/` 与 `public/piplite/`，并生成 `manifest.json`：
 
    ```json
@@ -107,18 +107,23 @@ const u = a.pyodideUrl || "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide
      "pyodideUrl": "/pyodide/pyodide.js",
      "pipliteIndexUrl": "/piplite/all.json",
      "pipliteWheelUrl": "/piplite/piplite-0.4.7-py3-none-any.whl",
-     "disablePyPIFallback": true
+     "disablePyPIFallback": false,
+     "complete": true,
+     "packages": ["micropip", "numpy", "pandas", "..."],
+     "files": ["pyodide/numpy-2.0.2-...whl", "..."]
    }
    ```
 
-   实测下载量：**13.2 MB**（远小于预估，因为只取最小文件集，
-   其余包由 `loadPackage` 按需从本地 lock 文件取）。
+   > ⚠️ **第一版这里是错的**：当时只下载了 Pyodide 核心文件（13.2 MB），
+   > 并假设"其余包由 `loadPackage` 按需从本地 lock 文件取"。这个假设不成立——
+   > lock 文件只有元数据，wheel 本体必须与它同目录。详见下节"九、修订"。
 
 2. **`src/runtimeAssets.js`（新增）** —— 优先本地、回退 CDN 的解析层：
 
    - 探测 `/pyodide/manifest.json`，命中则返回本地 URL 覆盖项
    - 未命中/探测失败 → 返回 `{}`，thebe-lite 继续用 CDN 默认值
    - **永不抛错**（资源缺失只是"没变快"，不应让 notebook 打不开）
+   - **完整性门槛**：只有 `complete: true` 才启用本地资源（见"九、修订"）
    - 结果缓存，避免每个 notebook 重复探测
 
 3. **接线**：`notebookRuntime.js` 的 `connectToJupyterLiteServer({ enableMemoryStorage, litePluginSettings })`
