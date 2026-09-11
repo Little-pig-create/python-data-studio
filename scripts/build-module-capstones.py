@@ -1410,6 +1410,26 @@ def prompt_capstone(filename, module, title, minutes, tags, chapters, scenario, 
 
 模块作业不是重新开始。请从前面章节选择可复用的规则、数据结构、分析表、图表草稿或验证方法，并在新增的 Markdown 单元中写明“复用了什么、做了什么调整”。
 """),
+        # `## 本章目标` 与 `## 学习准备与补学路径` 由
+        # scripts/maintain-teaching-resources.py 依据模块规格重写；
+        # 这里必须先由生成器落下这两个标题，否则该脚本会报
+        # "expected one section, found 0: ## 本章目标"。
+        markdown("""
+## 本章目标
+
+| 完成后能够 | 对应完成证据 |
+|---|---|
+| （由模块教学规格填充） | （由模块教学规格填充） |
+""", tags=["module-teaching-design"]),
+        markdown("""
+## 学习准备与补学路径
+
+先独立尝试下面的小任务。遇到困难时回看对应章节，再返回当前里程碑；它们不另设章节作业，也不单独计分。
+
+| 遇到的问题 | 回看章节 | 再做一次 |
+|---|---|---|
+| （由模块教学规格填充） | （由模块教学规格填充） | （由模块教学规格填充） |
+""", tags=["module-teaching-design"]),
         markdown(f"""
 ## 任务合同：数据、边界与交付
 

@@ -14,6 +14,7 @@ import { useAppStore } from "./store";
 import { studentPlatformConfig } from "./studentPlatform";
 import { PortalHeader } from "./PortalHeader";
 import { StudentWorkspaceNav } from "./components/StudentWorkspaceNav";
+import { CatalogGuard } from "./components/CatalogGuard";
 
 const assignmentSteps = [
   { title: "选择实训", description: "从模块大作业或综合项目中选择一个真实任务。", icon: AssignmentRounded },
@@ -35,19 +36,23 @@ function formatDuration(minutes = 0) {
   return `${Number.isInteger(hours) ? hours : hours.toFixed(1)} 小时`;
 }
 
-export function StudentTrainingCenter({ catalog }) {
+export function StudentTrainingCenter({ catalog, catalogError, onRetryCatalog }) {
   const navigate = useNavigate();
   const store = useAppStore();
   const [filter, setFilter] = useState("all");
 
+  // catalog 在加载完成前为 null；保持可选链避免加载期崩溃。
+  const allChapters = catalog?.chapters || [];
+  const allModules = catalog?.modules || [];
+
   const moduleMap = useMemo(
-    () => Object.fromEntries(catalog.modules.map((module) => [module.id, module])),
-    [catalog.modules],
+    () => Object.fromEntries(allModules.map((module) => [module.id, module])),
+    [allModules],
   );
 
   const trainingLessons = useMemo(
-    () => catalog.chapters.filter((chapter) => chapter.kind === "capstone" || chapter.kind === "project"),
-    [catalog.chapters],
+    () => allChapters.filter((chapter) => chapter.kind === "capstone" || chapter.kind === "project"),
+    [allChapters],
   );
 
   const completedCount = trainingLessons.filter((chapter) => store.completedIds.includes(chapter.id)).length;
@@ -72,6 +77,13 @@ export function StudentTrainingCenter({ catalog }) {
     <main className="student-workspace-page student-training-page">
       <PortalHeader title="我的实训" subtitle="集中完成各模块大作业与综合项目，把课程知识转化为可运行、可复盘的数据分析作品。" actions={<Button component={Link} to="/course/chapter-1" variant="outlined" startIcon={<ArrowBackRounded />}>返回课程</Button>} />
       <StudentWorkspaceNav active="/training" />
+
+      <CatalogGuard
+        catalog={catalog}
+        catalogError={catalogError}
+        onRetry={onRetryCatalog}
+        emptyHint="课程内容尚未同步到本地，暂时没有可用的实训任务。"
+      >
 
       <section className="student-training-hero">
         <div className="student-training-hero-copy">
@@ -129,6 +141,8 @@ export function StudentTrainingCenter({ catalog }) {
           {assignmentSteps.map(({ title, description, icon: Icon }, index) => <article className="student-capability-card" key={title}><div className="student-capability-icon"><Icon fontSize="small" /></div><span>步骤 {index + 1}</span><h3>{title}</h3><p>{description}</p></article>)}
         </div>
       </section>
+
+      </CatalogGuard>
     </main>
   );
 }

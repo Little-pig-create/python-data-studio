@@ -21,6 +21,10 @@
 .chapter-kernel-state.state-loading > span, .chapter-kernel-state.state-starting > span, .chapter-kernel-state.state-restarting > span, .chapter-kernel-state.state-autorestarting > span { background: #f79009; }
 .chapter-kernel-state.state-error, .chapter-kernel-state.state-dead { color: #b42318; border-color: #fecdca; background: #fef3f2; }
 .chapter-kernel-state.state-error > span, .chapter-kernel-state.state-dead > span { background: #f04438; }
+/* 内核启动进度条：下载运行时/依赖期间给出可见的推进感 */
+.chapter-kernel-progress { position: relative; display: inline-block; width: 46px; height: 3px; flex: 0 0 46px; overflow: hidden; border-radius: 2px; background: #fde3b3; }
+.chapter-kernel-progress-fill { display: block; height: 100%; border-radius: 2px; background: #f79009; transition: width .3s ease; }
+@media (prefers-reduced-motion: reduce) { .chapter-kernel-progress-fill { transition: none; } }
 @keyframes bits-header-enter { from { opacity: 0; transform: translateY(-7px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes bits-actions-enter { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes bits-menu-enter { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: scale(1) translateY(0); } }

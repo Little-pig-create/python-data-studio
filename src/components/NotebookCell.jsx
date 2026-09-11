@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -50,7 +50,7 @@ function LazyCodeEditor({ value, onChange, onRun, onRunAndAdvance, onRunAndInser
   </div>;
 }
 
-export function NotebookCell({ cell, index, codeIndex, cellCount, runningCellId, onRun, onRunAndAdvance, onRunAndInsert, onAdd, onMove, onDelete, onDuplicate, markdownCollapsed, onToggleMarkdown }) {
+function NotebookCellView({ cell, index, codeIndex, cellCount, runningCellId, onRun, onRunAndAdvance, onRunAndInsert, onAdd, onMove, onDelete, onDuplicate, markdownCollapsed, onToggleMarkdown }) {
   const { activeCellId, notebookKey, selectCell, updateCellSource } = useNotebookStore();
   const [outputCollapsed, setOutputCollapsed] = useState(false);
   const [markdownEditing, setMarkdownEditing] = useState(false);
@@ -294,3 +294,30 @@ export function NotebookCell({ cell, index, codeIndex, cellCount, runningCellId,
     </div>
   </article>;
 }
+
+/**
+ * 单元格组件（memo 化）。
+ *
+ * 父组件渲染时会传入 cell、index、codeIndex 与一组回调；这些值本身是稳定的
+ * （回调已 useCallback、codeIndex 来自预计算表），但若不 memo，
+ * 只要父组件因任何原因重渲染，列表里全部单元格都会跟着重渲染。
+ * 一个 notebook 常有上百个单元格，代价显著。
+ *
+ * 比较策略：逐项浅比较 props；回调等函数值按引用比较即可（父组件已 memo）。
+ */
+export const NotebookCell = memo(NotebookCellView, (prev, next) => (
+  prev.cell === next.cell
+  && prev.index === next.index
+  && prev.codeIndex === next.codeIndex
+  && prev.cellCount === next.cellCount
+  && prev.runningCellId === next.runningCellId
+  && prev.markdownCollapsed === next.markdownCollapsed
+  && prev.onRun === next.onRun
+  && prev.onRunAndAdvance === next.onRunAndAdvance
+  && prev.onRunAndInsert === next.onRunAndInsert
+  && prev.onAdd === next.onAdd
+  && prev.onMove === next.onMove
+  && prev.onDelete === next.onDelete
+  && prev.onDuplicate === next.onDuplicate
+  && prev.onToggleMarkdown === next.onToggleMarkdown
+));

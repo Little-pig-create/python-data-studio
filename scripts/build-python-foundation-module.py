@@ -109,7 +109,7 @@ print("诊断：", "通过" if _ok else "检查单位换算")"""},
     {
         "file": "course-chapter-10.ipynb",
         "number": 10,
-        "title": "函数进阶：内置函数、lambda 与组合",
+        "title": "函数基础：参数、返回值与职责",
         "bridge": "上一章会编写返回结果的小函数。本章让函数参与排序、筛选、转换和多条件查询。",
         "task": "实现账目查询和统计函数，合理使用 sorted、sum、max、filter、map 与 lambda。",
         "outline": ["10.1 函数也是对象与 key 参数", "10.2 lambda、filter 和 map", "10.3 *args、**kwargs 与函数组合"],
@@ -207,7 +207,7 @@ print("诊断：", "通过" if _ok else "检查筛选、合计或 key")"""},
     {
         "file": "course-chapter-11.ipynb",
         "number": 11,
-        "title": "文件、路径与 JSON 持久化",
+        "title": "函数进阶：内置函数、lambda 与组合",
         "bridge": "函数可以处理内存中的列表，但程序结束后数据会消失。本章建立稳定的 JSON 读写层。",
         "task": "使用 Path、with 和 json 实现 load_data 与 save_data，并验证保存前后内容一致。",
         "outline": ["11.1 Path 与目录", "11.2 with 和文本读写", "11.3 JSON 序列化", "11.4 持久化函数设计"],
@@ -314,7 +314,7 @@ with TemporaryDirectory() as folder:
     {
         "file": "course-chapter-12.ipynb",
         "number": 12,
-        "title": "异常处理、调试与基础测试",
+        "title": "文件、路径与 JSON 持久化",
         "bridge": "持久化层会接触用户输入和外部文件。错误不能被静默吞掉，也不应让整个程序无提示退出。",
         "task": "为金额、日期、索引和 JSON 文件建立具体异常处理，并用测试样例验证行为。",
         "outline": ["12.1 Traceback 与常见异常", "12.2 try/except/else/finally", "12.3 raise 与输入校验", "12.4 调试和表驱动测试"],
@@ -413,7 +413,7 @@ with TemporaryDirectory() as folder:
     {
         "file": "course-chapter-time.ipynb",
         "number": 13,
-        "title": "模块、类与项目组织",
+        "title": "异常处理、调试与基础测试",
         "bridge": "前 12 章已经实现记账助手的主要零件。本章组织文件结构、入口和可选的面向对象封装。",
         "task": "设计 finance_app 项目结构，理解 import 与 __name__，并用 Record 类封装一条账目。",
         "outline": ["13.1 模块、包与导入", "13.2 __name__ 与程序入口", "13.3 类、实例与 __str__", "13.4 项目分层与重构"],
@@ -3853,6 +3853,38 @@ def write_notebook(path, notebook):
     )
 
 
+def is_upgraded_on_disk(path) -> bool:
+    """判断磁盘上的 notebook 是否已是"更新一代"的教学格式。
+
+    本生成器产出的是**早期格式**（"这一章要解决什么 / 这一章怎么走 /
+    学完以后，你应该能做到"）。public/course 下已提交的章节后来升级为
+    "本章场景 / 本章目标 / 工具速查 / 本章实训 / 易错点提醒 / 练习与作业 /
+    小结 / 拓展作业"，并带 learning-loop 校验。
+
+    若无条件覆盖，会把这 12 章整体退回旧格式，并使
+    `check:teaching` 报 "expected one section, found 0: ## 本章目标"。
+    因此检测到新格式时跳过生成，保留磁盘版本。
+    """
+    if not path.exists():
+        return False
+    try:
+        notebook = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    headings = set()
+    for cell in notebook.get("cells", []):
+        if cell.get("cell_type") != "markdown":
+            continue
+        source = cell.get("source", "")
+        text = "".join(source) if isinstance(source, list) else str(source)
+        for line in text.split("\n"):
+            stripped = line.strip()
+            if stripped.startswith("## "):
+                headings.add(stripped[3:].strip())
+    markers = {"本章目标", "本章场景", "工具速查", "本章实训", "易错点提醒"}
+    return bool(headings & markers)
+
+
 def main():
     for topic in TOPICS:
         topic_path = COURSE_DIR / topic["file"]
@@ -3860,18 +3892,30 @@ def main():
             topic_path.unlink()
 
     lesson_paths = []
+    skipped = []
     for chapter in sorted(CHAPTERS, key=lambda item: item["number"]):
         path = COURSE_DIR / chapter["file"]
+        if is_upgraded_on_disk(path):
+            skipped.append(chapter["file"])
+            continue
         write_notebook(path, build_lesson(chapter))
         lesson_paths.append(path)
 
     capstone_path = (
         COURSE_DIR / "module-capstones" / "module-capstone-python.ipynb"
     )
-    write_notebook(capstone_path, build_capstone())
+    if is_upgraded_on_disk(capstone_path):
+        skipped.append(capstone_path.name)
+    else:
+        write_notebook(capstone_path, build_capstone())
     print(
         f"Built {len(lesson_paths)} integrated Python lessons and 1 capstone."
     )
+    if skipped:
+        print(
+            f"Skipped {len(skipped)} already-upgraded notebooks: "
+            f"{', '.join(skipped)}"
+        )
 
 
 if __name__ == "__main__":

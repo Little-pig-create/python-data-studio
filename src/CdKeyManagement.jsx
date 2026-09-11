@@ -9,10 +9,38 @@ const API = (import.meta.env.VITE_AUTH_API_BASE_URL || "http://127.0.0.1:8787/ap
 const ADMIN_API = API + "/api/admin/v1";
 
 export function CdKeyManagement() {
-  const [items, setItems] = useState([]); const [form, setForm] = useState({ role: "student", max_uses: 1, expires_at: "" }); const [error, setError] = useState(""); const [loading, setLoading] = useState(true);
-  async function load() { setLoading(true); try { const response = await fetch(ADMIN_API + "/cdkeys", { credentials: "include" }); const payload = await response.json(); if (!response.ok) throw new Error(payload.message || "加载 CDKey 失败"); setItems(payload.items || []); } catch (reason) { setError(reason.message); } finally { setLoading(false); } }
+  const [items, setItems] = useState([]); const [form, setForm] = useState({ role: "student", max_uses: 1, expires_at: "" }); const [error, setError] = useState(""); const [notice, setNotice] = useState(""); const [loading, setLoading] = useState(true);
+  async function load() { setLoading(true); setNotice(""); setError(""); try { const response = await fetch(ADMIN_API + "/cdkeys", { credentials: "include" }); const payload = await response.json(); if (!response.ok) throw new Error(payload.message || "加载 CDKey 失败"); setItems(payload.items || []); } catch (reason) { setError(reason.message); } finally { setLoading(false); } }
   useEffect(() => { load(); }, []);
-  async function create() { setError(""); const body = { role: form.role, max_uses: Number(form.max_uses), expires_at: form.expires_at ? Math.floor(new Date(form.expires_at).getTime() / 1000) : null }; const response = await fetch(ADMIN_API + "/cdkeys", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); const payload = await response.json().catch(() => ({})); if (!response.ok) { setError(payload.message || "创建失败"); return; } setItems((value) => [payload, ...value]); }
-  async function revoke(code) { const response = await fetch(ADMIN_API + "/cdkeys/" + encodeURIComponent(code) + "/revoke", { method: "POST", credentials: "include" }); if (response.ok) setItems((value) => value.map((item) => item.code === code ? { ...item, active: false } : item)); }
-  return <div className="portal-page teacher-page"><PortalHeader title="CDKey 管理" subtitle="创建、查看和撤销兑换码" /><RoleWorkspaceNav items={[{ to: "/school-admin", label: "管理概览" }, { to: "/school-admin/cdkeys", label: "CDKey 管理" }]} /><main className="portal-content"><section className="portal-section-heading"><div><span className="eyebrow">授权码管理</span><h1>CDKey</h1><p>为课程或活动创建带有效期和使用次数限制的兑换码。</p></div></section><section className="workspace-panel cdkey-create-panel"><div className="workspace-panel-heading"><div><span className="eyebrow">新建兑换码</span><h2>设置使用规则</h2></div><Button variant="contained" startIcon={<AddRounded />} onClick={create}>生成 CDKey</Button></div><div className="workspace-filter-bar embedded"><label><span>绑定角色</span><select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })}><option value="student">学生</option><option value="teacher">教师</option></select></label><TextField label="最大使用次数" type="number" size="small" value={form.max_uses} onChange={(event) => setForm({ ...form, max_uses: event.target.value })} inputProps={{ min: 1 }} /><TextField label="失效时间（可选）" type="datetime-local" size="small" value={form.expires_at} onChange={(event) => setForm({ ...form, expires_at: event.target.value })} InputLabelProps={{ shrink: true }} /></div>{error && <div className="auth-error">{error}</div>}</section><section className="workspace-panel"><div className="workspace-panel-heading"><div><span className="eyebrow">兑换码列表</span><h2>{items.length} 个 CDKey</h2></div></div>{loading ? <p>正在加载…</p> : items.length === 0 ? <p>暂无 CDKey</p> : <div className="management-list">{items.map((item) => <article className="management-list-item" key={item.code}><div><strong>{item.code}</strong><p>角色：{item.role} · 使用 {item.used_count}/{item.max_uses} · {item.expires_at ? `有效期至 ${new Date(item.expires_at * 1000).toLocaleString("zh-CN")}` : "长期有效"}</p></div><Button size="small" color="error" disabled={!item.active} startIcon={<DeleteOutlineRounded />} onClick={() => revoke(item.code)}>{item.active ? "撤销" : "已撤销"}</Button></article>)}</div>}</section></main></div>;
+  async function create() {
+    setError("");
+    const body = { role: form.role, max_uses: Number(form.max_uses), expires_at: form.expires_at ? Math.floor(new Date(form.expires_at).getTime() / 1000) : null };
+    try {
+      const response = await fetch(ADMIN_API + "/cdkeys", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) { setError(payload.message || "创建失败"); return; }
+      setItems((value) => [payload, ...value]);
+      setNotice(`已生成 CDKey ${payload.code}`);
+    } catch (reason) {
+      // 网络中断/服务未启动时 fetch 会抛错，必须给出可读反馈。
+      setError(reason.message || "无法连接授权服务，请检查服务是否已启动");
+    }
+  }
+  async function revoke(code) {
+    setError("");
+    try {
+      const response = await fetch(ADMIN_API + "/cdkeys/" + encodeURIComponent(code) + "/revoke", { method: "POST", credentials: "include" });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        setError(payload.message || `撤销 ${code} 失败`);
+        return;
+      }
+      setItems((value) => value.map((item) => item.code === code ? { ...item, active: false } : item));
+      setNotice(`已撤销 ${code}`);
+    } catch (reason) {
+      // 此前失败时按钮毫无反应，用户无法判断是否生效。
+      setError(reason.message || `无法连接授权服务，${code} 未撤销`);
+    }
+  }
+  return <div className="portal-page teacher-page"><PortalHeader title="CDKey 管理" subtitle="创建、查看和撤销兑换码" /><RoleWorkspaceNav items={[{ to: "/school-admin", label: "管理概览" }, { to: "/school-admin/cdkeys", label: "CDKey 管理" }]} /><main className="portal-content"><section className="portal-section-heading"><div><span className="eyebrow">授权码管理</span><h1>CDKey</h1><p>为课程或活动创建带有效期和使用次数限制的兑换码。</p></div></section><section className="workspace-panel cdkey-create-panel"><div className="workspace-panel-heading"><div><span className="eyebrow">新建兑换码</span><h2>设置使用规则</h2></div><Button variant="contained" startIcon={<AddRounded />} onClick={create}>生成 CDKey</Button></div><div className="workspace-filter-bar embedded"><label><span>绑定角色</span><select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })}><option value="student">学生</option><option value="teacher">教师</option></select></label><TextField label="最大使用次数" type="number" size="small" value={form.max_uses} onChange={(event) => setForm({ ...form, max_uses: event.target.value })} inputProps={{ min: 1 }} /><TextField label="失效时间（可选）" type="datetime-local" size="small" value={form.expires_at} onChange={(event) => setForm({ ...form, expires_at: event.target.value })} InputLabelProps={{ shrink: true }} /></div>{error && <div className="auth-error" role="alert">{error}</div>}{notice && <div className="auth-notice" role="status">{notice}</div>}</section><section className="workspace-panel"><div className="workspace-panel-heading"><div><span className="eyebrow">兑换码列表</span><h2>{items.length} 个 CDKey</h2></div></div>{loading ? <p>正在加载…</p> : items.length === 0 ? <p>暂无 CDKey</p> : <div className="management-list">{items.map((item) => <article className="management-list-item" key={item.code}><div><strong>{item.code}</strong><p>角色：{item.role} · 使用 {item.used_count}/{item.max_uses} · {item.expires_at ? `有效期至 ${new Date(item.expires_at * 1000).toLocaleString("zh-CN")}` : "长期有效"}</p></div><Button size="small" color="error" disabled={!item.active} startIcon={<DeleteOutlineRounded />} onClick={() => revoke(item.code)}>{item.active ? "撤销" : "已撤销"}</Button></article>)}</div>}</section></main></div>;
 }

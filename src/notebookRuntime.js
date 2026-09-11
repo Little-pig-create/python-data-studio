@@ -9,6 +9,8 @@
 // 它们会在 createJupyterLiteRuntime / createNativeRuntime 中按需动态导入
 // 桌面版构建时 thebe-core 会被 vite 别名替换为空桩
 
+import { resolveLitePluginSettings } from "./runtimeAssets.js";
+
 // ---- 常量 ----
 const coursePackages = {
   numpy: { loader: "pyodide", name: "numpy" },
@@ -53,6 +55,49 @@ const withTimeout = (promise, timeoutMs, message) => new Promise((resolve, rejec
     (reason) => { clearTimeout(timer); reject(reason); }
   );
 });
+
+/**
+ * 内核启动阶段（用于进度提示）。
+ *
+ * 首次进入 notebook 时浏览器端要下载 Pyodide + numpy/pandas 等资源，
+ * 约 30 MB 以上；只显示一行文字会让用户以为卡死。
+ * 这里给出**确定性的阶段权重**，把"看不到进度"变成"可预期的等待"。
+ */
+export const RUNTIME_PHASES = [
+  { id: "script", label: "正在加载运行时脚本", weight: 8 },
+  { id: "connect", label: "正在连接 Python 运行时", weight: 10 },
+  { id: "session", label: "正在创建 Python 内核", weight: 14 },
+  { id: "ready", label: "正在确认内核状态", weight: 8 },
+  { id: "packages", label: "正在准备课程依赖", weight: 50 },
+  { id: "done", label: "Python 内核已就绪", weight: 10 },
+];
+
+const PHASE_TOTAL_WEIGHT = RUNTIME_PHASES.reduce((sum, phase) => sum + phase.weight, 0);
+
+/** 按阶段 id 计算累计进度百分比（0–100）。 */
+function progressForPhase(phaseId) {
+  let acc = 0;
+  for (const phase of RUNTIME_PHASES) {
+    acc += phase.weight;
+    if (phase.id === phaseId) break;
+  }
+  return Math.round((acc / PHASE_TOTAL_WEIGHT) * 100);
+}
+
+/** 构造一个上报函数：同时给出文字与百分比；未提供回调时是空操作。 */
+function makeProgressReporter(onProgress) {
+  if (typeof onProgress !== "function") return () => {};
+  return (phaseId, detail) => {
+    const phase = RUNTIME_PHASES.find((item) => item.id === phaseId);
+    if (!phase) return;
+    onProgress({
+      phase: phaseId,
+      label: detail || phase.label,
+      percent: progressForPhase(phaseId),
+      done: phaseId === "done",
+    });
+  };
+}
 
 const normalizeNotebookPath = (notebookPath) => {
   const normalized = String(notebookPath || "course-runtime.ipynb")
@@ -133,8 +178,12 @@ async function getServerRuntime() {
       });
       const server = new ThebeServer(config);
 
+      // 优先使用本地同源的 Pyodide / piplite 资源（若已通过
+      // `npm run build:runtime:assets` 下载）；缺失则回退 CDN，不阻塞启动。
+      const { settings: litePluginSettings } = await resolveLitePluginSettings();
+
       try {
-        await server.connectToJupyterLiteServer({ enableMemoryStorage: true });
+        await server.connectToJupyterLiteServer({ enableMemoryStorage: true, litePluginSettings });
       } catch (reason) {
         server.dispose();
         throw new Error(errorMessage(reason, "无法连接到 Python 运行时"));
@@ -296,9 +345,13 @@ print("__STUDIO_FILE_PREVIEW__" + base64.b64encode(_studio_payload).decode("asci
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 
-async function createJupyterLiteRuntime(notebookPath) {
+async function createJupyterLiteRuntime(notebookPath, onProgress) {
+  const report = makeProgressReporter(onProgress);
+  report("script");
   const runtime = await getServerRuntime();
+  report("connect");
   const sessionPath = normalizeNotebookPath(notebookPath);
+  report("session");
   const session = await runtime.server.startNewSession(runtime.renderMime, {
     path: `/${sessionPath}`,
     kernelName: "python"
@@ -308,8 +361,10 @@ async function createJupyterLiteRuntime(notebookPath) {
     throw new Error("Python 内核不可用");
   }
 
+  report("ready");
   try {
     await session.kernel.info;
+    report("done");
   } catch (reason) {
     await session.shutdown().catch(() => session.dispose?.());
     throw new Error(errorMessage(reason, "Python 内核启动失败"));
@@ -367,14 +422,17 @@ for _path in _studio_font_candidates:
 }
 
 // ---- Native 运行时创建（动态导入 @jupyterlab/services）----
-async function createNativeRuntime(notebookPath, onStatus) {
+async function createNativeRuntime(notebookPath, onStatus, onProgress) {
+  const report = makeProgressReporter(onProgress);
+  // 阶段 1：启动本地服务 与 加载通信组件 相互独立，并行执行以省一次往返。
+  report("script", "正在加载内核通信组件");
   onStatus?.("正在启动本地 Python 服务");
-  const info = await tauriInvoke("start_native_runtime");
+  const [info, services] = await Promise.all([
+    tauriInvoke("start_native_runtime"),
+    import("@jupyterlab/services"),
+  ]);
   if (!info?.serverUrl || !info?.token) throw new Error("本地 Jupyter Server 未返回连接信息");
-
-  // 动态导入 jupyterlab 客户端协议（桌面版保留此依赖）
-  onStatus?.("正在加载内核通信组件");
-  const { KernelManager, ServerConnection, SessionManager } = await import("@jupyterlab/services");
+  const { KernelManager, ServerConnection, SessionManager } = services;
 
   const settings = ServerConnection.makeSettings({
     baseUrl: `${info.serverUrl}/`,
@@ -389,6 +447,7 @@ async function createNativeRuntime(notebookPath, onStatus) {
   const sessions = new SessionManager({ serverSettings: settings, kernelManager: kernels });
   const normalizedPath = String(notebookPath || "course-runtime.ipynb").replace(/^\/+/, "");
   try {
+    report("session");
     onStatus?.("正在创建 Python 内核");
     const session = await withTimeout(sessions.startNew({
       path: normalizedPath,
@@ -401,8 +460,10 @@ async function createNativeRuntime(notebookPath, onStatus) {
       throw new Error("Python 内核不可用");
     }
 
+    report("ready");
     onStatus?.("正在确认 Python 内核状态");
     await withTimeout(session.kernel.info, 12_000, "Python 内核连接超时，请重试");
+    report("done");
     onStatus?.("Python 内核已就绪");
     let matplotlibSetupPromise = null;
     return {
@@ -427,14 +488,16 @@ async function createNativeRuntime(notebookPath, onStatus) {
 // ---- 公共入口与兼容适配器 ----
 async function createNotebookRuntime(notebookPath, options = {}) {
   const kind = getPreferredRuntimeKind();
-  if (kind === "native") return createNativeRuntime(notebookPath, options.onStatus);
-  return createJupyterLiteRuntime(notebookPath);
+  if (kind === "native") return createNativeRuntime(notebookPath, options.onStatus, options.onProgress);
+  return createJupyterLiteRuntime(notebookPath, options.onProgress);
 }
 
 // ---- 公共入口 ----
 export async function createRuntimeAdapter(notebookPath, options = {}) {
   const runtime = await createNotebookRuntime(notebookPath, options);
   activeNotebookRuntime = runtime;
+  // 包加载阶段（浏览器端最耗时，约占整体的一半）也需要上报进度。
+  runtime.progressReporter = makeProgressReporter(options.onProgress);
   return {
     ...runtime,
     capabilities: runtime.info?.capabilities || (runtime.native
@@ -444,7 +507,7 @@ export async function createRuntimeAdapter(notebookPath, options = {}) {
       await ensureCoursePackages(runtime, source);
       return executeNotebookCell(runtime, source);
     },
-    prewarm: () => prewarmCoursePackages(runtime),
+    prewarm: (options) => prewarmCoursePackages(runtime, options),
     installPackages: (packages) => installExternalPackages(runtime, packages),
     interrupt: () => runtime.session?.kernel?.interrupt(),
     restart: () => restartNotebookRuntime(runtime),
@@ -452,23 +515,74 @@ export async function createRuntimeAdapter(notebookPath, options = {}) {
   };
 }
 
-// 内核对齐后，提前在后台加载最常用的基础包，避免首个单元格运行前才下载大包。
+// 内核对齐后，提前在后台加载本章真正会用到的包，避免首个单元格运行前才下载。
 // 仅对 JupyterLite 生效；native runtime 已内置依赖。失败静默，不阻塞启动。
-const PYODIDE_PREWARM = ["numpy", "pandas", "matplotlib"];
+//
+// 为什么不无条件预加载 numpy/pandas/matplotlib：
+//   课程第 1–14 章（Python 基础）与 capstone-python 完全不使用第三方包，
+//   但旧实现会在进入这些章节时下载约 22 MB —— 纯属浪费。
+//   因此改为**扫描本章源代码得出实际导入的包**，只预加载这些。
+const FALLBACK_PREWARM = ["numpy", "pandas", "matplotlib"];
 
-export async function prewarmCoursePackages(runtime) {
+/** 从 notebook 源码中解析出本章用到的课程包（按 coursePackages 的键返回）。 */
+export function detectRequiredPackages(source) {
+  const detected = new Set();
+  const text = String(source || "");
+  for (const match of text.matchAll(/^\s*(?:from|import)\s+([A-Za-z_]\w*)/gm)) {
+    const name = match[1];
+    if (coursePackages[name]) {
+      detected.add(name);
+      // 补齐前置依赖（如 sklearn 需要 numpy/pandas/scipy）
+      for (const prerequisite of coursePackages[name].prerequisites || []) {
+        detected.add(prerequisite);
+      }
+    }
+  }
+  return [...detected];
+}
+
+/**
+ * @param runtime 运行时句柄
+ * @param options.source       本章全部代码格的源码；用于推断需要哪些包
+ * @param options.packages     显式指定包列表（优先于 source 推断）
+ */
+export async function prewarmCoursePackages(runtime, options = {}) {
   if (runtime?.native) return;
   const kernel = runtime?.session?.kernel;
   if (!kernel || kernel.isDisposed || kernel.status === "dead") return;
+
+  // 明确给出包列表时用它；给出源码时按源码推断；都没有才退回默认三项。
+  const requested = Array.isArray(options.packages) && options.packages.length
+    ? options.packages.filter((name) => coursePackages[name])
+    : (options.source
+      ? detectRequiredPackages(options.source)
+      : FALLBACK_PREWARM);
+
+  // 本章不需要任何第三方包：直接跳过，不再白白下载 22 MB。
+  if (!requested.length) return;
+
   const installedPackages = runtime.installedPackages || new Set();
   runtime.installedPackages = installedPackages;
-  const pending = PYODIDE_PREWARM.filter((name) => !installedPackages.has(name));
+  const pending = requested.filter((name) => !installedPackages.has(name));
   if (!pending.length) return;
-  const pyodideNames = pending.map((name) => coursePackages[name].name);
-  const setupCode = [
-    "from pyodide_js import loadPackage",
-    `await loadPackage(${JSON.stringify(pyodideNames)})`,
-  ];
+  const report = runtime.progressReporter || (() => {});
+  report("packages", `正在准备课程依赖（${pending.length} 个包）`);
+  const pyodideNames = pending
+    .filter((name) => coursePackages[name].loader === "pyodide")
+    .map((name) => coursePackages[name].name);
+  const pipliteNames = pending
+    .filter((name) => coursePackages[name].loader === "piplite")
+    .map((name) => coursePackages[name].name);
+  const setupCode = [];
+  if (pyodideNames.length) {
+    setupCode.push("from pyodide_js import loadPackage");
+    setupCode.push(`await loadPackage(${JSON.stringify(pyodideNames)})`);
+  }
+  if (pipliteNames.length) {
+    setupCode.push("import piplite");
+    setupCode.push(`await piplite.install(${JSON.stringify(pipliteNames)}, keep_going=True)`);
+  }
+  if (!setupCode.length) return;
   try {
     const future = kernel.requestExecute({
       code: setupCode.join("\n"),

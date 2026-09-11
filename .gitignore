@@ -31,6 +31,10 @@ public/runtime/
 notebooks/course/*
 !notebooks/course/.gitkeep
 
+# 本地化的 Pyodide / piplite 资源（由 npm run build:runtime:assets 下载，约 25 MB）
+public/pyodide/
+public/piplite/
+
 # Auth server persistent data (server/)
 server-data/
 

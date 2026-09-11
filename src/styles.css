@@ -556,6 +556,7 @@ button, input { font: inherit; }
 .cdkey-create-panel .workspace-filter-bar { align-items: end; }
 .login-remember input { width: 16px; height: 16px; margin: 0; accent-color: #2563eb; }
 .auth-error, .auth-warning { border: 1px solid #f1b9b9; border-radius: 6px; padding: 10px 12px; color: #9b2c2c; background: #fff7f7; font-size: 12px; line-height: 1.5; }
+.auth-notice { margin-top: 8px; border: 1px solid #b7dbc4; border-radius: 6px; padding: 10px 12px; color: #1c6b3a; background: #f4fbf6; font-size: 12px; line-height: 1.5; }
 .auth-warning { margin-top: 18px; border-color: #f0d49c; color: #7a5310; background: #fffaf0; }
 .demo-login-panel { margin-top: 24px; border-top: 1px solid #e4e7ec; padding-top: 20px; }
 .demo-login-panel > div:first-child { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -1037,3 +1038,27 @@ button, input { font: inherit; }
 .skeleton-panel.short { height: 130px; width: 72%; }
 @keyframes skeleton-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 @media (max-width: 767px) { .skeleton-sidebar { display: none; } .skeleton-content { padding: 16px; } .skeleton-grid { grid-template-columns: 1fr 1fr; } .skeleton-panel.short { width: 100%; } }
+
+/* ---- ErrorBoundary（全局渲染错误兜底） ---- */
+.error-boundary { display: grid; width: 100%; min-height: 100%; place-items: center; padding: 32px 20px; background: #f2f4f7; }
+.error-boundary-card { width: min(680px, 100%); padding: 28px 30px 26px; border: 1px solid #e2e6ec; border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgba(16, 24, 40, .06); }
+.error-boundary-title { margin: 6px 0 10px; color: #1b2430; font-size: 20px; font-weight: 700; line-height: 1.35; }
+.error-boundary-text { margin: 0 0 16px; color: #475467; font-size: 13px; line-height: 1.7; }
+.error-boundary-detail { margin: 0 0 6px; padding: 10px 12px; border: 1px solid #f3d6d6; border-radius: 6px; background: #fdf5f5; color: #a03030; font-family: "JetBrains Mono", monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.error-boundary-stack { max-height: 220px; margin: 0 0 6px; overflow: auto; padding: 10px 12px; border: 1px solid #e2e6ec; border-radius: 6px; background: #f8f9fb; color: #667085; font-family: "JetBrains Mono", monospace; font-size: 11px; line-height: 1.6; white-space: pre-wrap; }
+.error-boundary-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.error-boundary-button { min-height: 36px; padding: 0 18px; border: 1px solid #d9dee7; border-radius: 6px; background: #fff; color: #344054; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s; }
+.error-boundary-button:hover { border-color: #aeb8c7; background: #f8f9fb; }
+.error-boundary-button.primary { border-color: #2563eb; background: #2563eb; color: #fff; }
+.error-boundary-button.primary:hover { border-color: #1d4ed8; background: #1d4ed8; }
+.error-boundary-button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+@media (max-width: 767px) { .error-boundary { padding: 20px 14px; } .error-boundary-card { padding: 22px 18px 20px; } }
+
+/* ---- CatalogGuard（课程目录加载态 / 错误态 / 空态） ---- */
+.catalog-guard { display: grid; place-items: center; padding: 48px 20px; }
+.catalog-guard-card { width: min(560px, 100%); padding: 24px 26px; border: 1px solid #e2e6ec; border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgba(16, 24, 40, .06); text-align: center; }
+.catalog-guard-title { margin: 6px 0 10px; color: #1b2430; font-size: 18px; font-weight: 700; line-height: 1.4; }
+.catalog-guard-text { margin: 0 0 16px; color: #475467; font-size: 13px; line-height: 1.7; }
+.catalog-guard-button { min-height: 34px; padding: 0 18px; border: 1px solid #2563eb; border-radius: 6px; background: #2563eb; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s; }
+.catalog-guard-button:hover { border-color: #1d4ed8; background: #1d4ed8; }
+.catalog-guard-button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }

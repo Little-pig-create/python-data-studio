@@ -1,6 +1,6 @@
 // ---- Helper functions extracted from NotebookWorkspace.jsx ----
 
-import { stopNotebookRuntime } from "../notebookRuntime";
+import { stopNotebookRuntime } from "../notebookRuntime.js";
 
 export const outputText = (value) => {
   const text = Array.isArray(value) ? value.join("") : String(value ?? "");
@@ -16,9 +16,31 @@ export const formatPythonSource = (source) => String(source || "").split(/\r?\n/
   return formatted;
 }).join("\n");
 
+/**
+ * 单元格类型判断的唯一入口。
+ *
+ * notebook 数据在代码中有**两种形态**：
+ *   - 磁盘 / Jupyter 格式：`cell_type`（下划线）
+ *   - 应用内存格式：`type`
+ * 历史上各处分别手写 `cell.cell_type === X || cell.type === X`，
+ * 容易漏掉一侧（例如只写 `cell.type`，遇到刚解析的原始文件就判断失效）。
+ * 统一从这里取值，避免同类缺陷再次出现。
+ */
+export const getCellType = (cell) => cell?.type || cell?.cell_type || "";
+
+export const isCodeCell = (cell) => getCellType(cell) === "code";
+export const isMarkdownCell = (cell) => getCellType(cell) === "markdown";
+export const isRawCell = (cell) => getCellType(cell) === "raw";
+
+/** 单元格源码文本（兼容字符串与字符串数组两种存储形式）。 */
+export const getCellSource = (cell) => {
+  const source = cell?.source;
+  return Array.isArray(source) ? source.join("") : String(source ?? "");
+};
+
 export const markdownOutline = (notebook) => (notebook?.cells || []).flatMap((cell) => {
-  if (cell.type !== "markdown") return [];
-  return String(cell.source || "").split(/\r?\n/).flatMap((line) => {
+  if (!isMarkdownCell(cell)) return [];
+  return getCellSource(cell).split(/\r?\n/).flatMap((line) => {
     const match = line.match(/^(#{1,3})\s+(.+?)\s*#*\s*$/);
     if (!match) return [];
     return [{ cellId: cell.id, level: match[1].length, title: match[2] }];

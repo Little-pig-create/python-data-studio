@@ -13,127 +13,22 @@ import SearchRounded from "@mui/icons-material/SearchRounded";
 import { CUSTOM_COURSE_CHAPTERS_KEY } from "./courseCatalog";
 import { deleteCustomNotebook, listCustomNotebooks, saveCustomNotebook } from "./notebookRepository";
 import { normalizeNotebook, serializeNotebook } from "./notebookStore";
+import { isCodeCell, isMarkdownCell } from "./utils/notebookHelpers";
+import {
+  downloadBackup,
+  downloadNotebook,
+  makeId,
+  notebookQualityCheck,
+  notebookSummary,
+  readMetadata,
+  upsertMetadata,
+  validateNotebook,
+  writeMetadata,
+} from "./utils/customNotebook";
 
 const statusLabels = { draft: "草稿", published: "已发布", archived: "已下线", missing: "内容缺失" };
 const statusColors = { draft: "warning", published: "success", archived: "default", missing: "error" };
 
-function readMetadata() {
-  try {
-    const value = JSON.parse(window.localStorage?.getItem(CUSTOM_COURSE_CHAPTERS_KEY) || "[]");
-    return Array.isArray(value) ? value : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeMetadata(records) {
-  window.localStorage?.setItem(CUSTOM_COURSE_CHAPTERS_KEY, JSON.stringify(records));
-  window.dispatchEvent(new CustomEvent("course-catalog-updated"));
-}
-
-function upsertMetadata(metadata) {
-  const records = readMetadata().filter((item) => item.id !== metadata.id);
-  writeMetadata([...records, metadata]);
-}
-
-function makeId() {
-  return `custom-chapter-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-}
-
-function downloadNotebook(record) {
-  if (!record?.notebook) return;
-  const title = String(record.metadata?.title || record.title || "notebook").replace(/[\\/:*?"<>|]/g, "-").trim() || "notebook";
-  const standardNotebook = serializeNotebook(normalizeNotebook(record.notebook));
-  const blob = new Blob([JSON.stringify(standardNotebook, null, 2)], { type: "application/x-ipynb+json" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `${title}.ipynb`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-}
-
-function downloadBackup(records) {
-  const payload = {
-    schema: "python-data-studio-notebook-backup",
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    records: records.map((record) => ({
-      id: record.id,
-      metadata: record.metadata || record,
-      notebook: record.notebook,
-      history: Array.isArray(record.history) ? record.history : []
-    }))
-  };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `python-data-studio-notebooks-${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-}
-function notebookSourceText(source) {
-  return Array.isArray(source) ? source.join("") : String(source || "");
-}
-
-function notebookSummary(notebook) {
-  const cells = notebook?.cells || [];
-  const markdown = cells.filter((cell) => cell.cell_type === "markdown" || cell.type === "markdown");
-  const code = cells.filter((cell) => cell.cell_type === "code" || cell.type === "code");
-  const headings = markdown.flatMap((cell) => notebookSourceText(cell.source).split(/\r?\n/).filter((line) => /^#{1,3}\s+/.test(line)).map((line) => line.replace(/^#{1,3}\s+/, "").trim())).slice(0, 5);
-  return { cells: cells.length, markdown: markdown.length, code: code.length, headings };
-}
-
-function notebookQualityCheck(notebook) {
-  const summary = notebookSummary(notebook);
-  const errors = [];
-  const warnings = [];
-  const cells = notebook?.cells || [];
-  const codeCells = cells.filter((cell) => cell.cell_type === "code" || cell.type === "code");
-
-  if (!summary.code) errors.push("至少需要一个代码单元格");
-  if (!summary.markdown) errors.push("至少需要一个 Markdown 说明单元格");
-  if (!summary.headings.length) warnings.push("未检测到一级到三级标题，建议补充章节结构");
-  if (summary.code > 0 && codeCells.every((cell) => !notebookSourceText(cell.source).trim())) errors.push("代码单元格不能全部为空");
-  if (codeCells.some((cell) => (cell.outputs || []).some((output) => output?.output_type === "error"))) {
-    warnings.push("检测到带有执行错误输出的代码单元格，建议清理错误结果后再发布");
-  }
-  if (cells.some((cell) => notebookSourceText(cell.source).length > 20000)) {
-    warnings.push("存在超过 20,000 个字符的单元格，建议拆分内容以便学生阅读");
-  }
-  if (!notebook?.metadata?.kernelspec && !notebook?.metadata?.language_info) {
-    warnings.push("未检测到 kernelspec 或 language_info，运行前请确认 Python 内核配置");
-  }
-  return { errors, warnings };
-}
-
-function validateNotebook(parsed) {
-  if (!parsed || parsed.nbformat !== 4 || !Array.isArray(parsed.cells)) {
-    throw new Error("文件必须是 nbformat 4 的 Notebook，并包含 cells 数组");
-  }
-  if (!parsed.cells.length) throw new Error("Notebook 至少需要包含一个单元格");
-  parsed.cells.forEach((cell, index) => {
-    const cellType = cell?.cell_type || cell?.type;
-    if (!cell || !["markdown", "code", "raw"].includes(cellType)) {
-      throw new Error(`第 ${index + 1} 个单元格类型无效，应为 markdown、code 或 raw`);
-    }
-    const source = cell.source;
-    if (!(typeof source === "string" || Array.isArray(source) && source.every((line) => typeof line === "string"))) {
-      throw new Error(`第 ${index + 1} 个单元格的 source 必须是字符串或字符串数组`);
-    }
-    if (cellType === "code") {
-      const executionCount = cell.execution_count ?? cell.executionCount;
-      if (cell.outputs !== undefined && !Array.isArray(cell.outputs)) throw new Error(`第 ${index + 1} 个代码单元格的 outputs 必须是数组`);
-      if (executionCount !== undefined && executionCount !== null && !Number.isInteger(executionCount)) throw new Error(`第 ${index + 1} 个代码单元格的 execution_count 无效`);
-    }
-  });
-  return parsed;
-}
 
 function UploadDialog({ open, onClose, onSaved, modules, nextChapter, initialRecord, existingChapters = [] }) {
   const inputRef = useRef(null);

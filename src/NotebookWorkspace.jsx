@@ -29,8 +29,9 @@ import { normalizeNotebook, serializeNotebook, useNotebookStore } from "./notebo
 import { NotebookCell } from "./components/NotebookCell";
 import { autoSplitDocumentCells } from "./lib/markdownSplit";
 import { NotebookNavigation } from "./components/NotebookNavigation";
-import { formatPythonSource, getChapterMeta, kernelStatusDetails, kernelStatusLabels, markdownOutline, shutdownNotebookRuntime } from "./utils/notebookHelpers";
+import { formatPythonSource, getChapterMeta, isCodeCell, isMarkdownCell, kernelStatusLabels, markdownOutline, shutdownNotebookRuntime } from "./utils/notebookHelpers";
 import { NotebookSkeleton } from "./LoadingSkeletons";
+import { useKernelStatus } from "./hooks/useKernelStatus";
 import { APP_VERSION } from "./appVersion";
 
 export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPosition, totalLessons, onOpenSidebar, onRuntimeState }) {
@@ -54,7 +55,6 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
   const saveTimerRef = useRef(null);
   const draftGenerationRef = useRef(0);
   const savePromiseRef = useRef(Promise.resolve());
-  const kernelStatusBindingRef = useRef(null);
   const cellClipboardRef = useRef(null);
   const shortcutSequenceRef = useRef({ key: "", time: 0 });
   const onRuntimeStateRef = useRef(onRuntimeState);
@@ -86,52 +86,9 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
   }, [document]);
   onRuntimeStateRef.current = onRuntimeState;
 
-  const publishKernelStatus = useCallback((kernelStatus) => {
-    const [runtimeState, message] = kernelStatusDetails[kernelStatus]
-      || ["loading", "正在同步内核状态"];
-    useNotebookStore.getState().setRuntime(runtimeState, message);
-    onRuntimeStateRef.current?.(runtimeState);
-  }, []);
-
-  const clearKernelStatusBinding = useCallback(() => {
-    const binding = kernelStatusBindingRef.current;
-    if (!binding) return;
-    binding.kernel.statusChanged.disconnect(binding.onStatusChanged);
-    binding.kernel.connectionStatusChanged.disconnect(binding.onConnectionStatusChanged);
-    kernelStatusBindingRef.current = null;
-  }, []);
-
-  const bindKernelStatus = useCallback((runtime) => {
-    clearKernelStatusBinding();
-    const kernel = runtime?.session?.kernel;
-    if (!kernel) {
-      useNotebookStore.getState().setRuntime("error", "Python 内核不可用");
-      onRuntimeStateRef.current?.("error");
-      return;
-    }
-
-    const onStatusChanged = (_, status) => publishKernelStatus(status);
-    const onConnectionStatusChanged = (_, status) => {
-      if (status === "connected") {
-        publishKernelStatus(kernel.status);
-      } else if (status === "connecting") {
-        useNotebookStore.getState().setRuntime("loading", "正在重新连接内核");
-        onRuntimeStateRef.current?.("loading");
-      } else {
-        useNotebookStore.getState().setRuntime("error", "内核连接已断开");
-        onRuntimeStateRef.current?.("error");
-      }
-    };
-
-    kernel.statusChanged.connect(onStatusChanged);
-    kernel.connectionStatusChanged.connect(onConnectionStatusChanged);
-    kernelStatusBindingRef.current = {
-      kernel,
-      onStatusChanged,
-      onConnectionStatusChanged
-    };
-    onConnectionStatusChanged(kernel, kernel.connectionStatus);
-  }, [clearKernelStatusBinding, publishKernelStatus]);
+  // 内核状态绑定（信号 → 应用状态）已抽到独立 hook，便于测试与复用。
+  // publishKernelStatus 仍被运行单元格等逻辑直接使用，因此一并取出。
+  const { bindKernelStatus, clearKernelStatusBinding, publishKernelStatus } = useKernelStatus(onRuntimeState);
 
   useEffect(() => {
     let disposed = false;
@@ -226,6 +183,30 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
   // 提示条（提前声明，供拆分等回调使用）
   const showToast = useCallback((message, severity = "info") => setToast({ open: true, message, severity }), []);
 
+  // 展开某个被折叠的 markdown 单元格并滚动到它。
+  // 必须 memo：否则每次渲染都新建函数，NotebookCell 的 props 永远变化，
+  // 列表里所有单元格会跟着重渲染（输入时有明显卡顿）。
+  const handleToggleMarkdown = useCallback((cellId) => {
+    setMarkdownCollapsed(false);
+    window.document.getElementById(`notebook-cell-${cellId}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
+  // 每个代码单元格在"代码格序列"里的序号。
+  // 旧实现为每个单元格都做一次 slice+filter，整体是 O(n²)；
+  // 这里一次遍历算出映射表，渲染时 O(1) 查表。
+  const codeIndexMap = useMemo(() => {
+    const map = new Map();
+    let seen = 0;
+    for (const cell of document?.cells || []) {
+      if (isCodeCell(cell)) {
+        seen += 1;
+        map.set(cell.id, seen);
+      }
+    }
+    return map;
+  }, [document?.cells]);
+
   const ensureRuntime = useCallback(async () => {
     const notebookPath = `course-${lesson.id}.ipynb`;
     const notebookKey = `course:${lesson.id}`;
@@ -260,7 +241,13 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
           if (generation !== runtimeGenerationRef.current) return;
           useNotebookStore.getState().setRuntime("loading", message);
           onRuntimeStateRef.current?.("loading");
-        }
+        },
+        // 内核启动是有明确阶段的：把百分比一并展示，避免"卡死"的错觉。
+        onProgress: ({ label, percent }) => {
+          if (generation !== runtimeGenerationRef.current) return;
+          useNotebookStore.getState().setRuntime("loading", `${label}（${percent}%）`, percent);
+          onRuntimeStateRef.current?.("loading");
+        },
       });
       const dependencies = normalizeDependencies([
         ...readInstalledPackages(user?.userId),
@@ -302,9 +289,14 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
       try {
         const runtime = await ensureRuntime();
         if (cancelled) return undefined;
-        // 浏览器端：内核对齐后后台预加载常用包，让首个单元格几乎零等待。
+        // 浏览器端：只预加载**本章实际用到**的包。
+        // 第 1–14 章（Python 基础）不需要任何第三方包，跳过可省约 22 MB 下载。
         if (getPreferredRuntimeKind() !== "native") {
-          void runtime.prewarm?.();
+          const chapterSource = (useNotebookStore.getState().document?.cells || [])
+            .filter((cell) => cell.type === "code")
+            .map((cell) => String(cell.source || ""))
+            .join("\n");
+          void runtime.prewarm?.({ source: chapterSource });
         }
       } catch (reason) {
         if (cancelled) return undefined;
@@ -745,7 +737,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
   return <section className="custom-notebook-shell" aria-label={`${lesson.label} Notebook`}>
     <header className="chapter-learning-header chapter-learning-header-compact">
       <div className="chapter-learning-heading">
-        <div className="chapter-learning-kicker"><span>{chapterMeta.moduleLabel}</span>{chapterMeta.isCapstone && <span>模块大作业</span>}{chapterMeta.isProject && !chapterMeta.isCapstone && <span>综合项目</span>}<span className="chapter-position-chip">第 {lessonPosition || lesson.chapter} / {totalLessons || "—"} 章</span><span className="chapter-version-chip">v{APP_VERSION}</span><span className={`chapter-kernel-state state-${store.runtimeState}`}><span />{store.runtimeState === "loading" ? store.runtimeMessage : (kernelStatusLabels[store.runtimeState] || "未知")}</span></div>
+        <div className="chapter-learning-kicker"><span>{chapterMeta.moduleLabel}</span>{chapterMeta.isCapstone && <span>模块大作业</span>}{chapterMeta.isProject && !chapterMeta.isCapstone && <span>综合项目</span>}<span className="chapter-position-chip">第 {lessonPosition || lesson.chapter} / {totalLessons || "—"} 章</span><span className="chapter-version-chip">v{APP_VERSION}</span><span className={`chapter-kernel-state state-${store.runtimeState}`}><span />{store.runtimeState === "loading" ? store.runtimeMessage : (kernelStatusLabels[store.runtimeState] || "未知")}{store.runtimeState === "loading" && store.runtimePercent > 0 && <span className="chapter-kernel-progress" role="progressbar" aria-valuenow={store.runtimePercent} aria-valuemin={0} aria-valuemax={100} aria-label="Python 内核启动进度"><span className="chapter-kernel-progress-fill" style={{ width: `${store.runtimePercent}%` }} /></span>}</span></div>
       </div>
       <div className="chapter-learning-header-actions" aria-label="工作台快捷入口">
         <StudioSpeedDial />
@@ -780,7 +772,7 @@ export function NotebookWorkspace({ lesson, previousLesson, nextLesson, lessonPo
     </div>
     {loading && <NotebookSkeleton />}
     {error && <div className="custom-notebook-error">{error}</div>}
-    {!loading && !error && document && <div className="custom-notebook-scroll"><div className="custom-notebook-canvas">{document.cells.map((cell, index) => <NotebookCell key={cell.id} cell={cell} index={index} codeIndex={cell.type === "code" ? document.cells.slice(0, index + 1).filter((item) => item.type === "code").length : null} cellCount={document.cells.length} runningCellId={runningCellId} onRun={runCellFromCell} onRunAndAdvance={runCellAndAdvance} onRunAndInsert={runCellAndInsert} onAdd={addCell} onMove={moveCell} onDelete={deleteCell} onDuplicate={duplicateCell} markdownCollapsed={markdownCollapsed && cell.type === "markdown"} onToggleMarkdown={(cellId) => { setMarkdownCollapsed(false); window.document.getElementById("notebook-cell-" + cellId)?.scrollIntoView({ behavior: "smooth", block: "center" }); }} />)}<NotebookNavigation previousLesson={previousLesson} nextLesson={nextLesson} lessonPosition={lessonPosition || lesson.chapter} totalLessons={totalLessons} /></div><div className="custom-notebook-end"><button onClick={() => addCell(document.cells.length, "code")}><AddRounded fontSize="small" />添加代码单元格</button><button onClick={() => addCell(document.cells.length, "markdown")}><AddRounded fontSize="small" />添加文本单元格</button></div></div>}
+    {!loading && !error && document && <div className="custom-notebook-scroll"><div className="custom-notebook-canvas">{document.cells.map((cell, index) => <NotebookCell key={cell.id} cell={cell} index={index} codeIndex={codeIndexMap.get(cell.id) ?? null} cellCount={document.cells.length} runningCellId={runningCellId} onRun={runCellFromCell} onRunAndAdvance={runCellAndAdvance} onRunAndInsert={runCellAndInsert} onAdd={addCell} onMove={moveCell} onDelete={deleteCell} onDuplicate={duplicateCell} markdownCollapsed={markdownCollapsed && isMarkdownCell(cell)} onToggleMarkdown={handleToggleMarkdown} />)}<NotebookNavigation previousLesson={previousLesson} nextLesson={nextLesson} lessonPosition={lessonPosition || lesson.chapter} totalLessons={totalLessons} /></div><div className="custom-notebook-end"><button onClick={() => addCell(document.cells.length, "code")}><AddRounded fontSize="small" />添加代码单元格</button><button onClick={() => addCell(document.cells.length, "markdown")}><AddRounded fontSize="small" />添加文本单元格</button></div></div>}
     <Menu anchorEl={outlineAnchor} open={Boolean(outlineAnchor)} onClose={closeOutline} MenuListProps={{ "aria-label": "本章目录" }} PaperProps={{ className: "notebook-outline-menu" }}>
       {outline.map((item) => <MenuItem key={item.cellId + "-" + item.title} className={"notebook-outline-item level-" + item.level} onClick={() => jumpToOutline(item.cellId)}>{item.title}</MenuItem>)}
     </Menu>

@@ -79,7 +79,7 @@ const DISPLAY_MAP = {
   "course-chapter-3": { chapter: 3, title: "字符串：从文本到字段", module: "python", kind: "lesson" },
   "course-chapter-4": { chapter: 4, title: "列表：管理多条记录", module: "python", kind: "lesson" },
   "course-chapter-5": { chapter: 5, title: "元组：固定字段与解包", module: "python", kind: "lesson" },
-  "course-chapter-6": { chapter: 6, title: "字典：命名记录与聚合", module: "python", kind: "lesson" },
+  "course-chapter-6": { chapter: 6, title: "字典与集合：命名记录与去重", module: "python", kind: "lesson" },
   "course-chapter-7": { chapter: 7, title: "集合：去重与关系", module: "python", kind: "lesson" },
   "course-chapter-8": { chapter: 8, title: "条件判断：把规则写清楚", module: "python", kind: "lesson" },
   "course-chapter-9": { chapter: 9, title: "循环与迭代：批量处理账目", module: "python", kind: "lesson" },

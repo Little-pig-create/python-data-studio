@@ -48,7 +48,7 @@ function WorkspaceRoutes() {
   const location = useLocation();
   const catalogRequired = location.pathname.startsWith("/course/")
     || ["/progress", "/practice", "/training"].includes(location.pathname);
-  const { catalog, catalogError } = useCourseCatalog({ enabled: catalogRequired });
+  const { catalog, catalogError, reloadCatalog } = useCourseCatalog({ enabled: catalogRequired });
 
   useEffect(() => {
     if (location.pathname.startsWith("/course/")) void loadCourseView();
@@ -70,8 +70,8 @@ function WorkspaceRoutes() {
         <Route path="/course/:chapterId" element={<RequireAuth roles={[ROLES.STUDENT, ROLES.TEACHER]}><CourseView catalog={catalog} /></RequireAuth>} />
         <Route path="/progress" element={<RequireAuth roles={[ROLES.STUDENT]}><SessionDock /><ProgressPage catalog={catalog} /></RequireAuth>} />
         <Route path="/datasets" element={<RequireAuth roles={[ROLES.TEACHER]}><SessionDock /><DatasetCenter variant="teacher" /></RequireAuth>} />
-        <Route path="/practice" element={<RequireAuth roles={[ROLES.STUDENT, ROLES.TEACHER]}><SessionDock /><PracticeCenter catalog={catalog} /></RequireAuth>} />
-        <Route path="/training" element={<RequireAuth roles={[ROLES.STUDENT]}><SessionDock /><StudentTrainingCenter catalog={catalog} /></RequireAuth>} />
+        <Route path="/practice" element={<RequireAuth roles={[ROLES.STUDENT, ROLES.TEACHER]}><SessionDock /><PracticeCenter catalog={catalog} catalogError={catalogError} onRetryCatalog={reloadCatalog} /></RequireAuth>} />
+        <Route path="/training" element={<RequireAuth roles={[ROLES.STUDENT]}><SessionDock /><StudentTrainingCenter catalog={catalog} catalogError={catalogError} onRetryCatalog={reloadCatalog} /></RequireAuth>} />
         <Route path="/student/notebooks" element={<RequireAuth roles={[ROLES.STUDENT]}><StudentNotebookCenter /></RequireAuth>} />
         <Route path="/student/notebooks/:notebookId" element={<RequireAuth roles={[ROLES.STUDENT]}><StudentNotebookPage /></RequireAuth>} />
         <Route path="/student/packages" element={<RequireAuth roles={[ROLES.STUDENT]}><StudentPackageCenter /></RequireAuth>} />

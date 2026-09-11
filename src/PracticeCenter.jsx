@@ -7,10 +7,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAppStore } from "./store";
 import { PortalHeader } from "./PortalHeader";
 import { StudentWorkspaceNav } from "./components/StudentWorkspaceNav";
+import { CatalogGuard } from "./components/CatalogGuard";
 
 const PAGE_SIZE = 12;
 
-export function PracticeCenter({ catalog }) {
+export function PracticeCenter({ catalog, catalogError, onRetryCatalog }) {
   const navigate = useNavigate();
   const store = useAppStore();
   const listRef = useRef(null);
@@ -19,9 +20,13 @@ export function PracticeCenter({ catalog }) {
   const [kind, setKind] = useState("all");
   const [page, setPage] = useState(1);
 
+  // catalog 在加载完成前为 null；这里保持可选链，避免加载期崩溃。
+  const allChapters = catalog?.chapters || [];
+  const allModules = catalog?.modules || [];
+
   const exercises = useMemo(
     () =>
-      catalog.chapters.filter((chapter) => {
+      allChapters.filter((chapter) => {
         const text = `${chapter.title} ${chapter.label} ${(chapter.tags || []).join(" ")}`.toLowerCase();
         return (
           (!query || text.includes(query.toLowerCase())) &&
@@ -29,7 +34,7 @@ export function PracticeCenter({ catalog }) {
           (kind === "all" || chapter.kind === kind)
         );
       }),
-    [catalog.chapters, kind, module, query],
+    [allChapters, kind, module, query],
   );
 
   const pageCount = Math.max(1, Math.ceil(exercises.length / PAGE_SIZE));
@@ -54,8 +59,15 @@ export function PracticeCenter({ catalog }) {
 
   return (
     <main className="student-workspace-page practice-page">
-      <PortalHeader title="练习中心" subtitle="从课程中的可运行 Notebook 开始练习，完成状态会自动回写到学习记录。" actions={<Button component={Link} to="/course/chapter-1" variant="outlined" startIcon={<ArrowBackRounded />}>返回课程</Button>} />
+      <PortalHeader title="章节练习" subtitle="按模块和主题浏览课程章节，进入 Notebook 完成其中的练习与实训。完成状态会自动记录到学习进度。" actions={<Button component={Link} to="/course/chapter-1" variant="outlined" startIcon={<ArrowBackRounded />}>返回课程</Button>} />
       <StudentWorkspaceNav active="/practice" />
+
+      <CatalogGuard
+        catalog={catalog}
+        catalogError={catalogError}
+        onRetry={onRetryCatalog}
+        emptyHint="课程内容尚未同步到本地，暂时无法浏览章节练习。"
+      >
 
       <div className="practice-filters">
         <TextField
@@ -73,7 +85,7 @@ export function PracticeCenter({ catalog }) {
         />
         <select value={module} onChange={(event) => setModule(event.target.value)} aria-label="按模块筛选">
           <option value="all">全部模块</option>
-          {catalog.modules.map((item) => (
+          {allModules.map((item) => (
             <option key={item.id} value={item.id}>
               {item.label}
             </option>
@@ -97,7 +109,7 @@ export function PracticeCenter({ catalog }) {
           <section className="practice-grid">
             {visibleExercises.map((chapter) => {
               const done = store.completedIds.includes(chapter.id);
-              const moduleInfo = catalog.modules.find((item) => item.id === chapter.module);
+              const moduleInfo = allModules.find((item) => item.id === chapter.module);
               return (
                 <article className="practice-card" key={chapter.id}>
                   <div>
@@ -136,6 +148,8 @@ export function PracticeCenter({ catalog }) {
       ) : (
         <div className="dataset-empty">没有匹配的练习，请调整筛选条件。</div>
       )}
+
+      </CatalogGuard>
     </main>
   );
 }

@@ -1,5 +1,5 @@
 {
-  "version": 67,
+  "version": 82,
   "modules": [
     {
       "id": "python",
@@ -145,7 +145,7 @@
       "id": "chapter-6",
       "chapter": 6,
       "sortOrder": 6,
-      "title": "字典：命名记录与聚合",
+      "title": "字典与集合：命名记录与去重",
       "label": "第6章 字典：命名记录与聚合",
       "module": "python",
       "path": "/course/course-chapter-6.ipynb",

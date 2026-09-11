@@ -6,16 +6,12 @@ export const defaultLearningProfile = Object.freeze({
   activeChapterId: "chapter-1",
   expandedModules: ["python"],
   sidebarMode: "full",
-  sidebarTab: "course",
   searchQuery: "",
   recentIds: ["chapter-1"],
   completedIds: [],
   chapterExecutionProgress: {},
   chapterNotes: {},
   learningActivity: {},
-  runtimeState: "idle",
-  runtimeProgress: 0,
-  isNotebookDirty: false,
 });
 
 function migratePersistedState(state) {
@@ -36,21 +32,16 @@ export const useAppStore = create(persist((set) => ({
   activeChapterId: "chapter-1",
   expandedModules: ["python"],
   sidebarMode: "full",
-  sidebarTab: "course",
   searchQuery: "",
   recentIds: ["chapter-1"],
   completedIds: [],
   chapterExecutionProgress: {},
   chapterNotes: {},
   learningActivity: {},
-  runtimeState: "idle",
-  runtimeProgress: 0,
-  isNotebookDirty: false,
-  setActiveChapter: (id) => set((state) => ({ activeChapterId: id, recentIds: [id, ...state.recentIds.filter((item) => item !== id)].slice(0, 48), learningActivity: recordActivity(state.learningActivity), sidebarTab: "course" })),
+  setActiveChapter: (id) => set((state) => ({ activeChapterId: id, recentIds: [id, ...state.recentIds.filter((item) => item !== id)].slice(0, 48), learningActivity: recordActivity(state.learningActivity) })),
   toggleModule: (id) => set((state) => ({ expandedModules: state.expandedModules.includes(id) ? state.expandedModules.filter((item) => item !== id) : [...state.expandedModules, id] })),
   setExpandedModules: (expandedModules) => set({ expandedModules }),
   setSidebarMode: (sidebarMode) => set({ sidebarMode }),
-  setSidebarTab: (sidebarTab) => set({ sidebarTab }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   recordSuccessfulCell: (chapterId, cellId, totalCells) => set((state) => {
     const previous = state.chapterExecutionProgress[chapterId]?.completedCellIds || [];
@@ -77,8 +68,6 @@ export const useAppStore = create(persist((set) => ({
     return { chapterNotes: { ...state.chapterNotes, [chapterId]: note } };
   }),
   restoreLearningBackup: (learning) => set(learning),
-  setRuntime: (runtimeState, runtimeProgress = 0) => set({ runtimeState, runtimeProgress }),
-  setNotebookDirty: (isNotebookDirty) => set({ isNotebookDirty })
 }), {
   name: "python-data-studio:app:v1",
   version: 2,

@@ -5,6 +5,7 @@ import { BrowserRouter, useLocation } from "react-router-dom";
 import { useCourseCatalog } from "./hooks/useCourseCatalog";
 import { loadCourseCatalog } from "./courseCatalog";
 import { PageSkeleton } from "./LoadingSkeletons";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 const ApplicationShell = lazy(() => import("@pds/application-shell").then((module) => ({ default: module.ApplicationShell })));
 const LandingPage = lazy(() => import("./LandingPage").then((module) => ({ default: module.LandingPage })));
@@ -34,7 +35,9 @@ function LandingRoute() {
 }
 
 createRoot(document.getElementById("root")).render(
-  <BrowserRouter>
-    <RootRoute />
-  </BrowserRouter>
+  <ErrorBoundary>
+    <BrowserRouter>
+      <RootRoute />
+    </BrowserRouter>
+  </ErrorBoundary>
 );

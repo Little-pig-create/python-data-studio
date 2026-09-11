@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 const items = [
   { to: "/student/notebooks", label: "我的 Notebook" },
   { to: "/student/packages", label: "Python 环境" },
-  { to: "/practice", label: "练习中心" },
+  { to: "/practice", label: "章节练习" },
   { to: "/training", label: "我的实训" },
   { to: "/progress", label: "学习记录" },
 ];

@@ -1,6 +1,5 @@
 import { create } from "zustand";
-
-const sourceText = (source) => Array.isArray(source) ? source.join("") : (source || "");
+import { getCellSource, getCellType } from "./utils/notebookHelpers.js";
 
 const stableHash = (value) => {
   let hash = 2166136261;
@@ -18,12 +17,10 @@ export const normalizeNotebook = (notebook) => ({
   cells: (() => {
     const occurrences = new Map();
     return (notebook.cells || []).map((cell) => {
-      const type = cell.cell_type === "markdown" || cell.type === "markdown"
-        ? "markdown"
-        : cell.cell_type === "raw" || cell.type === "raw"
-          ? "raw"
-          : "code";
-      const source = sourceText(cell.source);
+      // 统一的类型归一化：磁盘格式是 cell_type，应用内存格式是 type。
+      const rawType = getCellType(cell);
+      const type = rawType === "markdown" || rawType === "raw" ? rawType : "code";
+      const source = getCellSource(cell);
       const seed = `${type}|${source}`;
       const occurrence = occurrences.get(seed) || 0;
       occurrences.set(seed, occurrence + 1);
@@ -63,6 +60,8 @@ export const useNotebookStore = create((set) => ({
   dirty: false,
   runtimeState: "idle",
   runtimeMessage: "首次运行代码时启动 Python",
+  // 内核启动进度（0–100）。仅 loading 时有意义，用于渲染进度条。
+  runtimePercent: 0,
   setDocument: (notebookKey, document) => set({
     notebookKey,
     document,
@@ -130,6 +129,14 @@ export const useNotebookStore = create((set) => ({
     const fallback = cells[Math.max(0, index - 1)] || cells[0];
     return { document: { ...state.document, cells }, activeCellId: fallback.id, selectedCellId: fallback.id, dirty: true };
   }),
-  setRuntime: (runtimeState, runtimeMessage) => set({ runtimeState, runtimeMessage }),
+  setRuntime: (runtimeState, runtimeMessage, runtimePercent) => set((state) => ({
+    runtimeState,
+    runtimeMessage,
+    // 进入 loading 以外状态时把进度清零；未传百分比则保留当前值
+    //（连续的状态文字更新不应让进度条回退）。
+    runtimePercent: runtimeState === "loading"
+      ? (typeof runtimePercent === "number" ? runtimePercent : state.runtimePercent)
+      : 0,
+  })),
   setDirty: (dirty) => set({ dirty })
 }));

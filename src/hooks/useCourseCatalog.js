@@ -1,16 +1,21 @@
-import { useState, useEffect } from "react";
-import { loadCourseCatalog } from "../courseCatalog";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { invalidateCourseCatalog, loadCourseCatalog } from "../courseCatalog";
 
 export function useCourseCatalog({ enabled = true, defer = false } = {}) {
   const [catalog, setCatalog] = useState(null);
   const [catalogError, setCatalogError] = useState("");
+  // 保存最新的 load 引用，供 reload 与事件监听复用，避免重复定义。
+  const loadRef = useRef(null);
+
+  const load = useCallback((options) => loadCourseCatalog(options).then((nextCatalog) => {
+    setCatalog(nextCatalog);
+    setCatalogError("");
+  }).catch((error) => setCatalogError(error.message || "课程目录加载失败")), []);
+
+  loadRef.current = load;
 
   useEffect(() => {
     if (!enabled) return undefined;
-    const load = () => loadCourseCatalog().then((nextCatalog) => {
-      setCatalog(nextCatalog);
-      setCatalogError("");
-    }).catch((error) => setCatalogError(error.message || "课程目录加载失败"));
     let idleId;
     let timerId;
     if (defer && typeof window.requestIdleCallback === "function") {
@@ -20,7 +25,11 @@ export function useCourseCatalog({ enabled = true, defer = false } = {}) {
     } else {
       load();
     }
-    const refresh = () => load();
+    // 目录更新事件必须绕过会话缓存，否则会读到旧的 60 秒快照。
+    const refresh = () => {
+      invalidateCourseCatalog();
+      load({ force: true });
+    };
     window.addEventListener("course-catalog-updated", refresh);
     const syncFromOtherTab = (event) => {
       if (event.key === "python-data-studio:custom-course-chapters:v1") refresh();
@@ -32,7 +41,14 @@ export function useCourseCatalog({ enabled = true, defer = false } = {}) {
       window.removeEventListener("course-catalog-updated", refresh);
       window.removeEventListener("storage", syncFromOtherTab);
     };
-  }, [enabled, defer]);
+  }, [enabled, defer, load]);
 
-  return { catalog, catalogError };
+  // 供页面在"加载失败/内容为空"时手动重试（绕过缓存）。
+  const reloadCatalog = useCallback(() => {
+    setCatalogError("");
+    invalidateCourseCatalog();
+    return load({ force: true });
+  }, [load]);
+
+  return { catalog, catalogError, reloadCatalog };
 }

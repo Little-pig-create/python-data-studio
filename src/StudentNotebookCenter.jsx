@@ -15,6 +15,7 @@ import { loadCourseCatalog } from "./courseCatalog";
 import { deleteCustomNotebook, listCustomNotebooks, loadCustomNotebook, saveCustomNotebook } from "./notebookRepository";
 import { normalizeNotebook, serializeNotebook } from "./notebookStore";
 import { NotebookWorkspace } from "./NotebookWorkspace";
+import { isCodeCell, isMarkdownCell } from "./utils/notebookHelpers";
 
 const notebookText = (source) => Array.isArray(source) ? source.join("") : String(source || "");
 
@@ -34,8 +35,8 @@ function notebookSummary(notebook) {
   const cells = notebook?.cells || [];
   return {
     cells: cells.length,
-    code: cells.filter((cell) => cell.cell_type === "code" || cell.type === "code").length,
-    markdown: cells.filter((cell) => cell.cell_type === "markdown" || cell.type === "markdown").length,
+    code: cells.filter(isCodeCell).length,
+    markdown: cells.filter(isMarkdownCell).length,
   };
 }
 
