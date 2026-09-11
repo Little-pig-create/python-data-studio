@@ -270,6 +270,14 @@ if (isGeneratedReleaseConfig) {
   runLocal(["node", "scripts/prepare-tauri-release.mjs"], {
     label: "prepare-tauri-release（生成含新版本号的发布配置）",
   });
+  // 打包前清理原生运行时里的字节码缓存等冗余文件。
+  // 这些文件会在本地跑过一次打包后的 Python 后重新生成（实测可达 35 MB），
+  // 而 Tauri 打包要把整个运行时压缩进安装包，属于纯粹的时间浪费。
+  // 脚本自身是幂等的，且带"只在 runtime 目录内删除"的保护。
+  runLocal([
+    "pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass",
+    "-File", path.join("scripts", "trim-native-runtime.ps1"),
+  ], { label: "trim-native-runtime（清理 __pycache__ 等冗余，减小压缩量）" });
 }
 if (!fs.existsSync(releaseConfigPath)) {
   fail(`Tauri 发布配置不存在：${releaseTauriConfig}。请先运行 prepare-tauri-release.mjs 并配置签名密钥。`);

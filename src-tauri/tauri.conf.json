@@ -29,10 +29,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
     "resources": {
       "../runtime/native/dist/python-runtime": "python-runtime",
-      "../datasets": "datasets"
+      "../dist/datasets": "datasets"
     },
     "icon": [
       "icons/32x32.png",
