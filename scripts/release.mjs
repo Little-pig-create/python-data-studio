@@ -292,14 +292,22 @@ if (releaseConfigVersion !== newVersion) {
 // 新 Release 的校验清单和下载元数据误收录上一个版本的安装包。
 fs.rmSync(bundleSource, { recursive: true, force: true });
 
-// 必须删掉 dist 再构建。
+// 必须重建 dist，而且要**先于** tauri build 完成。
 //
-// 前端版本号（APP_VERSION）是在 **vite build 时**由 package.json 注入并打包进
+// 前端版本号（APP_VERSION）是在 vite build 时由 package.json 注入并打包进
 // dist/assets/appVersion-*.js 的。而 tauri build 只在 dist 发生变化时才重新
-// 嵌入前端资源 —— 若 dist 是上一次构建留下的，且 cargo 认为 Rust 侧无改动，
-// 就会直接复用旧二进制，导致**安装包里仍是旧版本号**
+// 嵌入前端资源 —— 若 dist 是上一次构建留下的、且 cargo 认为 Rust 侧无改动，
+// 就会直接复用旧二进制，导致安装包里仍是旧版本号
 // （实际发生过：v0.1.9 的安装包内显示 0.1.8）。
-fs.rmSync(path.join(root, "dist"), { recursive: true, force: true });
+//
+// 顺序很重要：tauri 在运行 beforeBuildCommand **之前**就会校验 frontendDist
+// 是否存在，所以不能先把 dist 删掉再交给 tauri（会报
+// "Unable to find your web assets"）。这里主动先跑一次前端构建。
+console.log("\n🧱 重建前端资源（确保版本号写入 dist）...");
+runLocal(
+  ["node", "scripts/build-desktop-web.mjs", "--mode", "desktop-online"],
+  { label: "build-desktop-web（重建 dist）" },
+);
 
 try {
   // 通过 npm run tauri 间接调用，复用 win32 下 npm CLI 的解析逻辑。
