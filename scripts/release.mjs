@@ -291,6 +291,16 @@ if (releaseConfigVersion !== newVersion) {
 // Tauri 不会自动删除旧版本 bundle；先清空固定的 bundle 目录，避免
 // 新 Release 的校验清单和下载元数据误收录上一个版本的安装包。
 fs.rmSync(bundleSource, { recursive: true, force: true });
+
+// 必须删掉 dist 再构建。
+//
+// 前端版本号（APP_VERSION）是在 **vite build 时**由 package.json 注入并打包进
+// dist/assets/appVersion-*.js 的。而 tauri build 只在 dist 发生变化时才重新
+// 嵌入前端资源 —— 若 dist 是上一次构建留下的，且 cargo 认为 Rust 侧无改动，
+// 就会直接复用旧二进制，导致**安装包里仍是旧版本号**
+// （实际发生过：v0.1.9 的安装包内显示 0.1.8）。
+fs.rmSync(path.join(root, "dist"), { recursive: true, force: true });
+
 try {
   // 通过 npm run tauri 间接调用，复用 win32 下 npm CLI 的解析逻辑。
   runLocal(
@@ -302,6 +312,27 @@ try {
   console.error("\n❌ 桌面构建失败，版本号文件已自动恢复，未创建提交或 Tag。\n");
   process.exit(error.status || 1);
 }
+
+// 门禁：确认 dist 里的前端版本号与本次发布一致，防止把旧前端打进安装包。
+const appVersionChunk = (() => {
+  const assets = path.join(root, "dist", "assets");
+  if (!fs.existsSync(assets)) return null;
+  const file = fs.readdirSync(assets).find((name) => name.startsWith("appVersion"));
+  return file ? path.join(assets, file) : null;
+})();
+if (!appVersionChunk) {
+  restoreVersionFiles();
+  fail("dist 中缺少 appVersion 资源，无法确认前端版本号。");
+}
+const appVersionContent = fs.readFileSync(appVersionChunk, "utf8");
+if (!appVersionContent.includes(`\`${newVersion}\``)) {
+  restoreVersionFiles();
+  fail(
+    `前端版本号未更新：dist 中的 appVersion 不含 ${newVersion}。`
+      + `实际内容：${appVersionContent.trim().slice(0, 120)}`,
+  );
+}
+console.log(`  ✅ 前端版本号已确认：${newVersion}`);
 
 if (!fs.existsSync(bundleSource)) {
   restoreVersionFiles();
