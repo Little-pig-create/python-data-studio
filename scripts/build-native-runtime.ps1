@@ -52,14 +52,36 @@ if (-not $env:PDS_SKIP_INSTALL) {
   # test suites so the bundled runtime stays small and packaging stays fast.
   & (Join-Path $PSScriptRoot "trim-native-runtime.ps1")
 
+  # 让课程里的 "/datasets/xxx.csv" 在内核中可读。
+  #
+  # 课程 67 个章节都写作 pd.read_csv("/datasets/titanic.csv")，那是 Jupyter 的
+  # contents 路径；在 Python 内核里它只是普通绝对路径，Windows 上会解析成
+  # <盘符>:\datasets\…，从而 FileNotFoundError。Rust 启动 Jupyter 时已通过
+  # PDS_DATASETS_DIR 给出真实目录，但此前没有任何 Python 代码读取它。
+  # sitecustomize 会在解释器启动时自动导入，用它把该前缀重定向到真实目录。
+  $siteCustomizeSource = Join-Path $PSScriptRoot "..\runtime\native\sitecustomize.py"
+  if (-not (Test-Path -LiteralPath $siteCustomizeSource)) {
+    throw "缺少 sitecustomize.py：$siteCustomizeSource（课程将无法读取 /datasets）"
+  }
+  Copy-Item -LiteralPath $siteCustomizeSource -Destination (Join-Path $runtimeLib "sitecustomize.py") -Force
+  Write-Output "Installed sitecustomize.py (maps /datasets -> PDS_DATASETS_DIR)"
+
   # Isolate the embedded interpreter from the build machine's user/system
   # site-packages. Keeping site-packages as an explicit path still allows the
-  # bundled packages to import without relying on `import site`.
+  # bundled packages to import without relying on implicit site discovery.
+  #
+  # 末行的 `import site` 是**必需的**：存在 ._pth 文件时 Python 进入隔离模式，
+  # 默认不会导入 site 模块，从而**不会**自动执行 Lib\sitecustomize.py。
+  # 而课程里的 pd.read_csv("/datasets/xxx.csv") 正是靠 sitecustomize 把该前缀
+  # 重定向到 PDS_DATASETS_DIR 指向的真实目录；缺了它，67 个章节读数据的
+  # 单元格都会 FileNotFoundError。
+  # 这里显式启用 site，同时上面的显式路径保证不会引入宿主机的 site-packages。
   @(
     "python312.zip"
     "DLLs"
     "Lib"
     "Lib\site-packages"
+    "import site"
   ) | Set-Content -LiteralPath (Join-Path $output "python312._pth") -Encoding ascii
 
   $runtimePython = Join-Path $output "python.exe"
