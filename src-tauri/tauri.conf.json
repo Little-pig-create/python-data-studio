@@ -45,6 +45,11 @@
     ],
     "android": {
       "debugApplicationIdSuffix": ".debug"
+    },
+    "windows": {
+      "nsis": {
+        "installerHooks": "./nsis/installer-hooks.nsh"
+      }
     }
   },
   "plugins": {

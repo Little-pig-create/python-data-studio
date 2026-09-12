@@ -57,6 +57,25 @@ foreach ($packageName in $testSuitePackages) {
 }
 Remove-VerifiedTree -Targets $siteTests -Label "C. safe package test suites"
 
+# D. 删除缺少 METADATA 的 .dist-info 残留。
+#
+# 为什么必须删：importlib.metadata 按**目录名**匹配包，遇到第一个匹配的
+# dist-info 就读取其 METADATA。若残留一个空壳目录（没有 METADATA），
+# version("包名") 会返回 None。jupyter_events 启动时执行
+#     version_info = version("python-json-logger")
+#     if parse(version_info) >= parse("3.1.0"):
+# 于是抛 InvalidVersion: Invalid version: 'None'，
+# 导致 Jupyter Server 直接崩溃、内核永远起不来
+# （实测：python_json_logger-4.1.0.dist-info 无 METADATA 遮蔽了 4.2.0）。
+$brokenDistInfo = @()
+$distInfos = Get-ChildItem -LiteralPath $sitePackages -Recurse -Directory -Filter "*.dist-info" -ErrorAction SilentlyContinue
+foreach ($distInfo in $distInfos) {
+  if (-not (Test-Path -LiteralPath (Join-Path $distInfo.FullName "METADATA"))) {
+    $brokenDistInfo += $distInfo.FullName
+  }
+}
+Remove-VerifiedTree -Targets $brokenDistInfo -Label "D. incomplete .dist-info (缺 METADATA)"
+
 $after = Get-ChildItem -LiteralPath $rt -Recurse -File
 Write-Output "After: $($after.Count) files, $([math]::Round((($after | Measure-Object Length -Sum).Sum) / 1MB, 1)) MB"
 Write-Output "Trim complete: $rt"
