@@ -47,9 +47,16 @@ if (!privateKey) {
 }
 
 const config = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+// beforeBuildCommand 必须用**绝对路径**调用 node。
+//
+// 原因：tauri build 执行该命令时会另起一个 shell，若 node/npm 不在系统 PATH 上
+// （本机即为如此），就会报 "'npm' is not recognized"，发版直接中断。
+// 而且前端在 release.mjs 里已经先行构建过一次，这里只是满足 tauri 的流程，
+// 用绝对路径调用 node 最稳妥，不依赖任何 PATH 配置。
+const beforeBuildCommand = `"${process.execPath}" scripts/build-desktop-web.mjs --mode desktop-online`;
 config.build = {
   ...(config.build || {}),
-  beforeBuildCommand: "npm run build:desktop-web:online"
+  beforeBuildCommand
 };
 config.bundle = {
   ...(config.bundle || {}),
