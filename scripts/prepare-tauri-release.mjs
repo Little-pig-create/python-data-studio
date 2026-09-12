@@ -47,16 +47,19 @@ if (!privateKey) {
 }
 
 const config = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
-// beforeBuildCommand 必须用**绝对路径**调用 node。
+// beforeBuildCommand 用一个**必然成功且不含空格**的命令。
 //
-// 原因：tauri build 执行该命令时会另起一个 shell，若 node/npm 不在系统 PATH 上
-// （本机即为如此），就会报 "'npm' is not recognized"，发版直接中断。
-// 而且前端在 release.mjs 里已经先行构建过一次，这里只是满足 tauri 的流程，
-// 用绝对路径调用 node 最稳妥，不依赖任何 PATH 配置。
-const beforeBuildCommand = `"${process.execPath}" scripts/build-desktop-web.mjs --mode desktop-online`;
+// 前端资源已经由 release.mjs 在调用 tauri 之前构建好了（这一步是刻意保留的，
+// 用于保证 dist 里的版本号是最新的），因此这里不需要再构建一次。
+//
+// 之所以不能写 "npm run ..."：tauri 会另起一个 cmd 执行，而本机 node/npm
+// 不在系统 PATH 上，会直接报 "'npm' is not recognized"。
+// 也不能写带引号的绝对路径：tauri 会对命令做 JSON 转义，引号变成 \"
+// 反而让 cmd 无法识别。
+// 用 Windows 自带的命令最稳，既无空格也不依赖任何开发环境。
 config.build = {
   ...(config.build || {}),
-  beforeBuildCommand
+  beforeBuildCommand: "cmd /c echo frontend already built by release.mjs"
 };
 config.bundle = {
   ...(config.bundle || {}),
