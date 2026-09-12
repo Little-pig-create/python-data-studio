@@ -62,11 +62,24 @@ function runLocal(args, options = {}) {
     commandArgs = [npmCli, ...commandArgs];
   }
   console.log(`  $ ${label}`);
+  // tauri build 会自己 spawn `npm run build:desktop-web:online` 作为
+  // beforeBuildCommand。若 node 安装目录不在 PATH 上，子进程会报
+  // "'npm' is not recognized"，导致构建失败。这里把 node 所在目录补进 PATH，
+  // 保证无论从哪个终端调用发布脚本都能成功。
+  const env = { ...process.env };
+  if (process.platform === "win32") {
+    const nodeDir = path.dirname(process.execPath);
+    const parts = String(env.PATH || env.Path || "").split(path.delimiter).filter(Boolean);
+    if (!parts.some((p) => p.toLowerCase() === nodeDir.toLowerCase())) {
+      parts.unshift(nodeDir);
+    }
+    env.PATH = parts.join(path.delimiter);
+  }
   const result = spawnSync(executable, commandArgs, {
     cwd: root,
     stdio: "inherit",
     shell: options.shell || false,
-    env: process.env,
+    env,
   });
   if (result.error) {
     console.error(`命令无法启动：${result.error.message}`);
