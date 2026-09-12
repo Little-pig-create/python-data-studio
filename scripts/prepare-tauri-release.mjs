@@ -47,19 +47,19 @@ if (!privateKey) {
 }
 
 const config = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
-// beforeBuildCommand 用一个**必然成功且不含空格**的命令。
+// 彻底去掉 beforeBuildCommand。
 //
-// 前端资源已经由 release.mjs 在调用 tauri 之前构建好了（这一步是刻意保留的，
-// 用于保证 dist 里的版本号是最新的），因此这里不需要再构建一次。
+// 前端资源已由 release.mjs 在调用 tauri 之前构建完成（这一步刻意保留，
+// 用于保证 dist 中的版本号是最新的），因此 tauri 侧不需要再构建一次。
 //
-// 之所以不能写 "npm run ..."：tauri 会另起一个 cmd 执行，而本机 node/npm
-// 不在系统 PATH 上，会直接报 "'npm' is not recognized"。
-// 也不能写带引号的绝对路径：tauri 会对命令做 JSON 转义，引号变成 \"
-// 反而让 cmd 无法识别。
-// 用 Windows 自带的命令最稳，既无空格也不依赖任何开发环境。
+// 尝试过的写法都失败，原因是 tauri spawn 该命令时的环境异常：
+//   `npm run ...`        -> 'npm' is not recognized（node 不在 PATH）
+//   `"<node.exe>" ...`   -> tauri 做 JSON 转义，引号变 \" 导致无法识别
+//   `cmd /c echo ...`    -> 'cmd' is not recognized（连 System32 都不在子进程 PATH）
+// 既然这一步本就是多余的，直接置为 null 让 tauri 跳过，最可靠。
 config.build = {
   ...(config.build || {}),
-  beforeBuildCommand: "cmd /c echo frontend already built by release.mjs"
+  beforeBuildCommand: null
 };
 config.bundle = {
   ...(config.bundle || {}),
