@@ -1,5 +1,5 @@
 {
-  "version": 82,
+  "version": 84,
   "modules": [
     {
       "id": "python",
@@ -60,7 +60,7 @@
       "module": "python",
       "path": "/course/course-chapter-1.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 90,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
         "Python基础",
@@ -78,7 +78,7 @@
       "module": "python",
       "path": "/course/course-chapter-2.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 90,
+      "estimatedMinutes": 50,
       "hasCode": true,
       "tags": [
         "Python基础",
@@ -96,7 +96,7 @@
       "module": "python",
       "path": "/course/course-chapter-3.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 90,
+      "estimatedMinutes": 50,
       "hasCode": true,
       "tags": [
         "Python基础",
@@ -114,7 +114,7 @@
       "module": "python",
       "path": "/course/course-chapter-4.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 90,
+      "estimatedMinutes": 50,
       "hasCode": true,
       "tags": [
         "Python基础",
@@ -132,7 +132,7 @@
       "module": "python",
       "path": "/course/course-chapter-5.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 90,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
         "Python基础",
@@ -145,12 +145,12 @@
       "id": "chapter-6",
       "chapter": 6,
       "sortOrder": 6,
-      "title": "字典与集合：命名记录与去重",
+      "title": "字典：命名记录与聚合",
       "label": "第6章 字典：命名记录与聚合",
       "module": "python",
       "path": "/course/course-chapter-6.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 90,
+      "estimatedMinutes": 50,
       "hasCode": true,
       "tags": [
         "Python基础",
@@ -168,7 +168,7 @@
       "module": "python",
       "path": "/course/course-chapter-7.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 90,
+      "estimatedMinutes": 40,
       "hasCode": true,
       "tags": [
         "Python基础",
@@ -186,7 +186,7 @@
       "module": "python",
       "path": "/course/course-chapter-8.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 90,
+      "estimatedMinutes": 50,
       "hasCode": true,
       "tags": [
         "Python基础",
@@ -204,7 +204,7 @@
       "module": "python",
       "path": "/course/course-chapter-9.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 90,
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
         "Python基础",
@@ -222,7 +222,7 @@
       "module": "python",
       "path": "/course/course-chapter-10.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 90,
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
         "Python基础",
@@ -240,7 +240,7 @@
       "module": "python",
       "path": "/course/course-chapter-11.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 90,
+      "estimatedMinutes": 50,
       "hasCode": true,
       "tags": [
         "Python基础",
@@ -258,7 +258,7 @@
       "module": "python",
       "path": "/course/course-chapter-12.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 90,
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
         "Python基础",
@@ -276,7 +276,7 @@
       "module": "python",
       "path": "/course/course-chapter-13.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 90,
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
         "Python基础",
@@ -307,13 +307,13 @@
       "module": "python",
       "path": "/course/course-chapter-time.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 90,
+      "estimatedMinutes": 50,
       "hasCode": true,
       "tags": [
         "Python基础",
-        "渐进课程",
-        "个人记账助手",
-        "实训平台"
+        "模块",
+        "类",
+        "项目组织"
       ]
     },
     {
@@ -356,10 +356,10 @@
       "module": "numpy",
       "path": "/course/course-chapter-14.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 50,
       "hasCode": true,
       "tags": [
-        "实训平台"
+        "数据处理"
       ]
     },
     {
@@ -371,10 +371,10 @@
       "module": "numpy",
       "path": "/course/course-chapter-15.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 50,
       "hasCode": true,
       "tags": [
-        "实训平台"
+        "数据处理"
       ]
     },
     {
@@ -386,10 +386,10 @@
       "module": "numpy",
       "path": "/course/course-chapter-16.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 45,
       "hasCode": true,
       "tags": [
-        "实训平台"
+        "数据处理"
       ]
     },
     {
@@ -401,10 +401,10 @@
       "module": "numpy",
       "path": "/course/course-chapter-17.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 50,
       "hasCode": true,
       "tags": [
-        "实训平台"
+        "数据处理"
       ]
     },
     {
@@ -416,10 +416,10 @@
       "module": "numpy",
       "path": "/course/course-chapter-18.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 50,
       "hasCode": true,
       "tags": [
-        "实训平台"
+        "数据处理"
       ]
     },
     {
@@ -462,10 +462,10 @@
       "module": "pandas",
       "path": "/course/course-chapter-19.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "实训平台"
+        "数据处理"
       ]
     },
     {
@@ -477,10 +477,10 @@
       "module": "pandas",
       "path": "/course/course-chapter-20.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "实训平台"
+        "数据处理"
       ]
     },
     {
@@ -492,10 +492,10 @@
       "module": "pandas",
       "path": "/course/course-chapter-21.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "实训平台"
+        "数据处理"
       ]
     },
     {
@@ -507,10 +507,10 @@
       "module": "pandas",
       "path": "/course/course-chapter-22.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "实训平台"
+        "数据处理"
       ]
     },
     {
@@ -522,10 +522,10 @@
       "module": "pandas",
       "path": "/course/course-chapter-23.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "实训平台"
+        "数据处理"
       ]
     },
     {
@@ -537,10 +537,10 @@
       "module": "pandas",
       "path": "/course/course-chapter-24.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "实训平台"
+        "数据处理"
       ]
     },
     {
@@ -552,10 +552,10 @@
       "module": "pandas",
       "path": "/course/course-chapter-25.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 40,
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "实训平台"
+        "数据处理"
       ]
     },
     {
@@ -567,10 +567,10 @@
       "module": "pandas",
       "path": "/course/course-chapter-26.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 45,
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "实训平台"
+        "数据处理"
       ]
     },
     {
@@ -582,10 +582,11 @@
       "module": "pandas",
       "path": "/course/course-chapter-27.ipynb",
       "kind": "lesson",
-      "estimatedMinutes": 35,
+      "estimatedMinutes": 55,
       "hasCode": true,
       "tags": [
-        "实训平台"
+        "可视化",
+        "实践"
       ]
     },
     {
