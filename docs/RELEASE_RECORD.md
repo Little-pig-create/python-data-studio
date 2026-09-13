@@ -14,7 +14,7 @@
 | Commit | `1e1c02115551b3be504c663391d6b5997599b3bb` |
 | 日期 | 2026-09-13 |
 | 构建平台 | Windows x64 |
-| 状态 | Git 发版完成；GitHub Release 资产待上传，人工验收待确认 |
+| 状态 | **已发布**（GitHub Release 已上线，5 个资产齐备）；人工验收待确认 |
 | 批准人 | 用户 |
 
 ### 内容范围
@@ -38,6 +38,9 @@
 | 安装包 | `Python Data Studio_0.1.12_x64-setup.exe`，117.34 MiB（123037398 字节） |
 | 安装包 SHA256 | `b68e847ee965fef2b52b418b4da4ec90cb080f29ca00c9a366442725f47ccfa4` |
 | 更新清单 | `release/v0.1.12/latest.json`（签名 432 字符） |
+| Release 页面 | <https://github.com/Little-pig-create/python-data-studio/releases/tag/v0.1.12> |
+| 线上资产 | 5 个，全部校验大小一致：安装包 123037398B、`.sig` 432B、`release-info.json` 1195B、`latest.json` 813B、`SHA256SUMS.txt` 304B |
+| 远端同步 | GitHub `main` 与 tag `v0.1.12`；码云 `main`（`4df9bdb..a4536a1`）与 tag `v0.1.11`/`v0.1.12` |
 
 ### 构建命令
 
@@ -63,7 +66,19 @@ node scripts/release.mjs 0.1.12
 2. **`assert` 豁免 10 处**：ch13 的 9 处（该章教学内容即 `assert` 与 `unittest`，并已把“用 assert 做业务校验”写成反例）与 ch109 的 1 处（v0.1.11 即存在）。
 3. **PEP 8 剩余 82 处 E501**：其中 57 处是 f-string 修复后不可再拆的长行（再拆会回到 `Invalid format specifier` 的损坏写法）。`check:pep8` 不在任何 CI / 发布门禁内，属信息性结果。
 4. **人工验收未完成**：冷启动、三档视口 + 无障碍、控制台无报错尚未逐项执行（`docs/QA_CHECKLIST.md` §1 / §11 / §12）。
-5. **GitHub Release 资产未上传**：`latest.json` 中的下载地址指向 `releases/download/v0.1.12/...`，未上传资产前应用内更新不可用。
+5. **线上发布已完成**：`npm run release:publish -- 0.1.12 --upload-only` 上传 5 个资产并转为正式 Release；
+   `releases/latest` 已指向 `v0.1.12`（`draft=false`）。上传期间 GitHub API 持续返回 500/502，
+   脚本内建重试不足，最终以「跳过已正确资产、只补缺失项」的可续传方式完成（见下条）。
+6. **已知潜伏缺陷：`latest.json` 的下载地址用了带空格的资产名**。
+   `generate-updater-manifest.mjs` 用磁盘原名（`Python Data Studio_0.1.12_x64-setup.exe`）拼 URL，
+   编码为 `%20`；但 GitHub 会把资产名里的空格存成点，实际上传名是
+   `Python.Data.Studio_0.1.12_x64-setup.exe`。实测：点号 URL 返回 200，`%20` URL 返回 **404**
+   （v0.1.7–v0.1.11 线上 `latest.json` 全部如此）。
+   **当前不影响用户**：`VITE_TAURI_SIGNED_UPDATER_ENABLED` 在所有 env/构建脚本中都未定义，
+   恒为 `false`，客户端走的是读 `release-info.json` 的 MANUAL 手动下载路径（该文件用点号，正常）。
+   一旦启用 Tauri 内置更新插件就会暴露。修复方式：`generate-updater-manifest.mjs` 里对资产名
+   做 `.replace(/\s+/g, ".")`，与 `publish-release.mjs` 的 `assetName()` 对齐；
+   `verify-release-assets.mjs` 的 `urlPointsTo()` 目前两种写法都接受，建议收紧为只认点号。
 
 ### 回滚方式
 
