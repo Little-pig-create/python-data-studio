@@ -1,3 +1,41 @@
+## 2026-09-13
+
+### 全课程重写后的运行时清零：50 章 / 71 处真实错误 → 0
+
+- **做法**：逐格顺序执行 `public/course` 下全部 **113 份 Notebook**，把异常分为 DESIGN（故意的报错演示 / 未填练习）与 REAL（真缺陷）。基线 `logs/course-runtime-check-2026-09-13-before-fixes.txt`：**50 章 / 71 处 REAL**；最终 **0 处**。
+- **诚实归类**：把 16 处非 f-string 失败格的源码与 `git show HEAD:` 逐格比对，**全部在 HEAD（v0.1.11）中已存在** —— 本次重写**零回归**。这修正了上一轮「ch31 等章截断保护是重写丢的」的判断：该保护只存在于 HEAD 的参考答案格，示例格在 HEAD 里同样是坏的。
+- **最严重的根因（管道级）**：`scripts/format-course-notebooks.py` 用的 `autopep8 --aggressive` 会把 f-string 花括号当断行点，把续行缩进塞进格式说明符（`{len(x):,}` → `{\n    len(x):,    }`）。该写法在 Python 3.12+ 依旧能编译，只在运行时抛 `ValueError: Invalid format specifier`，因此语法/编译检查都发现不了。已用 autopep8 2.3.2 独立复现；实测 `public/course` 下 **36 份 Notebook、165 个格式说明符**受损（ch39–ch74 共享准备格）。**因该脚本在 `build:course` 里，只修 Notebook 会被下次跑管线重新拆坏**，故同时做了根因修复。
+- **其余根因**：`pd.crosstab` 在 category 列上返回全部 38 国（ch28–38 区域图多出 34 根 0 高柱）；ch36 只给 `months` 切了前 6 个月；ch31/ch34 演示数组 6 个值配 13 期序列；练习脚手架回写本章变量（ch35 `labels`、ch38 `months`/`sales`）；`transform_rest.py` 的变量保护**逐格**生效导致「定义格改了名、紧随的读取格没改」（ch79–105 的 what-if 格用本章模型配 demo 数据、ch108/111 读本章 `raw`，共 9 处）；ch42 `pointplot` 只给 3 个 markers 配 7 个 hue 层；ch38 标题写死「利润在6月达到最高」。
+- **新增**：`scripts/fstring_guard.py`（AST 检测 + 重建受损 f-string）、`scripts/check-course-runtime.py`（回归门禁，有 REAL 就非零退出）、`scripts/rewrite_python_basics/apply_rewrite_fixes.py`（幂等补丁集，每条替换带出现次数断言）、`scripts/test_rewrite_fixes.py`（6 例单元测试）。
+- **修改**：`format-course-notebooks.py` 格式化后统一修复并带「更差则回退原文」保护，新增 `--repair-only`/`--include-source`；`transform_rest.py` 变量保护改为**相邻演示格成组**统一改名（根因修复）；`package.json` 新增 `check:course-runtime`/`repair:course-fstrings`/`test:rewrite`，并修正原本就坏的 `test:teaching`（`scripts/` 不是包，`-m unittest scripts/xxx.py` 必导入失败）。
+- 细节见 `docs/COURSE_RUNTIME_FIXES_2026-09-13.md`。
+
+### 管线对齐：目录 / 派生树 / catalog 重新收敛，并修掉两处重写回归
+
+- **顺序**：`format-course-notebooks.py --include-source`（792 个代码格，**f-string 修复数 0**，即上一条的根因修复有效）→ `normalize-notebook-architecture.py --sync-runtime`（386 份，补稳定 cell id + `content_fingerprint`）→ `sync-catalog.mjs`（catalog **v82 → v84**，127 章 / 8 模块）→ `enrich-notebook-math.py`（回填 87 章数学注释）→ `enrich-module-intro-checkpoints.py`（格式化后 2 处检查点重排）→ 逐次 `normalize --scope app`。
+- **门禁全绿**：`check:notebooks`（386 文件）、`check:teaching`（127 资源 / 8 模块 / stale 0）、`check:notebook-math`（96 / stale 0）、`check:module-intros`（6 / stale 0）、`check:course-runtime`（113 章 **REAL 0 / DESIGN 0**，格式化后复跑仍为 0）。
+- **回归 A｜ch02–ch13 小节编号退回 `## 1.x`**：`chNN.py` 从 `ch01.py` 复制骨架后编号没改，12 章 50 处标题全印成「1.x」（而 HEAD 是正确的 `## 2.1` / `## 10.1`）。`apply_rewrite_fixes.py` 新增 `RENUMBER_CHAPTERS`，**同时修内容模块与已生成 Notebook**，日后重跑 `build.py 2..13` 不会退回。
+- **回归 B｜ch14–ch27 的 `course.module` 被写死为 `python`**：`sync-catalog.mjs` 以 Notebook 内容优先，于是 numpy 的课（文件 14–18）与 pandas 的课（文件 19–27）被并进 python 模块，两个模块只剩「入门 + 大作业」，`check:teaching` 报 `invalid recovery resource: numpy/course-chapter-14.ipynb`。`build.py` 的 `CHAPTERS` 增加 `module` 字段并新增 `MODULE_BY_KEY` 就地修已生成 Notebook；修完模块分布与 HEAD 完全一致（python 16 / numpy 7 / pandas 11）。
+- **更正上一轮的判断**：此前列为「待用户决策」的「教学契约冲突（`## 本章目标` vs `## 学习目标`）」**并不存在** —— 该标题只被 `--write` 模式的 `enrich_capstone()` 使用，`--check` 走 `validate_catalog()` + `validate_design()`，不检查它。当时报红的真实原因是 **cell id 缺失**（normalize 修好）与**模块归属漂移**（本节回归 B 修好）。
+- **发现｜`npm run course:core` 已不能整体重跑**：其第 3 步 `build-python-foundation-module.py` 会用旧生成器（`2026-08-07-python-merged-chapters-v1`）**覆盖 `public/course/course-chapter-1..13 / common-modules / time`**，第 4 步 `build-module-capstones.py` 同理覆盖 capstones。本轮**只手工执行了需要的后处理子集**，未跑 `course:core`。建议拆成 `course:author`（内容生成）与 `course:enrich`（后处理）两条链并删掉第 3 步。
+- **PEP 8 复核**（三阶段对比，`pycodestyle 2.14.0`）：HEAD 35 处 → 重写后未格式化 205 处 → 格式化后 **82 处**，即**除 E501 外全部清零**（E305 40→0、E302 28→0、E261/262 6→0、E303 4→0、E402 3→0、E731/E722/E711 4→0，连 HEAD 遗留的 3 处 E127 也修掉）。剩余 82 处 E501 中 **57 处是修复后无法再拆的长 f-string**（拆了就回到 `Invalid format specifier` 的损坏写法）、4 处是 Plotly `hovertemplate` 模板串，仅约 20 处（中文字体候选列表 14 + 长注释 6）属可选排版清理。`check:pep8` 未接入任何 CI/发布门禁，故为信息性结果。
+- **另**：`check:pep8` 之前无法运行是因为 `pycodestyle` 未装；已在隔离虚拟环境装入（`pycodestyle 2.14.0`），未污染系统环境。
+- 细节见 `docs/COURSE_RUNTIME_FIXES_2026-09-13.md` 第五～七节。
+
+### 发布标准核对：清掉 ch24 的 `assert` 自检，并修好补丁脚本对格式化的抗性
+
+- **依据**：`docs/RELEASE_RUNBOOK.md`（§1.3 / §4.3 / §6）与 `docs/QA_CHECKLIST.md`（§1 / §11 / §12）要求**教学代码不使用 `assert` 作为自检机制**。逐份核对后：HEAD 为 6 处（ch13×5、ch109×1），重写后为 **12 处**（ch13×9、ch24×2、ch109×1）。
+- **修复 ch24（本次重写新引入，HEAD 为 0）**：保存-读回闭环的自检由 `assert back.shape == ledger.shape` 改为**显式 `raise`**（`if ... != ...: raise ValueError(...)`），练习指令「TODO 3：用 assert 验证行数一致」同步改为「用 if + raise」。选 `raise` 而非保留 `assert`，是因为 ch13 本身就教「assert 防自己犯蠢，raise 防数据出格」，两章口径现在一致。改后 **12 → 10 处**。
+- **豁免 ch13 的 9 处与 ch109 的 1 处**：ch13 是「异常处理、调试与基础测试」章，`assert` 与 `unittest` 就是该章的教学对象，且它已把「拿 assert 做业务校验」写成反例；ch109 那处 HEAD 即存在。建议在发布记录中说明，而非改内容。
+- **根因同步**：`ch24.py` 内容模块一并修补（新增 `MODULE_PATCHES` 机制），日后重跑 `build.py 24` 不会退回。
+- **顺带修好 `apply_rewrite_fixes.py` 自身的三处缺陷**（此前的 `--dry-run` 会误报 **22 个 FAILURE**）：
+  1. **格式化抗性**：autopep8 会把长行重排并在炸开调用时插入魔法尾逗号，导致补丁的字面量与空白容忍匹配双双失效。新增基于 AST 的判定 —— 只要替换后的语句结构（`ast.dump`）已在格中出现，就判为「已修复（因格式化重排）」。补丁**写入**仍用原文替换，判定不再受排版影响。
+  2. **索引漂移**：`enrich-notebook-math.py` / `enrich-module-intro-checkpoints.py` 只往 app 树插格，硬编码下标在 app 树会指到别的格。改为先看下标格、再看**哪一格已含替换后的结构**（`apply_cell_patch`），不再按整章计数 —— 因为同章合法复用同一写法（ch35 有 3 处与本补丁无关的 `labels=labels,`）。
+  3. **关键字参数片段**：`labels=pie_labels,` / `dodge=0.25,` 不是完整语句、无法解析，回退到空白容忍的正则判据。
+  修完 `--dry-run` 报 **`all patches applied cleanly`**（68 处已应用 + 9 处待写入），再跑一次为 0 写入，幂等成立。
+- **发布就绪度结论**：**尚不符合**，当前只能标「候选版」。硬阻塞为 ① 工作区不干净（`release.mjs` 要求 clean tree）② 本地 main 领先 `origin/main` 1 个提交 ③ `.workbuddy/` 未忽略；内容缺口为 `dist/course` 未同步（121/128 差异）与 3 份旧文档未标注为历史。
+- **另**：`release.mjs` 自身**不跑任何测试或课程门禁**，且 `tauri.release.conf.json` 的 `beforeBuildCommand` 为 `null`（打包只**复制** `public/course`，不重建课程），故「dist 陈旧」不阻塞 git 发版；会覆盖 ch1–13 的是另一条路 `desktop:build:online`。
+
 ## 2026-08-16
 
 ### 第一模块大作业重新设计：极客联赛 → 个人账本·年度汇总
