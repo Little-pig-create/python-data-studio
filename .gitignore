@@ -61,6 +61,7 @@ release/
 # Session scratch / agent logs / audit outputs (keep local only)
 .agent-teams/
 .dsh-work/
+.workbuddy/
 .backup-course-prefix/
 .pep8-viz2/
 .tmp/
